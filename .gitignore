@@ -1,0 +1,88 @@
+# ----------------------------
+# Python
+# ----------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# PyInstaller
+*.manifest
+*.spec
+.env
+
+# Unit test / coverage reports
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# IDE / editor
+.vscode/
+.idea/
+.idea/*
+*.swp
+*.swo
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# SQLite / other DB files
+*.db
+*.sqlite3
+
+# Logs
+*.log
+
+# ----------------------------
+# React (Node.js)
+# ----------------------------
+
+# dependencies
+/node_modules
+/frontend/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production build
+/build
+
+# misc
+.DS_Store
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+
+# IDE / editor
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# lock files (optional, keep if needed)
+/package-lock.json
+/yarn.lock
+/pnpm-lock.yaml
+
+# ----------------------------
+# OS-specific
+# ----------------------------
+Thumbs.db
+.DS_Store
