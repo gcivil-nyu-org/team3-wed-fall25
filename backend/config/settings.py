@@ -9,10 +9,10 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-import os
-import environ
 from pathlib import Path
 from datetime import timedelta
+
+from utils.env_util import get_env
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,15 +27,22 @@ SECRET_KEY = "django-insecure-tiy1km5y7&pf2w61(@6a^ol4@-y1mh+s3%0vw)1g744tol)8b!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
 
+env = get_env()
 
-env = environ.Env(
-    DEBUG=(bool, DEBUG)
-)
+RUN_ENV = env("RUN_ENV", default="production")
 
-environ.Env.read_env(os.path.join(Path(__file__).resolve().parent.parent.parent, '.env'))
-
+if RUN_ENV == "development":
+    ALLOWED_HOSTS = ["*"]
+    CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOW_HEADERS = ['*']
+    CORS_ALLOW_METHODS = ['*']
+else:
+    ALLOWED_HOSTS = []
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        "https://sweng.seongjaeny.com",
+    ]
 
 # Application definition
 
@@ -50,8 +57,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'drf_spectacular',
     # Local apps
     'apps.user',
+    'apps.dummy'
 ]
 
 MIDDLEWARE = [
@@ -96,6 +105,9 @@ DATABASES = {
         'PASSWORD': env('DB_PASSWORD'),
         'HOST': env('DB_HOST'),
         'PORT': env('DB_PORT'),
+        "TEST": {
+            "NAME": f"test_{env('DB_NAME')}",
+        },
     }
 }
 
@@ -121,7 +133,7 @@ REST_FRAMEWORK = {
     ),
 
     "EXCEPTION_HANDLER": "middlewares.error_middleware.custom_exception_handler",
-
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     # "DEFAULT_PAGINATION_CLASS": "middlewares.pagination.Pagination",
     # "PAGE_SIZE": 20,
 }
@@ -132,18 +144,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
 }
-
-RUN_ENV = env("RUN_ENV", default="production")
-
-if RUN_ENV == "development":
-    CORS_ALLOW_ALL_ORIGINS = True
-    CORS_ALLOW_HEADERS = ['*']
-    CORS_ALLOW_METHODS = ['*']
-else:
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = [
-        "https://sweng.seongjaeny.com",
-    ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
