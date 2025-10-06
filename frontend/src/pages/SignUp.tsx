@@ -1,6 +1,7 @@
-import { Box, Button, TextField, Typography, Container, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@mui/material";
+import { Box, Button, TextField, Typography, Container, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Alert } from "@mui/material";
 import { Link } from "react-router";
 import { useState } from "react";
+import { registerUser } from "../api/auth";
 
 export default function SignUp() {
   const [name, setName] = useState("");
@@ -8,10 +9,46 @@ export default function SignUp() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<"tenant" | "landlord">("tenant");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signup attempt:", { name, email, password, role });
+    
+    if (password !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      const response = await registerUser({
+        username: name,
+        email: email,
+        password: password
+      });
+      
+      setMessage({ type: 'success', text: 'Account created successfully! You can now sign in.' });
+      console.log("Registration successful:", response.data);
+      console.log("Full response:", response);
+      
+      // Clear form
+      setName("");
+      setEmail("");
+      setPassword("");
+      setConfirmPassword("");
+      
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.error_message || 'Registration failed. Please try again.' 
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,9 +67,15 @@ export default function SignUp() {
             Create Account
           </Typography>
           
+          {message && (
+            <Alert severity={message.type} sx={{ mb: 3 }}>
+              {message.text}
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <TextField
-              label="Full Name"
+              label="Username"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -92,8 +135,9 @@ export default function SignUp() {
               variant="contained" 
               size="large" 
               fullWidth
+              disabled={loading}
             >
-              Create Account
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
           </Box>
 

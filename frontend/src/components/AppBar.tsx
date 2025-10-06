@@ -98,7 +98,7 @@ export default function AppAppBar() {
                 Sign in
               </Button>
             </NavLink>
-            <NavLink to="signup">
+            <NavLink to="/signup">
               <Button color="primary" variant="contained" size="small">
                 Sign up
               </Button>
@@ -138,7 +138,7 @@ export default function AppAppBar() {
                 <MenuItem>Admin</MenuItem>
                 <Divider sx={{ my: 3 }} />
                 <MenuItem>
-                  <NavLink to="signup" style={{ width: "100%" }}>
+                  <NavLink to="/signup" style={{ width: "100%" }}>
                     <Button color="primary" variant="contained" fullWidth>
                       Sign up
                     </Button>

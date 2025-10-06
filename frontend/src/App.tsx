@@ -17,21 +17,21 @@ function App() {
     >
       <CssBaseline enableColorScheme />
       <Routes>
-          <Route
-            path="/"
-            element={
-              <div>
-                <AppAppBar />
-                <Outlet />
-              </div>
-            }
-          >
-            <Route path="/" element={<Home />} />
-            <Route path="search" element={<Search />} />
-          </Route>
-          <Route path="signin" element={<SignIn />} />
-          <Route path="signup" element={<SignUp />} />
-        </Routes>
+        <Route
+          path="/"
+          element={
+            <div>
+              <AppAppBar />
+              <Outlet />
+            </div>
+          }
+        >
+          <Route path="/" element={<Home />} />
+          <Route path="search" element={<Search />} />
+        </Route>
+        <Route path="signin" element={<SignIn />} />
+        <Route path="signup" element={<SignUp />} />
+      </Routes>
     </ThemeProvider>
   );
 }
