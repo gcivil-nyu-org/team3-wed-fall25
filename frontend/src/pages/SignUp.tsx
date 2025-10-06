@@ -1,14 +1,17 @@
-import { Box, Button, TextField, Typography, Container } from "@mui/material";
+import { Box, Button, TextField, Typography, Container, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio } from "@mui/material";
 import { Link } from "react-router";
 import { useState } from "react";
 
-export default function SignIn() {
+export default function SignUp() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<"tenant" | "landlord">("tenant");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", { email, password });
+    console.log("Signup attempt:", { name, email, password, role });
   };
 
   return (
@@ -24,10 +27,19 @@ export default function SignIn() {
 
         <Box sx={{ p: 4, border: 1, borderColor: "divider", borderRadius: 2 }}>
           <Typography variant="h4" component="h1" sx={{ textAlign: "center", mb: 3 }}>
-            Log In
+            Create Account
           </Typography>
           
           <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <TextField
+              label="Full Name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+              required
+            />
+
             <TextField
               label="Email"
               type="email"
@@ -46,21 +58,50 @@ export default function SignIn() {
               required
             />
 
+            <TextField
+              label="Confirm Password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              fullWidth
+              required
+            />
+
+            <FormControl component="fieldset">
+              <FormLabel component="legend">I am a</FormLabel>
+              <RadioGroup
+                value={role}
+                onChange={(e) => setRole(e.target.value as "tenant" | "landlord")}
+                row
+              >
+                <FormControlLabel 
+                  value="tenant" 
+                  control={<Radio />} 
+                  label="Tenant" 
+                />
+                <FormControlLabel 
+                  value="landlord" 
+                  control={<Radio />} 
+                  label="Landlord" 
+                />
+              </RadioGroup>
+            </FormControl>
+
             <Button 
               type="submit" 
               variant="contained" 
               size="large" 
               fullWidth
             >
-              Log In
+              Create Account
             </Button>
           </Box>
 
           <Box sx={{ textAlign: "center", mt: 3 }}>
             <Typography variant="body2" color="text.secondary">
-              Don't have an account?{" "}
-              <Link to="/signup" style={{ color: "inherit", textDecoration: "underline" }}>
-                Sign up
+              Already have an account?{" "}
+              <Link to="/signin" style={{ color: "inherit", textDecoration: "underline" }}>
+                Log in
               </Link>
             </Typography>
           </Box>
