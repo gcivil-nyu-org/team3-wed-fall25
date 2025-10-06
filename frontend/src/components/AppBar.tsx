@@ -98,9 +98,11 @@ export default function AppAppBar() {
                 Sign in
               </Button>
             </NavLink>
-            <Button color="primary" variant="contained" size="small">
-              Sign up
-            </Button>
+            <NavLink to="/signup">
+              <Button color="primary" variant="contained" size="small">
+                Sign up
+              </Button>
+            </NavLink>
           </Box>
           <Box sx={{ display: { xs: "flex", md: "none" }, gap: 1 }}>
             <IconButton aria-label="Menu button" onClick={toggleDrawer(true)}>
@@ -136,9 +138,11 @@ export default function AppAppBar() {
                 <MenuItem>Admin</MenuItem>
                 <Divider sx={{ my: 3 }} />
                 <MenuItem>
-                  <Button color="primary" variant="contained" fullWidth>
-                    Sign up
-                  </Button>
+                  <NavLink to="/signup" style={{ width: "100%" }}>
+                    <Button color="primary" variant="contained" fullWidth>
+                      Sign up
+                    </Button>
+                  </NavLink>
                 </MenuItem>
                 <MenuItem>
                   <NavLink to="signin" style={{ width: "100%" }}>

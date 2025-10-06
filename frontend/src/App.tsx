@@ -4,7 +4,7 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
 import AppAppBar from "./components/AppBar";
-import { Home, Search, SignIn } from "./pages";
+import { Home, Search, SignIn, SignUp } from "./pages";
 
 function App() {
   return (
@@ -29,16 +29,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="search" element={<Search />} />
         </Route>
-        {/* <Route
-          path="/"
-          element={
-            <div>
-              <AppAppBar />
-              home
-            </div>
-          }
-        /> */}
         <Route path="signin" element={<SignIn />} />
+        <Route path="signup" element={<SignUp />} />
       </Routes>
     </ThemeProvider>
   );

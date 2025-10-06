@@ -1,167 +1,129 @@
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import FormLabel from "@mui/material/FormLabel";
-import FormControl from "@mui/material/FormControl";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
-import Stack from "@mui/material/Stack";
-import MuiCard from "@mui/material/Card";
-import { styled } from "@mui/material/styles";
-
+import { Box, Button, TextField, Typography, Container, Alert } from "@mui/material";
+import { Link, useNavigate } from "react-router";
 import { useState } from "react";
-
-const Card = styled(MuiCard)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  alignSelf: "center",
-  width: "100%",
-  padding: theme.spacing(4),
-  gap: theme.spacing(2),
-  margin: "auto",
-  [theme.breakpoints.up("sm")]: {
-    maxWidth: "450px",
-  },
-  boxShadow:
-    "hsla(220, 30%, 5%, 0.05) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.05) 0px 15px 35px -5px",
-  ...theme.applyStyles("dark", {
-    boxShadow:
-      "hsla(220, 30%, 5%, 0.5) 0px 5px 15px 0px, hsla(220, 25%, 10%, 0.08) 0px 15px 35px -5px",
-  }),
-}));
-
-const SignInContainer = styled(Stack)(({ theme }) => ({
-  height: "calc((1 - var(--template-frame-height, 0)) * 100dvh)",
-  minHeight: "100%",
-  padding: theme.spacing(2),
-  [theme.breakpoints.up("sm")]: {
-    padding: theme.spacing(4),
-  },
-  "&::before": {
-    content: '""',
-    display: "block",
-    position: "absolute",
-    zIndex: -1,
-    inset: 0,
-    backgroundImage:
-      "radial-gradient(ellipse at 50% 50%, hsl(210, 100%, 97%), hsl(0, 0%, 100%))",
-    backgroundRepeat: "no-repeat",
-    ...theme.applyStyles("dark", {
-      backgroundImage:
-        "radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))",
-    }),
-  },
-}));
+import { loginUser } from "../api/auth";
 
 export default function SignIn() {
-  const [emailError, setEmailError] = useState(false);
-  const [emailErrorMessage, setEmailErrorMessage] = useState("");
-  const [passwordError, setPasswordError] = useState(false);
-  const [passwordErrorMessage, setPasswordErrorMessage] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const navigate = useNavigate();
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    if (emailError || passwordError) {
-      event.preventDefault();
-      return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    setLoading(true);
+    setMessage(null);
+
+    try {
+      console.log("Attempting login with:", { username, password });
+      const response = await loginUser({
+        username: username,
+        password: password
+      });
+      
+      console.log("Login response:", response);
+      console.log("Response data:", response.data);
+      
+      // Store JWT tokens - handle the custom response format
+      const responseData = response.data?.data || response.data;
+      const accessToken = responseData?.access || responseData?.access_token || responseData?.token;
+      const refreshToken = responseData?.refresh || responseData?.refresh_token;
+      
+      if (accessToken) {
+        localStorage.setItem('access_token', accessToken);
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken);
+        }
+        setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
+        console.log("Login successful, JWT token:", accessToken);
+        
+        // Redirect to home page after successful login
+        setTimeout(() => {
+          console.log("Redirecting to home page...");
+          navigate('/');
+        }, 1500);
+      } else {
+        console.log("No access token in response:", response.data);
+        console.log("Available keys in response:", Object.keys(response.data || {}));
+        setMessage({ type: 'error', text: `Login failed: No access token received. Response: ${JSON.stringify(response.data)}` });
+      }
+      
+    } catch (error: any) {
+      console.error("Login error:", error);
+      console.error("Error response:", error.response);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.error_message || error.response?.data?.detail || 'Login failed. Please check your credentials.' 
+      });
+    } finally {
+      setLoading(false);
     }
-    const data = new FormData(event.currentTarget);
-    console.log({
-      email: data.get("email"),
-      password: data.get("password"),
-    });
-  };
-
-  const validateInputs = () => {
-    const email = document.getElementById("email") as HTMLInputElement;
-    const password = document.getElementById("password") as HTMLInputElement;
-
-    let isValid = true;
-
-    if (!email.value || !/\S+@\S+\.\S+/.test(email.value)) {
-      setEmailError(true);
-      setEmailErrorMessage("Please enter a valid email address.");
-      isValid = false;
-    } else {
-      setEmailError(false);
-      setEmailErrorMessage("");
-    }
-
-    if (!password.value || password.value.length < 6) {
-      setPasswordError(true);
-      setPasswordErrorMessage("Password must be at least 6 characters long.");
-      isValid = false;
-    } else {
-      setPasswordError(false);
-      setPasswordErrorMessage("");
-    }
-
-    return isValid;
   };
 
   return (
-    <SignInContainer direction="column" justifyContent="space-between">
-      <Card variant="outlined">
-        <Typography
-          component="h1"
-          variant="h4"
-          sx={{ width: "100%", fontSize: "clamp(2rem, 10vw, 2.15rem)" }}
-        >
-          Sign in
-        </Typography>
-        <Box
-          component="form"
-          onSubmit={handleSubmit}
-          noValidate
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            width: "100%",
-            gap: 2,
-          }}
-        >
-          <FormControl>
-            <FormLabel htmlFor="email">Email</FormLabel>
-            <TextField
-              error={emailError}
-              helperText={emailErrorMessage}
-              id="email"
-              type="email"
-              name="email"
-              placeholder="your@email.com"
-              autoComplete="email"
-              autoFocus
-              required
-              fullWidth
-              variant="outlined"
-              color={emailError ? "error" : "primary"}
-            />
-          </FormControl>
-          <FormControl>
-            <FormLabel htmlFor="password">Password</FormLabel>
-            <TextField
-              error={passwordError}
-              helperText={passwordErrorMessage}
-              name="password"
-              placeholder="••••••"
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              autoFocus
-              required
-              fullWidth
-              variant="outlined"
-              color={passwordError ? "error" : "primary"}
-            />
-          </FormControl>
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            onClick={validateInputs}
-          >
-            Sign in
-          </Button>
+    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", p: 4 }}>
+      <Container maxWidth="sm">
+        <Box sx={{ textAlign: "center", mb: 4 }}>
+          <Link to="/" style={{ textDecoration: "none", color: "inherit" }}>
+            <Typography variant="h4" sx={{ fontWeight: 700, color: "primary.main" }}>
+              Housing Transparency
+            </Typography>
+          </Link>
         </Box>
-      </Card>
-    </SignInContainer>
+
+        <Box sx={{ p: 4, border: 1, borderColor: "divider", borderRadius: 2 }}>
+          <Typography variant="h4" component="h1" sx={{ textAlign: "center", mb: 3 }}>
+            Log In
+          </Typography>
+          
+          {message && (
+            <Alert severity={message.type} sx={{ mb: 3 }}>
+              {message.text}
+            </Alert>
+          )}
+          
+          <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <TextField
+              label="Username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              fullWidth
+              required
+            />
+
+            <Button 
+              type="submit" 
+              variant="contained" 
+              size="large" 
+              fullWidth
+              disabled={loading}
+            >
+              {loading ? "Logging In..." : "Log In"}
+            </Button>
+          </Box>
+
+          <Box sx={{ textAlign: "center", mt: 3 }}>
+            <Typography variant="body2" color="text.secondary">
+              Don't have an account?{" "}
+              <Link to="/signup" style={{ color: "inherit", textDecoration: "underline" }}>
+                Sign up
+              </Link>
+            </Typography>
+          </Box>
+        </Box>
+      </Container>
+    </Box>
   );
 }
