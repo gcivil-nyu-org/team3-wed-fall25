@@ -20,6 +20,9 @@ build/
 # PyInstaller
 *.manifest
 *.spec
+
+# --- Local environment variables ---
+/.env.*
 .env
 
 # --- Local environment variables ---
@@ -91,7 +94,7 @@ htmlcov/
 Thumbs.db
 .DS_Store
 
-# --- Django predeploy/runtime artifacts ---
+# --- Django build/runtime artifacts ---
 /static
 /backend/static/_app/
 /static/
@@ -116,3 +119,4 @@ Thumbs.db
 !.platform/hooks/
 !.platform/hooks/prebuild/
 !.platform/hooks/predeploy/
+!.platform/hooks/build/
