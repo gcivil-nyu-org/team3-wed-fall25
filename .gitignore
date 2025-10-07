@@ -62,7 +62,7 @@ htmlcov/
 # testing
 /coverage
 
-# production build
+# production predeploy
 /build
 
 # misc
@@ -90,7 +90,7 @@ htmlcov/
 Thumbs.db
 .DS_Store
 
-# --- Django build/runtime artifacts ---
+# --- Django predeploy/runtime artifacts ---
 /static
 /backend/static/_app/
 /static/
@@ -114,4 +114,4 @@ Thumbs.db
 !.platform/
 !.platform/hooks/
 !.platform/hooks/prebuild/
-!.platform/hooks/build/
+!.platform/hooks/predeploy/
