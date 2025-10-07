@@ -62,7 +62,8 @@ INSTALLED_APPS = [
     'drf_spectacular',
     # Local apps
     'apps.user',
-    'apps.dummy'
+    'apps.dummy',
+    'apps.building',
 ]
 
 MIDDLEWARE = [
@@ -141,8 +142,8 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=120),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=360),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
 }
