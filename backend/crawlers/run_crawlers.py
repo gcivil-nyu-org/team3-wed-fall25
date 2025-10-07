@@ -8,6 +8,7 @@ from crawlers.affordable_housing_crawler import AffordableHousingCrawler
 from crawlers.acris_master_crawler import AcrisMasterCrawler
 from crawlers.acris_legals_crawler import AcrisLegalsCrawler
 from crawlers.acris_parties_crawler import AcrisPartiesCrawler
+from crawlers.eviction_crawler import EvictionCrawler
 
 
 def run_crawler(crawler, limit=5000):
@@ -36,6 +37,7 @@ def main():
     crawlers = [
         RegistrationCrawler(),
         RegistrationContactCrawler(),
+        EvictionCrawler(),
         AffordableHousingCrawler(),
         AcrisMasterCrawler(),
         AcrisLegalsCrawler(),
