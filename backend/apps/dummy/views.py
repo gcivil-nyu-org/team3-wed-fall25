@@ -1,5 +1,3 @@
-from django.shortcuts import render
-
 # Create your views here.
 # backend/apps/dummy/views.py
 from typing import Any, Dict
@@ -8,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from infrastructures.postgres.postgres_client import PostgresClient
-from exceptions.db_error import DatabaseError
+from common.exceptions.db_error import DatabaseError
 
 from .serializers import (
     DummyItemCreateSerializer,
