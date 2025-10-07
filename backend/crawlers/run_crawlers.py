@@ -35,13 +35,13 @@ def main():
 
     crawlers = [
         RegistrationCrawler(),
-        ViolationCrawler(),
         RegistrationContactCrawler(),
         AffordableHousingCrawler(),
         AcrisMasterCrawler(),
         AcrisLegalsCrawler(),
         AcrisPartiesCrawler(),
         ComplaintCrawler(),
+        ViolationCrawler(),
     ]
 
     for crawler in crawlers:
