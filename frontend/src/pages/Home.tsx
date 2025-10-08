@@ -407,7 +407,7 @@ export default function Home() {
                 }}
               >
                 <img
-                  src="/interactive-map-showing-nyc-neighborhoods-with-dat.jpg"
+                  src="https://offloadmedia.feverup.com/secretnyc.co/wp-content/uploads/2018/04/20032112/map.jpg"
                   alt="Interactive neighborhood explorer map"
                   style={{
                     width: '100%',
@@ -442,7 +442,7 @@ export default function Home() {
                 }}
               >
                 <img
-                  src="/community-reviews-and-ratings-interface-with-user-.jpg"
+                  src="https://tagembed.com/blog/wp-content/uploads/2022/03/review-box-new.jpg"
                   alt="Community reviews interface"
                   style={{
                     width: '100%',
