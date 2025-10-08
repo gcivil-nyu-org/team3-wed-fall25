@@ -1,4 +1,3 @@
-import traceback
 from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
@@ -11,7 +10,7 @@ from rest_framework.exceptions import (
 from rest_framework.views import exception_handler as drf_exception_handler
 from rest_framework.response import Response
 
-from exceptions.bad_request_error import BadRequestError
+from common.exceptions.bad_request_error import BadRequestError
 
 
 def custom_exception_handler(exc, context):

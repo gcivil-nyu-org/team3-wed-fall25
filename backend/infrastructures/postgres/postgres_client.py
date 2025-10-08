@@ -1,13 +1,13 @@
 # infrastructures/db/postgres_client.py
 
-from typing import Any, Iterable, Optional, Sequence, Tuple, Union, List, Dict
+from typing import Any, Optional, Sequence, Union, List, Dict
 from contextlib import contextmanager
 
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, execute_values
 
-from utils.env_util import get_env
-from exceptions.db_error import DatabaseError
+from common.utils.env_util import get_env
+from common.exceptions.db_error import DatabaseError
 
 
 class PostgresClient:
@@ -144,3 +144,38 @@ class PostgresClient:
         if column:
             return row.get(column)
         return next(iter(row.values())) if row else None
+
+    def bulk_insert(
+            self,
+            table: str,
+            columns: List[str],
+            rows: List[Dict[str, Any]],
+            conflict_target: Optional[List[str]] = None,  # 🔹추가
+            do_update: bool = False,  # 🔹필요하면 upsert도 지원
+    ) -> int:
+        if not rows:
+            return 0
+
+        values = [tuple(r.get(col) for col in columns) for r in rows]
+
+        cols_sql = ", ".join(columns)
+        placeholders = "(" + ", ".join(["%s"] * len(columns)) + ")"
+
+        if conflict_target:
+            conflict_cols = ", ".join(conflict_target)
+            if do_update:
+                update_sql = ", ".join([f"{col}=EXCLUDED.{col}" for col in columns])
+                conflict_clause = f"ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_sql}"
+            else:
+                conflict_clause = f"ON CONFLICT ({conflict_cols}) DO NOTHING"
+        else:
+            conflict_clause = ""
+
+        sql = f"INSERT INTO {table} ({cols_sql}) VALUES %s {conflict_clause}"
+
+        with self._cursor() as cur:
+            try:
+                execute_values(cur, sql, values)
+                return len(values)
+            except Exception as e:
+                raise DatabaseError(f"Bulk insert failed: {e}") from e
