@@ -20,6 +20,9 @@ build/
 # PyInstaller
 *.manifest
 *.spec
+
+# --- Local environment variables ---
+/.env.*
 .env
 
 # Unit test / coverage reports
@@ -59,7 +62,7 @@ htmlcov/
 # testing
 /coverage
 
-# production build
+# production predeploy
 /build
 
 # misc
@@ -86,3 +89,29 @@ htmlcov/
 # ----------------------------
 Thumbs.db
 .DS_Store
+
+# --- Django predeploy/runtime artifacts ---
+/static
+/backend/static/_app/
+/static/
+/media/
+/backend/templates
+
+# --- Python virtual env (중복 방지용, 정확히 지정) ---
+/.venv/
+
+# --- Elastic Beanstalk ---
+/.elasticbeanstalk/
+/.ebextensions/*.log
+/.ebextensions/*.tmp
+/.ebextensions/*.bak
+
+# --- Frontend Vite cache ---
+/frontend/.vite/
+/frontend/dist/
+/frontend/.cache/
+
+!.platform/
+!.platform/hooks/
+!.platform/hooks/prebuild/
+!.platform/hooks/predeploy/

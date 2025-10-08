@@ -32,16 +32,9 @@ urlpatterns = [
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/", include("apps.user.urls")),
+    path("api/building/", include("apps.building.urls")),
 
     path("api/dummy/", include("apps.dummy.urls")),
 
-
-
-
-
-
-
-
-
-    re_path(r"^(?!api/|admin/).*$", TemplateView.as_view(template_name="index.html")),
+    re_path(r"^(?!(api(?:/|$)|admin(?:/|$))).*$", TemplateView.as_view(template_name="index.html")),
 ]
