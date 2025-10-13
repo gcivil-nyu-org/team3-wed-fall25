@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'apps.user',
     'apps.dummy',
     'apps.building',
+    'apps.community',
 ]
 
 MIDDLEWARE = [
