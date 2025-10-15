@@ -58,9 +58,9 @@ class NeighborhoodRepository:
                     v.bbl,
                     CONCAT(v.house_number, ' ', v.street_name) as address,
                     v.boro as borough,
-                    NULL as zip_code,
-                    NULL as latitude,
-                    NULL as longitude
+                    NULL::text as zip_code,
+                    NULL::numeric as latitude,
+                    NULL::numeric as longitude
                 FROM building_violations v
                 WHERE v.bbl NOT IN (
                     SELECT DISTINCT bbl FROM building_evictions 
