@@ -6,7 +6,7 @@ import App from "./App.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter basename={import.meta.env.PROD ? "/static/_app" : "/"}>
+    <BrowserRouter basename="/">
       <App />
     </BrowserRouter>
   </StrictMode>
