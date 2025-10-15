@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     'apps.dummy',
     'apps.building',
     'apps.community',
+    'apps.neighborhood',
 ]
 
 MIDDLEWARE = [
