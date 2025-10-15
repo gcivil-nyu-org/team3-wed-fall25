@@ -104,22 +104,24 @@ export default function AppAppBar() {
                   Search
                 </Button>
               </NavLink>
-            <Button
-              variant="text"
-              size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
-            >
-                Map
-              </Button>
+            <NavLink to="/map">
+              <Button
+                variant="text"
+                size="small"
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
+              >
+                  Map
+                </Button>
+              </NavLink>
             <Button
               variant="text"
               size="small"
@@ -307,23 +309,25 @@ export default function AppAppBar() {
                       Search
                     </Button>
                   </NavLink>
-                  <Button
-                    fullWidth
-                    variant="text"
-                    sx={{
-                      justifyContent: "flex-start",
-                      color: "#4A5568",
-                      fontWeight: 500,
-                      textTransform: "uppercase",
-                      fontSize: "0.9rem",
-                      "&:hover": {
-                        color: "#FF6B35",
-                        backgroundColor: "rgba(255, 107, 53, 0.05)",
-                      },
-                    }}
-                  >
-                    Map
-                  </Button>
+                  <NavLink to="/map" style={{ textDecoration: "none" }}>
+                    <Button
+                      fullWidth
+                      variant="text"
+                      sx={{
+                        justifyContent: "flex-start",
+                        color: "#4A5568",
+                        fontWeight: 500,
+                        textTransform: "uppercase",
+                        fontSize: "0.9rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                          backgroundColor: "rgba(255, 107, 53, 0.05)",
+                        },
+                      }}
+                    >
+                      Map
+                    </Button>
+                  </NavLink>
                   <Button
                     fullWidth
                     variant="text"
