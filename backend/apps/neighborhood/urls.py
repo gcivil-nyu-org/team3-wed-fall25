@@ -1,10 +1,9 @@
 from django.urls import path
-
 from .views import (
-    BoroughSummaryView,
-    HeatmapDataView,
     NeighborhoodStatsView,
-    NeighborhoodTrendsView,
+    HeatmapDataView,
+    BoroughSummaryView,
+    NeighborhoodTrendsView
 )
 
 urlpatterns = [
