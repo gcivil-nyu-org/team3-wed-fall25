@@ -1,10 +1,13 @@
 import { Routes, Route, Outlet } from "react-router";
+import { Box } from "@mui/material";
 
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 
 import AppAppBar from "./components/AppBar";
-import { Home, Search, SignIn, SignUp } from "./pages";
+import { SiteFooter } from "./components/SiteFooter";
+import { Home, Search, SignIn, SignUp, Building } from "./pages";
+import SimplifiedMap from "./pages/SimplifiedMap";
 
 function App() {
   return (
@@ -20,14 +23,19 @@ function App() {
         <Route
           path="/"
           element={
-            <div>
+            <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
               <AppAppBar />
-              <Outlet />
-            </div>
+              <Box component="main" sx={{ flex: 1 }}>
+                <Outlet />
+              </Box>
+              <SiteFooter />
+            </Box>
           }
         >
           <Route path="/" element={<Home />} />
           <Route path="search" element={<Search />} />
+          <Route path="map" element={<SimplifiedMap />} />
+          <Route path="building/:bbl" element={<Building />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />
