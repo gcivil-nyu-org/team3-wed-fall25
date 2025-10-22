@@ -30,7 +30,7 @@ script:
 
 after_success:
   - pushd backend
-  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then coveralls; fi
+  - coveralls
   - popd
 
 before_deploy:
