@@ -34,10 +34,10 @@ after_success:
   - coverage report -m
   - coveralls
   - popd
+  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
 before_deploy:
   - pushd backend
-  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
 
 deploy:
