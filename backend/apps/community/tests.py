@@ -66,6 +66,7 @@ class CommunityAPITests(TestCase):
             # We expect it to fail since community app is empty
             with self.assertRaises(Exception):
                 from django.urls import reverse
+
                 reverse("community:some_view")
         except Exception:
             # This is expected since community app is empty
