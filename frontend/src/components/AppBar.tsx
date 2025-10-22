@@ -136,6 +136,7 @@ export default function AppAppBar() {
             >
                 Community
               </Button>
+              <NavLink to="/landlord/dashboard" style={{ textDecoration: "none" }}>
               <Button
                 variant="text"
                 size="small"
@@ -152,6 +153,7 @@ export default function AppAppBar() {
               >
                 Landlords
               </Button>
+              </NavLink>
               <Button
                 variant="text"
                 size="small"
@@ -341,6 +343,7 @@ export default function AppAppBar() {
                   >
                     Community
                   </Button>
+                <NavLink to="/landlord/dashboard" style={{ textDecoration: "none" }}>
                   <Button
                     fullWidth
                     variant="text"
@@ -358,6 +361,7 @@ export default function AppAppBar() {
                   >
                     Landlords
                   </Button>
+                </NavLink>
                   <Button
                     fullWidth
                     variant="text"

@@ -5,9 +5,11 @@ export interface PropertyCardProps {
   occupancyStatus: string;
   financialPerformance: string;
   tenantTurnover: string;
+  violationsCount?: number;
+  evictionsCount?: number;
 }
 
-export function PropertyCard({ address, occupancyStatus, financialPerformance, tenantTurnover }: PropertyCardProps) {
+export function PropertyCard({ address, occupancyStatus, financialPerformance, tenantTurnover, violationsCount = 0, evictionsCount = 0 }: PropertyCardProps) {
   return (
     <Card sx={{ minWidth: 300, mb: 2 }}>
       <CardContent>
@@ -16,6 +18,8 @@ export function PropertyCard({ address, occupancyStatus, financialPerformance, t
           <Chip label={`Occupancy: ${occupancyStatus}`} color={occupancyStatus === "Occupied" ? "success" : "warning"} />
           <Chip label={`Financial: ${financialPerformance}`} color="info" />
           <Chip label={`Turnover: ${tenantTurnover}`} color="default" />
+          <Chip label={`Violations: ${violationsCount}`} color={violationsCount > 0 ? "error" : "success"} />
+          <Chip label={`Evictions: ${evictionsCount}`} color={evictionsCount > 0 ? "error" : "success"} />
         </Box>
       </CardContent>
     </Card>

@@ -7,7 +7,6 @@ export interface Review {
   date: string;
   flagged?: boolean;
 }
-export type { Review };
 
 export interface ReviewListProps {
   reviews: Review[];
@@ -38,5 +37,3 @@ export function ReviewList({ reviews, onRespond, onFlag }: ReviewListProps) {
     </List>
   );
 }
-
-export type { Review };
