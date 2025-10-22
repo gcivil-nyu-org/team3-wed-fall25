@@ -9,7 +9,7 @@ A comprehensive housing data analysis platform providing insights into building 
 
 ## Build Status
 
-[![Build Status](https://app.travis-ci.com/gcivil-nyu-org/team3-wed-fall25.svg?branch=devops%2Ftravis)](https://app.travis-ci.com/github/gcivil-nyu-org/team3-wed-fall25)
+[![Build Status](https://app.travis-ci.com/gcivil-nyu-org/team3-wed-fall25.svg?branch=develop)](https://app.travis-ci.com/github/gcivil-nyu-org/team3-wed-fall25)
 
 ## Project Structure
 
