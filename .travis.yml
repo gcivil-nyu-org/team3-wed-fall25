@@ -36,20 +36,27 @@ after_success:
   - popd
 #  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
-#before_deploy:
-#  - pushd backend
-#
+before_deploy:
+  - |
+    if [ "$TRAVIS_BRANCH" = "main" ]; then
+      export EB_ENV=sweng-prod
+    elif [ "$TRAVIS_BRANCH" = "develop" ]; then
+      export EB_ENV=sweng-integ
+    elif [ "$TRAVIS_BRANCH" = "devops/travis" ]; then
+      export EB_ENV=sweng-integ
+    else
+      echo "Non-deploy branch: $TRAVIS_BRANCH"; exit 0
+    fi
 
 deploy:
   provider: elasticbeanstalk
 #  edge: true
   region: "us-east-1"
   app: "sweng-prod"
-  env: "sweng-prod"
+  env: $EB_ENV
   bucket: "elasticbeanstalk-us-east-1-423158040784"
   on:
-    branch: "devops/travis"
-    condition: '$TRAVIS_EVENT_TYPE != pull_request'
+    all_branches: true
   skip_cleanup: true
 
 #after_deploy:
