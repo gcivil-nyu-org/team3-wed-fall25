@@ -56,11 +56,11 @@ class PostgresClientTests(TestCase):
     def test_postgres_client_initialization(self):
         """Test PostgresClient initialization"""
         self.assertIsNotNone(self.client._params)
-        self.assertIn('dbname', self.client._params)
-        self.assertIn('user', self.client._params)
-        self.assertIn('password', self.client._params)
-        self.assertIn('host', self.client._params)
-        self.assertIn('port', self.client._params)
+        self.assertIn("dbname", self.client._params)
+        self.assertIn("user", self.client._params)
+        self.assertIn("password", self.client._params)
+        self.assertIn("host", self.client._params)
+        self.assertIn("port", self.client._params)
         self.assertIsNone(self.client.conn)
 
     def test_postgres_client_connection(self):
@@ -71,7 +71,7 @@ class PostgresClientTests(TestCase):
                 self.assertIsNotNone(self.client.conn)
                 # Test a simple query
                 result = db.query_one("SELECT 1 as test_value")
-                self.assertEqual(result['test_value'], 1)
+                self.assertEqual(result["test_value"], 1)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -81,8 +81,8 @@ class PostgresClientTests(TestCase):
             with self.client as db:
                 # Test with result
                 result = db.query_one("SELECT 42 as answer")
-                self.assertEqual(result['answer'], 42)
-                
+                self.assertEqual(result["answer"], 42)
+
                 # Test with no result
                 result = db.query_one("SELECT 1 WHERE 1 = 0")
                 self.assertIsNone(result)
@@ -96,10 +96,10 @@ class PostgresClientTests(TestCase):
                 # Test with results
                 result = db.query_all("SELECT generate_series(1, 3) as num")
                 self.assertEqual(len(result), 3)
-                self.assertEqual(result[0]['num'], 1)
-                self.assertEqual(result[1]['num'], 2)
-                self.assertEqual(result[2]['num'], 3)
-                
+                self.assertEqual(result[0]["num"], 1)
+                self.assertEqual(result[1]["num"], 2)
+                self.assertEqual(result[2]["num"], 3)
+
                 # Test with no results
                 result = db.query_all("SELECT 1 WHERE 1 = 0")
                 self.assertEqual(result, [])
@@ -113,7 +113,7 @@ class PostgresClientTests(TestCase):
                 # Test execute without returning
                 result = db.execute("SELECT 1")
                 self.assertIsNotNone(result)
-                
+
                 # Test execute with returning
                 result = db.execute("SELECT 99 as test_id", returning="test_id")
                 self.assertEqual(result, 99)
@@ -161,7 +161,9 @@ class BuildingRepositoryTests(TestCase):
         """Test get_by_bbl with potentially real data"""
         try:
             # Try to get a building that might exist
-            building = self.repository.get_by_bbl("1013510030")  # Example BBL from the test file
+            building = self.repository.get_by_bbl(
+                "1013510030"
+            )  # Example BBL from the test file
             self.assertEqual(building.bbl, "1013510030")
             # The building object should be created regardless of whether data exists
             self.assertIsInstance(building.contacts, list)
@@ -177,13 +179,16 @@ class BuildingRepositoryTests(TestCase):
 
     def test_building_repository_methods_exist(self):
         """Test that BuildingRepository has expected methods"""
-        self.assertTrue(hasattr(self.repository, 'get_by_bbl'))
-        self.assertTrue(callable(getattr(self.repository, 'get_by_bbl')))
+        self.assertTrue(hasattr(self.repository, "get_by_bbl"))
+        self.assertTrue(callable(getattr(self.repository, "get_by_bbl")))
 
 
 class NeighborhoodRepositoryTests(TestCase):
     def setUp(self):
-        from infrastructures.postgres.neighborhood_repository import NeighborhoodRepository
+        from infrastructures.postgres.neighborhood_repository import (
+            NeighborhoodRepository,
+        )
+
         self.repository = NeighborhoodRepository()
 
     def test_neighborhood_repository_initialization(self):
@@ -198,7 +203,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 max_lat=40.8,
                 min_lng=-74.0,
                 max_lng=-73.9,
-                data_type="violations"
+                data_type="violations",
             )
             self.assertIsInstance(stats, list)
         except Exception as e:
@@ -212,7 +217,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 max_lat=40.8,
                 min_lng=-74.0,
                 max_lng=-73.9,
-                data_type="evictions"
+                data_type="evictions",
             )
             self.assertIsInstance(stats, list)
         except Exception as e:
@@ -226,7 +231,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 max_lat=40.8,
                 min_lng=-74.0,
                 max_lng=-73.9,
-                data_type="complaints"
+                data_type="complaints",
             )
             self.assertIsInstance(stats, list)
         except Exception as e:
@@ -242,7 +247,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 max_lng=-73.9,
                 data_type="violations",
                 borough="MANHATTAN",
-                limit=1000
+                limit=1000,
             )
             self.assertIsInstance(data, list)
         except Exception as e:
@@ -258,7 +263,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 max_lng=-73.9,
                 data_type="evictions",
                 borough="All Boroughs",
-                limit=500
+                limit=500,
             )
             self.assertIsInstance(data, list)
         except Exception as e:
@@ -284,8 +289,7 @@ class NeighborhoodRepositoryTests(TestCase):
         """Test get_neighborhood_trends with basic parameters"""
         try:
             trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030",
-                days_back=365
+                bbl="1013510030", days_back=365
             )
             self.assertIsInstance(trends, list)
         except Exception as e:
@@ -295,8 +299,7 @@ class NeighborhoodRepositoryTests(TestCase):
         """Test get_neighborhood_trends with short period"""
         try:
             trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030",
-                days_back=30
+                bbl="1013510030", days_back=30
             )
             self.assertIsInstance(trends, list)
         except Exception as e:
@@ -305,12 +308,12 @@ class NeighborhoodRepositoryTests(TestCase):
     def test_neighborhood_repository_methods_exist(self):
         """Test that NeighborhoodRepository has expected methods"""
         expected_methods = [
-            'get_neighborhood_stats_by_bounds',
-            'get_heatmap_data',
-            'get_borough_summary',
-            'get_neighborhood_trends'
+            "get_neighborhood_stats_by_bounds",
+            "get_heatmap_data",
+            "get_borough_summary",
+            "get_neighborhood_trends",
         ]
-        
+
         for method_name in expected_methods:
             self.assertTrue(hasattr(self.repository, method_name))
             self.assertTrue(callable(getattr(self.repository, method_name)))

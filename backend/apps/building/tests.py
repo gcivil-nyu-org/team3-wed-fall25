@@ -59,7 +59,7 @@ class ViewsSmokeTests(TestCase):
         # 함수형 뷰 검사 (뷰 함수만 테스트)
         for name, func in inspect.getmembers(mod, inspect.isfunction):
             # 뷰 함수는 보통 request를 첫 번째 인자로 받음
-            if not name.startswith('_') and hasattr(func, '__code__'):
+            if not name.startswith("_") and hasattr(func, "__code__"):
                 req = rf.get("/")
                 try:
                     resp = func(req)
@@ -128,14 +128,14 @@ class BuildingModelTests(TestCase):
     def test_set_rent_stabilized_valid(self):
         """Test setting rent stabilized tag with matching BBL"""
         tag = RentStabilizedTag(
-            bbl="1234567890", 
-            borough="Manhattan", 
-            block=123, 
-            lot=456, 
-            zip="10001", 
-            city="New York", 
-            status="Active", 
-            source_year=2023
+            bbl="1234567890",
+            borough="Manhattan",
+            block=123,
+            lot=456,
+            zip="10001",
+            city="New York",
+            status="Active",
+            source_year=2023,
         )
         self.building.set_rent_stabilized(tag)
         self.assertEqual(self.building.rent_stabilized, tag)
@@ -143,14 +143,14 @@ class BuildingModelTests(TestCase):
     def test_set_rent_stabilized_invalid_bbl(self):
         """Test setting rent stabilized tag with non-matching BBL"""
         tag = RentStabilizedTag(
-            bbl="9999999999", 
-            borough="Manhattan", 
-            block=123, 
-            lot=456, 
-            zip="10001", 
-            city="New York", 
-            status="Active", 
-            source_year=2023
+            bbl="9999999999",
+            borough="Manhattan",
+            block=123,
+            lot=456,
+            zip="10001",
+            city="New York",
+            status="Active",
+            source_year=2023,
         )
         self.building.set_rent_stabilized(tag)
         self.assertIsNone(self.building.rent_stabilized)
@@ -158,11 +158,11 @@ class BuildingModelTests(TestCase):
     def test_upsert_acris_master(self):
         """Test upserting ACRIS master record"""
         master = AcrisMaster(
-            document_id="123", 
-            borough=1, 
-            doc_type="DEED", 
-            doc_date=None, 
-            doc_amount=Decimal("1000.50")
+            document_id="123",
+            borough=1,
+            doc_type="DEED",
+            doc_date=None,
+            doc_amount=Decimal("1000.50"),
         )
         self.building.upsert_acris_master(master)
         self.assertEqual(len(self.building.acris_master), 1)
@@ -176,11 +176,11 @@ class BuildingModelTests(TestCase):
     def test_upsert_acris_master_no_document_id(self):
         """Test upserting ACRIS master record without document_id"""
         master = AcrisMaster(
-            document_id=None, 
-            borough=1, 
-            doc_type="DEED", 
-            doc_date=None, 
-            doc_amount=Decimal("1000.50")
+            document_id=None,
+            borough=1,
+            doc_type="DEED",
+            doc_date=None,
+            doc_amount=Decimal("1000.50"),
         )
         self.building.upsert_acris_master(master)
         self.assertEqual(len(self.building.acris_master), 0)
@@ -200,7 +200,7 @@ class BuildingModelTests(TestCase):
             business_city="New York",
             business_state="NY",
             business_zip="10001",
-            business_apartment=None
+            business_apartment=None,
         )
         self.building.add_contact(contact)
         self.assertEqual(len(self.building.contacts), 1)
@@ -221,7 +221,7 @@ class BuildingModelTests(TestCase):
             low_income_units=15,
             counted_rental_units=30,
             all_counted_units=30,
-            total_units=30
+            total_units=30,
         )
         self.building.add_affordable(affordable)
         self.assertEqual(len(self.building.affordable), 1)
@@ -242,7 +242,7 @@ class BuildingModelTests(TestCase):
             low_income_units=15,
             counted_rental_units=30,
             all_counted_units=30,
-            total_units=30
+            total_units=30,
         )
         affordable2 = AffordableHousingRecord(
             project_id="123",
@@ -257,7 +257,7 @@ class BuildingModelTests(TestCase):
             low_income_units=15,
             counted_rental_units=30,
             all_counted_units=30,
-            total_units=30
+            total_units=30,
         )
         self.building.add_affordable(affordable1)
         self.building.add_affordable(affordable2)
@@ -290,7 +290,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             post_code="10001",
-            apartment="1A"
+            apartment="1A",
         )
         self.building.add_complaint(complaint)
         self.assertEqual(len(self.building.complaints), 1)
@@ -318,7 +318,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             post_code="10001",
-            apartment="1A"
+            apartment="1A",
         )
         complaint2 = Complaint(
             complaint_id="123",
@@ -340,7 +340,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             post_code="10001",
-            apartment="1A"
+            apartment="1A",
         )
         self.building.add_complaint(complaint1)
         self.building.add_complaint(complaint2)
@@ -374,7 +374,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             apartment="1A",
-            story="1"
+            story="1",
         )
         self.building.add_violation(violation)
         self.assertEqual(len(self.building.violations), 1)
@@ -403,7 +403,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             apartment="1A",
-            story="1"
+            story="1",
         )
         violation2 = Violation(
             violation_id="123",
@@ -426,7 +426,7 @@ class BuildingModelTests(TestCase):
             house_number="123",
             street_name="Main St",
             apartment="1A",
-            story="1"
+            story="1",
         )
         self.building.add_violation(violation1)
         self.building.add_violation(violation2)
@@ -459,7 +459,7 @@ class BuildingModelTests(TestCase):
             ejectment="No",
             eviction_possession="Possession",
             marshal_first_name="John",
-            marshal_last_name="Doe"
+            marshal_last_name="Doe",
         )
         self.building.add_eviction(eviction)
         self.assertEqual(len(self.building.evictions), 1)
@@ -487,7 +487,7 @@ class BuildingModelTests(TestCase):
             ejectment="No",
             eviction_possession="Possession",
             marshal_first_name="John",
-            marshal_last_name="Doe"
+            marshal_last_name="Doe",
         )
         eviction2 = Eviction(
             docket_number="123",
@@ -509,7 +509,7 @@ class BuildingModelTests(TestCase):
             ejectment="No",
             eviction_possession="Possession",
             marshal_first_name="John",
-            marshal_last_name="Doe"
+            marshal_last_name="Doe",
         )
         self.building.add_eviction(eviction1)
         self.building.add_eviction(eviction2)
@@ -542,7 +542,7 @@ class BuildingModelTests(TestCase):
             ejectment="No",
             eviction_possession="Possession",
             marshal_first_name="John",
-            marshal_last_name="Doe"
+            marshal_last_name="Doe",
         )
         eviction2 = Eviction(
             docket_number=None,
@@ -564,7 +564,7 @@ class BuildingModelTests(TestCase):
             ejectment="No",
             eviction_possession="Possession",
             marshal_first_name="John",
-            marshal_last_name="Doe"
+            marshal_last_name="Doe",
         )
         self.building.add_eviction(eviction1)
         self.building.add_eviction(eviction2)
@@ -574,7 +574,13 @@ class BuildingModelTests(TestCase):
 class BuildingFactoryFunctionTests(TestCase):
     def test_as_acris_master_with_string_amount(self):
         """Test as_acris_master factory function with string amount"""
-        row = {"document_id": "123", "borough": 1, "doc_type": "DEED", "doc_date": None, "doc_amount": "1000.50"}
+        row = {
+            "document_id": "123",
+            "borough": 1,
+            "doc_type": "DEED",
+            "doc_date": None,
+            "doc_amount": "1000.50",
+        }
         master = as_acris_master(row)
         self.assertIsInstance(master, AcrisMaster)
         self.assertEqual(master.document_id, "123")
@@ -582,7 +588,13 @@ class BuildingFactoryFunctionTests(TestCase):
 
     def test_as_acris_master_with_invalid_string_amount(self):
         """Test as_acris_master factory function with invalid string amount"""
-        row = {"document_id": "123", "borough": 1, "doc_type": "DEED", "doc_date": None, "doc_amount": "invalid"}
+        row = {
+            "document_id": "123",
+            "borough": 1,
+            "doc_type": "DEED",
+            "doc_date": None,
+            "doc_amount": "invalid",
+        }
         master = as_acris_master(row)
         self.assertIsInstance(master, AcrisMaster)
         self.assertEqual(master.document_id, "123")
@@ -590,7 +602,13 @@ class BuildingFactoryFunctionTests(TestCase):
 
     def test_as_acris_master_with_decimal_amount(self):
         """Test as_acris_master factory function with decimal amount"""
-        row = {"document_id": "123", "borough": 1, "doc_type": "DEED", "doc_date": None, "doc_amount": Decimal("1000.50")}
+        row = {
+            "document_id": "123",
+            "borough": 1,
+            "doc_type": "DEED",
+            "doc_date": None,
+            "doc_amount": Decimal("1000.50"),
+        }
         master = as_acris_master(row)
         self.assertIsInstance(master, AcrisMaster)
         self.assertEqual(master.document_id, "123")
@@ -599,8 +617,8 @@ class BuildingFactoryFunctionTests(TestCase):
     def test_as_violation_with_class(self):
         """Test as_violation factory function with class field"""
         row = {
-            "violation_id": "123", 
-            "bbl": "1234567890", 
+            "violation_id": "123",
+            "bbl": "1234567890",
             "class": "A",
             "bin": 1234567890,
             "block": 123,
@@ -619,7 +637,7 @@ class BuildingFactoryFunctionTests(TestCase):
             "house_number": "123",
             "street_name": "Main St",
             "apartment": "1A",
-            "story": "1"
+            "story": "1",
         }
         violation = as_violation(row)
         self.assertIsInstance(violation, Violation)
@@ -629,8 +647,8 @@ class BuildingFactoryFunctionTests(TestCase):
     def test_as_violation_with_class_(self):
         """Test as_violation factory function with class_ field"""
         row = {
-            "violation_id": "123", 
-            "bbl": "1234567890", 
+            "violation_id": "123",
+            "bbl": "1234567890",
             "class_": "A",
             "bin": 1234567890,
             "block": 123,
@@ -649,7 +667,7 @@ class BuildingFactoryFunctionTests(TestCase):
             "house_number": "123",
             "street_name": "Main St",
             "apartment": "1A",
-            "story": "1"
+            "story": "1",
         }
         violation = as_violation(row)
         self.assertIsInstance(violation, Violation)
@@ -706,8 +724,8 @@ class BuildingViewsAPITests(TestCase):
             # Could be 200 (found) or 404 (not found), both are valid
             self.assertIn(response.status_code, [200, 404])
             if response.status_code == 200:
-                self.assertIn('bbl', response.data)
-                self.assertIn('counts', response.data)
+                self.assertIn("bbl", response.data)
+                self.assertIn("counts", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -716,7 +734,7 @@ class BuildingViewsAPITests(TestCase):
         try:
             response = self.client.get(self.building_url)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -726,7 +744,7 @@ class BuildingViewsAPITests(TestCase):
             params = {"bbl": "invalid"}
             response = self.client.get(self.building_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -736,7 +754,7 @@ class BuildingViewsAPITests(TestCase):
             params = {"bbl": "123"}
             response = self.client.get(self.building_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -746,7 +764,7 @@ class BuildingViewsAPITests(TestCase):
             params = {"bbl": "12345678901"}
             response = self.client.get(self.building_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -756,7 +774,7 @@ class BuildingViewsAPITests(TestCase):
             params = {"bbl": "9999999999"}
             response = self.client.get(self.building_url, params)
             self.assertEqual(response.status_code, 404)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -766,7 +784,7 @@ class BuildingViewsAPITests(TestCase):
             params = {"bbl": "1234567890"}
             response = self.client.get(self.building_url, params)
             self.assertEqual(response.status_code, 404)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -776,17 +794,17 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _default_serializer with dataclass"""
         from apps.building.views import _default_serializer
         from common.models.building import Building
-        
+
         building = Building(bbl="1234567890")
         result = _default_serializer(building)
         self.assertIsInstance(result, dict)
-        self.assertEqual(result['bbl'], "1234567890")
+        self.assertEqual(result["bbl"], "1234567890")
 
     def test_default_serializer_datetime(self):
         """Test _default_serializer with datetime"""
         from apps.building.views import _default_serializer
         from datetime import datetime
-        
+
         dt = datetime(2023, 1, 1, 12, 0, 0)
         result = _default_serializer(dt)
         self.assertEqual(result, "2023-01-01T12:00:00")
@@ -795,7 +813,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _default_serializer with date"""
         from apps.building.views import _default_serializer
         from datetime import date
-        
+
         d = date(2023, 1, 1)
         result = _default_serializer(d)
         self.assertEqual(result, "2023-01-01")
@@ -804,7 +822,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _default_serializer with Decimal"""
         from apps.building.views import _default_serializer
         from decimal import Decimal
-        
+
         dec = Decimal("123.45")
         result = _default_serializer(dec)
         self.assertEqual(result, "123.45")
@@ -812,7 +830,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
     def test_default_serializer_string(self):
         """Test _default_serializer with string"""
         from apps.building.views import _default_serializer
-        
+
         result = _default_serializer("test")
         self.assertEqual(result, "test")
 
@@ -820,30 +838,27 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _to_primitive with dataclass"""
         from apps.building.views import _to_primitive
         from common.models.building import Building
-        
+
         building = Building(bbl="1234567890")
         result = _to_primitive(building)
         self.assertIsInstance(result, dict)
-        self.assertEqual(result['bbl'], "1234567890")
+        self.assertEqual(result["bbl"], "1234567890")
 
     def test_to_primitive_dict(self):
         """Test _to_primitive with dict"""
         from apps.building.views import _to_primitive
         from datetime import datetime
-        
-        data = {
-            "bbl": "1234567890",
-            "date": datetime(2023, 1, 1, 12, 0, 0)
-        }
+
+        data = {"bbl": "1234567890", "date": datetime(2023, 1, 1, 12, 0, 0)}
         result = _to_primitive(data)
-        self.assertEqual(result['bbl'], "1234567890")
-        self.assertEqual(result['date'], "2023-01-01T12:00:00")
+        self.assertEqual(result["bbl"], "1234567890")
+        self.assertEqual(result["date"], "2023-01-01T12:00:00")
 
     def test_to_primitive_list(self):
         """Test _to_primitive with list"""
         from apps.building.views import _to_primitive
         from datetime import date
-        
+
         data = [date(2023, 1, 1), date(2023, 1, 2)]
         result = _to_primitive(data)
         self.assertEqual(result, ["2023-01-01", "2023-01-02"])
@@ -852,7 +867,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _to_primitive with Decimal"""
         from apps.building.views import _to_primitive
         from decimal import Decimal
-        
+
         result = _to_primitive(Decimal("123.45"))
         self.assertEqual(result, "123.45")
 
@@ -860,7 +875,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
         """Test _is_empty_building with empty building"""
         from apps.building.views import _is_empty_building
         from common.models.building import Building
-        
+
         building = Building(bbl="1234567890")
         result = _is_empty_building(building)
         self.assertTrue(result)
@@ -870,13 +885,13 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.registration import Registration
-        
+
         building = Building(bbl="1234567890")
         building.registration = Registration(
             registration_id=1,
             bbl="1234567890",
             house_number="123",
-            street_name="Main St"
+            street_name="Main St",
         )
         result = _is_empty_building(building)
         self.assertFalse(result)
@@ -886,23 +901,25 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.registration_contact import RegistrationContact
-        
+
         building = Building(bbl="1234567890")
-        building.contacts = [RegistrationContact(
-            registration_contact_id=1,
-            registration_id=1,
-            type="Owner",
-            contact_description="Test Owner",
-            first_name="John",
-            last_name="Doe",
-            corporation_name=None,
-            business_house_number=None,
-            business_street_name=None,
-            business_city=None,
-            business_state=None,
-            business_zip=None,
-            business_apartment=None
-        )]
+        building.contacts = [
+            RegistrationContact(
+                registration_contact_id=1,
+                registration_id=1,
+                type="Owner",
+                contact_description="Test Owner",
+                first_name="John",
+                last_name="Doe",
+                corporation_name=None,
+                business_house_number=None,
+                business_street_name=None,
+                business_city=None,
+                business_state=None,
+                business_zip=None,
+                business_apartment=None,
+            )
+        ]
         result = _is_empty_building(building)
         self.assertFalse(result)
 
@@ -911,7 +928,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.rent_stabilized_tag import RentStabilizedTag
-        
+
         building = Building(bbl="1234567890")
         building.rent_stabilized = RentStabilizedTag(
             bbl="1234567890",
@@ -921,7 +938,7 @@ class BuildingViewsHelperFunctionTests(TestCase):
             zip="10001",
             city="New York",
             status="Active",
-            source_year=2023
+            source_year=2023,
         )
         result = _is_empty_building(building)
         self.assertFalse(result)
@@ -931,23 +948,25 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.affordable_housing_record import AffordableHousingRecord
-        
+
         building = Building(bbl="1234567890")
-        building.affordable = [AffordableHousingRecord(
-            project_id="123",
-            bbl="1234567890",
-            project_name="Test Project",
-            project_start_date=None,
-            reporting_construction_type="New Construction",
-            extended_affordability_status="Active",
-            prevailing_wage_status="Yes",
-            extremely_low_income_units=5,
-            very_low_income_units=10,
-            low_income_units=15,
-            counted_rental_units=30,
-            all_counted_units=30,
-            total_units=30
-        )]
+        building.affordable = [
+            AffordableHousingRecord(
+                project_id="123",
+                bbl="1234567890",
+                project_name="Test Project",
+                project_start_date=None,
+                reporting_construction_type="New Construction",
+                extended_affordability_status="Active",
+                prevailing_wage_status="Yes",
+                extremely_low_income_units=5,
+                very_low_income_units=10,
+                low_income_units=15,
+                counted_rental_units=30,
+                all_counted_units=30,
+                total_units=30,
+            )
+        ]
         result = _is_empty_building(building)
         self.assertFalse(result)
 
@@ -956,30 +975,32 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.complaint import Complaint
-        
+
         building = Building(bbl="1234567890")
-        building.complaints = [Complaint(
-            complaint_id="123",
-            bbl="1234567890",
-            borough="Manhattan",
-            block=123,
-            lot=456,
-            problem_id="P123",
-            unit_type="Apartment",
-            space_type="Residential",
-            type="Heat/Hot Water",
-            major_category="Heat/Hot Water",
-            minor_category="No Heat",
-            complaint_status="Open",
-            complaint_status_date=None,
-            problem_status="Open",
-            problem_status_date=None,
-            status_description="No heat in apartment",
-            house_number="123",
-            street_name="Main St",
-            post_code="10001",
-            apartment="1A"
-        )]
+        building.complaints = [
+            Complaint(
+                complaint_id="123",
+                bbl="1234567890",
+                borough="Manhattan",
+                block=123,
+                lot=456,
+                problem_id="P123",
+                unit_type="Apartment",
+                space_type="Residential",
+                type="Heat/Hot Water",
+                major_category="Heat/Hot Water",
+                minor_category="No Heat",
+                complaint_status="Open",
+                complaint_status_date=None,
+                problem_status="Open",
+                problem_status_date=None,
+                status_description="No heat in apartment",
+                house_number="123",
+                street_name="Main St",
+                post_code="10001",
+                apartment="1A",
+            )
+        ]
         result = _is_empty_building(building)
         self.assertFalse(result)
 
@@ -988,31 +1009,33 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.violation import Violation
-        
+
         building = Building(bbl="1234567890")
-        building.violations = [Violation(
-            violation_id="123",
-            bbl="1234567890",
-            bin=1234567890,
-            block=123,
-            lot=456,
-            boro="Manhattan",
-            nov_description="No heat",
-            nov_type="Class A",
-            class_="A",
-            rent_impairing="No",
-            violation_status="Open",
-            current_status="Open",
-            current_status_id=1,
-            current_status_date=None,
-            inspection_date=None,
-            nov_issued_date=None,
-            approved_date=None,
-            house_number="123",
-            street_name="Main St",
-            apartment="1A",
-            story="1"
-        )]
+        building.violations = [
+            Violation(
+                violation_id="123",
+                bbl="1234567890",
+                bin=1234567890,
+                block=123,
+                lot=456,
+                boro="Manhattan",
+                nov_description="No heat",
+                nov_type="Class A",
+                class_="A",
+                rent_impairing="No",
+                violation_status="Open",
+                current_status="Open",
+                current_status_id=1,
+                current_status_date=None,
+                inspection_date=None,
+                nov_issued_date=None,
+                approved_date=None,
+                house_number="123",
+                street_name="Main St",
+                apartment="1A",
+                story="1",
+            )
+        ]
         result = _is_empty_building(building)
         self.assertFalse(result)
 
@@ -1021,30 +1044,32 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.eviction import Eviction
-        
+
         building = Building(bbl="1234567890")
-        building.evictions = [Eviction(
-            docket_number="123",
-            court_index_number="456",
-            bbl="1234567890",
-            bin=1234567890,
-            borough="Manhattan",
-            eviction_zip="10001",
-            eviction_address="123 Main St",
-            eviction_apt_num="1A",
-            community_board=1,
-            council_district=1,
-            census_tract="1234",
-            nta="Test NTA",
-            latitude=40.7128,
-            longitude=-74.0060,
-            executed_date=None,
-            residential_commercial_ind="Residential",
-            ejectment="No",
-            eviction_possession="Possession",
-            marshal_first_name="John",
-            marshal_last_name="Doe"
-        )]
+        building.evictions = [
+            Eviction(
+                docket_number="123",
+                court_index_number="456",
+                bbl="1234567890",
+                bin=1234567890,
+                borough="Manhattan",
+                eviction_zip="10001",
+                eviction_address="123 Main St",
+                eviction_apt_num="1A",
+                community_board=1,
+                council_district=1,
+                census_tract="1234",
+                nta="Test NTA",
+                latitude=40.7128,
+                longitude=-74.0060,
+                executed_date=None,
+                residential_commercial_ind="Residential",
+                ejectment="No",
+                eviction_possession="Possession",
+                marshal_first_name="John",
+                marshal_last_name="Doe",
+            )
+        ]
         result = _is_empty_building(building)
         self.assertFalse(result)
 
@@ -1053,47 +1078,45 @@ class BuildingViewsHelperFunctionTests(TestCase):
         from apps.building.views import _is_empty_building
         from common.models.building import Building
         from common.models.acris import AcrisMaster
-        
+
         building = Building(bbl="1234567890")
-        building.acris_master = {"123": AcrisMaster(
-            document_id="123",
-            borough=1,
-            doc_type="DEED",
-            doc_date=None,
-            doc_amount=None
-        )}
+        building.acris_master = {
+            "123": AcrisMaster(
+                document_id="123",
+                borough=1,
+                doc_type="DEED",
+                doc_date=None,
+                doc_amount=None,
+            )
+        }
         result = _is_empty_building(building)
         self.assertFalse(result)
 
     def test_safe_len_with_none(self):
         """Test _safe_len with None value"""
         from apps.building.views import _safe_len
-        
+
         result = _safe_len(None)
         self.assertEqual(result, 0)
 
     def test_safe_len_with_list(self):
         """Test _safe_len with list"""
         from apps.building.views import _safe_len
-        
+
         result = _safe_len([1, 2, 3])
         self.assertEqual(result, 3)
 
     def test_sum_dict_values_len_with_none(self):
         """Test _sum_dict_values_len with None"""
         from apps.building.views import _sum_dict_values_len
-        
+
         result = _sum_dict_values_len(None)
         self.assertEqual(result, 0)
 
     def test_sum_dict_values_len_with_dict(self):
         """Test _sum_dict_values_len with dict"""
         from apps.building.views import _sum_dict_values_len
-        
-        data = {
-            "key1": [1, 2, 3],
-            "key2": [4, 5],
-            "key3": None
-        }
+
+        data = {"key1": [1, 2, 3], "key2": [4, 5], "key3": None}
         result = _sum_dict_values_len(data)
         self.assertEqual(result, 5)  # 3 + 2 + 0

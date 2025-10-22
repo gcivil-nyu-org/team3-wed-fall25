@@ -41,7 +41,7 @@ class NeighborhoodViewsSmokeTests(TestCase):
 
         for name, func in inspect.getmembers(mod, inspect.isfunction):
             # 뷰 함수는 보통 request를 첫 번째 인자로 받음
-            if not name.startswith('_') and hasattr(func, '__code__'):
+            if not name.startswith("_") and hasattr(func, "__code__"):
                 req = rf.get("/")
                 try:
                     resp = func(req)
@@ -81,16 +81,16 @@ class NeighborhoodViewsAPITests(TestCase):
         try:
             params = {
                 "min_lat": "40.7",
-                "max_lat": "40.8", 
+                "max_lat": "40.8",
                 "min_lng": "-74.0",
                 "max_lng": "-73.9",
-                "data_type": "violations"
+                "data_type": "violations",
             }
             response = self.client.get(self.stats_url, params)
             self.assertEqual(response.status_code, 200)
-            self.assertIn('result', response.data)
-            self.assertIn('data', response.data)
-            self.assertIn('bounds', response.data)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
+            self.assertIn("bounds", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -99,7 +99,7 @@ class NeighborhoodViewsAPITests(TestCase):
         try:
             response = self.client.get(self.stats_url)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -109,13 +109,13 @@ class NeighborhoodViewsAPITests(TestCase):
             params = {
                 "min_lat": "40.7",
                 "max_lat": "40.8",
-                "min_lng": "-74.0", 
+                "min_lng": "-74.0",
                 "max_lng": "-73.9",
-                "data_type": "invalid"
+                "data_type": "invalid",
             }
             response = self.client.get(self.stats_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -127,11 +127,11 @@ class NeighborhoodViewsAPITests(TestCase):
                 "max_lat": "40.8",
                 "min_lng": "-74.0",
                 "max_lng": "-73.9",
-                "data_type": "violations"
+                "data_type": "violations",
             }
             response = self.client.get(self.stats_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -141,17 +141,17 @@ class NeighborhoodViewsAPITests(TestCase):
             params = {
                 "min_lat": "40.7",
                 "max_lat": "40.8",
-                "min_lng": "-74.0", 
+                "min_lng": "-74.0",
                 "max_lng": "-73.9",
                 "data_type": "violations",
                 "borough": "MANHATTAN",
-                "limit": "1000"
+                "limit": "1000",
             }
             response = self.client.get(self.heatmap_url, params)
             self.assertEqual(response.status_code, 200)
-            self.assertIn('result', response.data)
-            self.assertIn('data', response.data)
-            self.assertIn('bounds', response.data)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
+            self.assertIn("bounds", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -160,7 +160,7 @@ class NeighborhoodViewsAPITests(TestCase):
         try:
             response = self.client.get(self.heatmap_url)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -171,12 +171,12 @@ class NeighborhoodViewsAPITests(TestCase):
                 "min_lat": "40.7",
                 "max_lat": "40.8",
                 "min_lng": "-74.0",
-                "max_lng": "-73.9", 
-                "data_type": "invalid"
+                "max_lng": "-73.9",
+                "data_type": "invalid",
             }
             response = self.client.get(self.heatmap_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -186,9 +186,9 @@ class NeighborhoodViewsAPITests(TestCase):
             params = {"borough": "MANHATTAN"}
             response = self.client.get(self.borough_summary_url, params)
             self.assertEqual(response.status_code, 200)
-            self.assertIn('result', response.data)
-            self.assertIn('data', response.data)
-            self.assertIn('borough', response.data)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
+            self.assertIn("borough", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -197,23 +197,20 @@ class NeighborhoodViewsAPITests(TestCase):
         try:
             response = self.client.get(self.borough_summary_url)
             self.assertEqual(response.status_code, 200)
-            self.assertIn('result', response.data)
-            self.assertIn('data', response.data)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
     def test_neighborhood_trends_view_success(self):
         """Test GET /api/neighborhood/trends/ with valid parameters"""
         try:
-            params = {
-                "bbl": "1013510030",
-                "days_back": "365"
-            }
+            params = {"bbl": "1013510030", "days_back": "365"}
             response = self.client.get(self.trends_url, params)
             self.assertEqual(response.status_code, 200)
-            self.assertIn('result', response.data)
-            self.assertIn('data', response.data)
-            self.assertIn('bbl', response.data)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
+            self.assertIn("bbl", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -222,46 +219,37 @@ class NeighborhoodViewsAPITests(TestCase):
         try:
             response = self.client.get(self.trends_url)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
     def test_neighborhood_trends_view_invalid_bbl(self):
         """Test GET /api/neighborhood/trends/ with invalid bbl format"""
         try:
-            params = {
-                "bbl": "invalid",
-                "days_back": "365"
-            }
+            params = {"bbl": "invalid", "days_back": "365"}
             response = self.client.get(self.trends_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
     def test_neighborhood_trends_view_invalid_days_back(self):
         """Test GET /api/neighborhood/trends/ with invalid days_back"""
         try:
-            params = {
-                "bbl": "1013510030",
-                "days_back": "invalid"
-            }
+            params = {"bbl": "1013510030", "days_back": "invalid"}
             response = self.client.get(self.trends_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
     def test_neighborhood_trends_view_days_back_too_large(self):
         """Test GET /api/neighborhood/trends/ with days_back > 3650"""
         try:
-            params = {
-                "bbl": "1013510030",
-                "days_back": "4000"
-            }
+            params = {"bbl": "1013510030", "days_back": "4000"}
             response = self.client.get(self.trends_url, params)
             self.assertEqual(response.status_code, 400)
-            self.assertIn('detail', response.data)
+            self.assertIn("detail", response.data)
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
@@ -271,30 +259,27 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
         """Test _to_primitive with dataclass"""
         from apps.neighborhood.views import _to_primitive
         from common.models.building import Building
-        
+
         building = Building(bbl="1234567890")
         result = _to_primitive(building)
         self.assertIsInstance(result, dict)
-        self.assertEqual(result['bbl'], "1234567890")
+        self.assertEqual(result["bbl"], "1234567890")
 
     def test_to_primitive_dict(self):
         """Test _to_primitive with dict"""
         from apps.neighborhood.views import _to_primitive
         from datetime import datetime
-        
-        data = {
-            "bbl": "1234567890",
-            "date": datetime(2023, 1, 1, 12, 0, 0)
-        }
+
+        data = {"bbl": "1234567890", "date": datetime(2023, 1, 1, 12, 0, 0)}
         result = _to_primitive(data)
-        self.assertEqual(result['bbl'], "1234567890")
-        self.assertEqual(result['date'], "2023-01-01T12:00:00")
+        self.assertEqual(result["bbl"], "1234567890")
+        self.assertEqual(result["date"], "2023-01-01T12:00:00")
 
     def test_to_primitive_list(self):
         """Test _to_primitive with list"""
         from apps.neighborhood.views import _to_primitive
         from datetime import date
-        
+
         data = [date(2023, 1, 1), date(2023, 1, 2)]
         result = _to_primitive(data)
         self.assertEqual(result, ["2023-01-01", "2023-01-02"])
@@ -303,7 +288,7 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
         """Test _to_primitive with Decimal"""
         from apps.neighborhood.views import _to_primitive
         from decimal import Decimal
-        
+
         result = _to_primitive(Decimal("123.45"))
         self.assertEqual(result, "123.45")
 
@@ -312,17 +297,17 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
         from apps.neighborhood.views import _to_primitive
         from datetime import datetime
         from decimal import Decimal
-        
+
         data = {
             "building": {
                 "bbl": "1234567890",
                 "amount": Decimal("1000.50"),
                 "date": datetime(2023, 1, 1, 12, 0, 0),
-                "list": [Decimal("100"), datetime(2023, 1, 2)]
+                "list": [Decimal("100"), datetime(2023, 1, 2)],
             }
         }
         result = _to_primitive(data)
-        self.assertEqual(result['building']['bbl'], "1234567890")
-        self.assertEqual(result['building']['amount'], "1000.50")
-        self.assertEqual(result['building']['date'], "2023-01-01T12:00:00")
-        self.assertEqual(result['building']['list'], ["100", "2023-01-02T00:00:00"])
+        self.assertEqual(result["building"]["bbl"], "1234567890")
+        self.assertEqual(result["building"]["amount"], "1000.50")
+        self.assertEqual(result["building"]["date"], "2023-01-01T12:00:00")
+        self.assertEqual(result["building"]["list"], ["100", "2023-01-02T00:00:00"])

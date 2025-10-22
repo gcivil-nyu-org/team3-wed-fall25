@@ -1,4 +1,3 @@
-import unittest
 from unittest import TestCase
 
 from common.exceptions.bad_request_error import BadRequestError
