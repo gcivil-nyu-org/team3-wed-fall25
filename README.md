@@ -60,14 +60,16 @@ npm start
 
 ## Test Coverage
 
-Current test coverage: **76%** with **167 tests**
+Current test coverage: **80%** with **346 tests**
 
 ### Coverage Breakdown
 - **Building Models**: 92% coverage
 - **Building Views**: 95% coverage  
-- **Neighborhood Views**: 91% coverage
-- **Postgres Infrastructure**: 75% coverage
+- **Neighborhood Views**: 94% coverage
+- **Postgres Infrastructure**: 80% coverage
 - **Common Utilities**: 97% coverage
+- **Config & Middleware**: 94% coverage
+- **Exceptions & Interfaces**: 100% coverage
 - **Dummy API**: 59% coverage (tests)
 - **Neighborhood Models**: 73% coverage
 
