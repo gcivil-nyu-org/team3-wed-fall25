@@ -1,0 +1,51 @@
+language: python
+python:
+  - "3.12"
+
+git:
+  depth: false
+
+env:
+  global:
+    - DJANGO_SETTINGS_MODULE=config.settings
+    - USE_SQLITE_FOR_TESTS=1
+    - AWS_DEFAULT_REGION=us-east-1
+
+branches:
+  only:
+    - develop
+    - devops/travis
+    - main
+
+install:
+  - pip install -r requirements.txt
+  - pip install black flake8 coverage coveralls
+
+script:
+  - pushd backend
+  - black --check .
+  - flake8 .
+  - coverage run manage.py test
+  - popd
+
+after_success:
+  - pushd backend
+  - if [[ "$TRAVIS_PULL_REQUEST" == "false" ]]; then coveralls; fi
+  - popd
+
+before_deploy:
+  - pushd backend
+
+deploy:
+  provider: elasticbeanstalk
+  edge: true
+  region: "us-east-1"
+  app: "sweng-prod"
+  env: "sweng-prod"
+  bucket: "elasticbeanstalk-us-east-1-423158040784"
+  on:
+    branch: devops/travis
+  skip_cleanup: true
+
+after_deploy:
+  - popd

@@ -1,7 +1,7 @@
 # backend/tests/test_dummy_crud.py
-from django.urls import reverse
-from rest_framework.test import APITestCase
 from rest_framework import status
+from rest_framework.test import APITestCase
+
 
 class DummyCrudTests(APITestCase):
     def setUp(self):
@@ -9,7 +9,9 @@ class DummyCrudTests(APITestCase):
 
     def test_crud_flow(self):
         # Create
-        res = self.client.post(self.base, {"title": "hello", "detail": "world"}, format="json")
+        res = self.client.post(
+            self.base, {"title": "hello", "detail": "world"}, format="json"
+        )
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         item_id = res.data["id"]
 
@@ -24,12 +26,16 @@ class DummyCrudTests(APITestCase):
         self.assertTrue(any(x["id"] == item_id for x in res.data))
 
         # Put (full update)
-        res = self.client.put(f"{self.base}/{item_id}", {"title": "new", "detail": "zzz"}, format="json")
+        res = self.client.put(
+            f"{self.base}/{item_id}", {"title": "new", "detail": "zzz"}, format="json"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["title"], "new")
 
         # Patch (partial)
-        res = self.client.patch(f"{self.base}/{item_id}", {"detail": "ppp"}, format="json")
+        res = self.client.patch(
+            f"{self.base}/{item_id}", {"detail": "ppp"}, format="json"
+        )
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(res.data["detail"], "ppp")
 
@@ -40,5 +46,3 @@ class DummyCrudTests(APITestCase):
         # Not found after delete
         res = self.client.get(f"{self.base}/{item_id}")
         self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
-
-

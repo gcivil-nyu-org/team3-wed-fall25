@@ -1,10 +1,11 @@
-import os
 import time
-import requests
 from typing import Any, Dict, List, Optional, Set
-from infrastructures.postgres.postgres_client import PostgresClient
-from common.interfaces.data_crawler import DataCrawler
+
+import requests
+
 from common.exceptions.db_error import DatabaseError
+from common.interfaces.data_crawler import DataCrawler
+from infrastructures.postgres.postgres_client import PostgresClient
 
 
 class ComplaintCrawler(DataCrawler):
@@ -42,20 +43,17 @@ class ComplaintCrawler(DataCrawler):
         "borough": ["borough"],
         "block": ["block"],
         "lot": ["lot"],
-
         "problem_id": ["problem_id", "problemid"],
         "unit_type": ["unit_type", "unittype"],
         "space_type": ["space_type", "spacetype"],
         "type": ["type"],
         "major_category": ["major_category", "majorcategory"],
         "minor_category": ["minor_category", "minorcategory"],
-
         "complaint_status": ["status", "complaint_status", "disposition", "resolution"],
         "complaint_status_date": ["status_date", "statusdate"],
         "problem_status": ["problem_status"],
         "problem_status_date": ["problem_status_date"],
         "status_description": ["status_description"],
-
         # 주소
         "house_number": ["house_number", "housenumber"],
         "street_name": ["street_name", "streetname"],
@@ -65,24 +63,50 @@ class ComplaintCrawler(DataCrawler):
     }
 
     DEFAULT_SELECT_CANDIDATES = [
-        "complaint_id", "complaintid",
-        "bbl", "borough", "block", "lot",
-        "problem_id", "problemid",
-        "unit_type", "unittype",
-        "space_type", "spacetype",
+        "complaint_id",
+        "complaintid",
+        "bbl",
+        "borough",
+        "block",
+        "lot",
+        "problem_id",
+        "problemid",
+        "unit_type",
+        "unittype",
+        "space_type",
+        "spacetype",
         "type",
-        "major_category", "majorcategory",
-        "minor_category", "minorcategory",
-        "status", "complaint_status", "disposition", "resolution",
-        "status_date", "statusdate",
-        "received_date", "receiveddate",
-        "closed_date", "closeddate",
-        "house_number", "housenumber",
-        "street_name", "streetname",
-        "post_code", "zip", "postcode",
+        "major_category",
+        "majorcategory",
+        "minor_category",
+        "minorcategory",
+        "status",
+        "complaint_status",
+        "disposition",
+        "resolution",
+        "status_date",
+        "statusdate",
+        "received_date",
+        "receiveddate",
+        "closed_date",
+        "closeddate",
+        "house_number",
+        "housenumber",
+        "street_name",
+        "streetname",
+        "post_code",
+        "zip",
+        "postcode",
         "apartment",
-        "problem_status", "problem_status_date", "status_description",
-        "building_id", "buildingid", "story", "unit", "tract", "communityboard",
+        "problem_status",
+        "problem_status_date",
+        "status_description",
+        "building_id",
+        "buildingid",
+        "story",
+        "unit",
+        "tract",
+        "communityboard",
     ]
 
     def __init__(self, timeout: int = 30, max_retries: int = 3):
@@ -90,7 +114,6 @@ class ComplaintCrawler(DataCrawler):
         self.max_retries = max_retries
         self._available_fields: Optional[Set[str]] = None
         self._resolved_map: Optional[Dict[str, Optional[str]]] = None
-
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -101,11 +124,18 @@ class ComplaintCrawler(DataCrawler):
     def _request(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         backoff = 1.0
         for attempt in range(1, self.max_retries + 1):
-            resp = requests.get(self.API_URL, params=params, headers=self._headers(), timeout=self.timeout)
+            resp = requests.get(
+                self.API_URL,
+                params=params,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
             if resp.ok:
                 return resp.json()
             if resp.status_code in (429, 500, 502, 503, 504):
-                print(f"[ComplaintCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s")
+                print(
+                    f"[ComplaintCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s"
+                )
                 time.sleep(backoff)
                 backoff *= 2
                 continue
@@ -164,11 +194,11 @@ class ComplaintCrawler(DataCrawler):
         borough: Optional[str] = None,
         bbl: Optional[str] = None,
         status: Optional[str] = None,
-        received_from: Optional[str] = None,   # "YYYY-MM-DD"
-        received_to: Optional[str] = None,     # "YYYY-MM-DD"
-        status_from: Optional[str] = None,     # "YYYY-MM-DD"
-        status_to: Optional[str] = None,       # "YYYY-MM-DD"
-        extra: Optional[Dict[str, Any]] = None
+        received_from: Optional[str] = None,  # "YYYY-MM-DD"
+        received_to: Optional[str] = None,  # "YYYY-MM-DD"
+        status_from: Optional[str] = None,  # "YYYY-MM-DD"
+        status_to: Optional[str] = None,  # "YYYY-MM-DD"
+        extra: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
 
@@ -191,9 +221,17 @@ class ComplaintCrawler(DataCrawler):
         if status and resolved.get("complaint_status"):
             where_clauses.append(f"{resolved['complaint_status']} = '{status}'")
 
-        rec_col = "received_date" if resolved.get("complaint_status_date") else "received_date"
+        rec_col = (
+            "received_date"
+            if resolved.get("complaint_status_date")
+            else "received_date"
+        )
         available = self._discover_schema()
-        rec_actual = "received_date" if "received_date" in available else ("receiveddate" if "receiveddate" in available else None)
+        rec_actual = (
+            "received_date"
+            if "received_date" in available
+            else ("receiveddate" if "receiveddate" in available else None)
+        )
         st_actual = resolved.get("complaint_status_date")
 
         if received_from and rec_actual:
@@ -220,7 +258,6 @@ class ComplaintCrawler(DataCrawler):
 
         return params
 
-
     def fetch(
         self,
         limit: int = 1000,
@@ -240,11 +277,18 @@ class ComplaintCrawler(DataCrawler):
     ) -> List[Dict[str, Any]]:
         try:
             params = self._build_params(
-                select=select, where=where, order=order,
-                limit=limit, offset=offset,
-                borough=borough, bbl=bbl, status=status,
-                received_from=received_from, received_to=received_to,
-                status_from=status_from, status_to=status_to,
+                select=select,
+                where=where,
+                order=order,
+                limit=limit,
+                offset=offset,
+                borough=borough,
+                bbl=bbl,
+                status=status,
+                received_from=received_from,
+                received_to=received_to,
+                status_from=status_from,
+                status_to=status_to,
                 extra=extra,
             )
             print(f"[ComplaintCrawler] Fetching with params: {params}")
@@ -285,25 +329,23 @@ class ComplaintCrawler(DataCrawler):
                 "complaint_id": to_int(d.get(avail(resolved.get("complaint_id")))),
                 "bbl": bbl_val,
                 "borough": d.get(avail(resolved.get("borough"))),
-
                 "block": to_int(d.get(avail(resolved.get("block")))),
                 "lot": to_int(d.get(avail(resolved.get("lot")))),
-
                 "problem_id": to_int(d.get(avail(resolved.get("problem_id")))),
-
                 "unit_type": d.get(avail(resolved.get("unit_type"))),
                 "space_type": d.get(avail(resolved.get("space_type"))),
                 "type": d.get(avail(resolved.get("type"))),
                 "major_category": d.get(avail(resolved.get("major_category"))),
                 "minor_category": d.get(avail(resolved.get("minor_category"))),
-
                 "complaint_status": d.get(avail(resolved.get("complaint_status"))),
-                "complaint_status_date": d.get(avail(resolved.get("complaint_status_date"))),
-
+                "complaint_status_date": d.get(
+                    avail(resolved.get("complaint_status_date"))
+                ),
                 "problem_status": d.get(avail(resolved.get("problem_status"))),
-                "problem_status_date": d.get(avail(resolved.get("problem_status_date"))),
+                "problem_status_date": d.get(
+                    avail(resolved.get("problem_status_date"))
+                ),
                 "status_description": d.get(avail(resolved.get("status_description"))),
-
                 "house_number": d.get(avail(resolved.get("house_number"))),
                 "street_name": d.get(avail(resolved.get("street_name"))),
                 "post_code": resolve_post_code(d),
@@ -312,7 +354,9 @@ class ComplaintCrawler(DataCrawler):
 
             mapped.append(row)
 
-        print(f"[ComplaintCrawler] Fetched {len(mapped)} rows (skipped {skipped} without BBL).")
+        print(
+            f"[ComplaintCrawler] Fetched {len(mapped)} rows (skipped {skipped} without BBL)."
+        )
         return mapped
 
     def load(self, rows: List[Dict[str, Any]]) -> None:
@@ -321,8 +365,15 @@ class ComplaintCrawler(DataCrawler):
             return
         with PostgresClient() as db:
             try:
-                count = db.bulk_insert(self.TABLE_NAME, self.COLUMNS, rows, conflict_target=["complaint_id"])
-                print(f"[ComplaintCrawler] Inserted {count} rows into {self.TABLE_NAME}.")
+                count = db.bulk_insert(
+                    self.TABLE_NAME,
+                    self.COLUMNS,
+                    rows,
+                    conflict_target=["complaint_id"],
+                )
+                print(
+                    f"[ComplaintCrawler] Inserted {count} rows into {self.TABLE_NAME}."
+                )
             except DatabaseError as e:
                 print(f"[ComplaintCrawler] Insert failed: {e}")
                 raise

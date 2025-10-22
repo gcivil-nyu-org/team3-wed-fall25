@@ -9,7 +9,5 @@ def test_db_connection(client: PostgresClient):
         pprint.pprint(user)
 
 
-
-
 if __name__ == "__main__":
     test_db_connection(PostgresClient())

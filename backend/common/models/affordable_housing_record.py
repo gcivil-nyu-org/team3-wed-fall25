@@ -1,8 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+
+from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from typing import Optional
 
 
 @dataclass
