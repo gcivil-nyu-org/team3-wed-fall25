@@ -28,8 +28,10 @@ class UserModelsSmokeTests(TestCase):
                 self.assertTrue(hasattr(obj, '_meta'))
                 self.assertIsNotNone(getattr(obj._meta, 'model_name', None))
 
-        self.assertIsNotNone(mod)# Create your tests here.
+        self.assertIsNotNone(mod)
 
+
+class UserViewsSmokeTests(TestCase):
     def test_views_callables_return_httpresponse_when_possible(self):
         try:
             mod = importlib.import_module('backend.apps.user.views')

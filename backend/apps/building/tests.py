@@ -25,15 +25,11 @@ class ModelsSmokeTests(TestCase):
             if not name.startswith('_')
         ]
 
-        found = False
         for obj in model_classes:
             if inspect.isclass(obj) and issubclass(obj, djmodels.Model):
-                found = True
                 self.assertTrue(hasattr(obj, '_meta'))
                 self.assertIsNotNone(getattr(obj._meta, 'model_name', None))
-        # 모듈은 로드되었음을 보장
         self.assertTrue(mod is not None)
-        # 모델이 하나도 없어도 실패하지 않도록 found 체크는 강제하지 않음
 
 
 class ViewsSmokeTests(TestCase):

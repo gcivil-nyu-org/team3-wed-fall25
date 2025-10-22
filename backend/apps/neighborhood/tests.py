@@ -30,6 +30,8 @@ class NeighborhoodModelsSmokeTests(TestCase):
 
         self.assertIsNotNone(mod)
 
+
+class NeighborhoodViewsSmokeTests(TestCase):
     def test_views_callables_return_httpresponse_when_possible(self):
         try:
             mod = importlib.import_module('backend.apps.neighborhood.views')

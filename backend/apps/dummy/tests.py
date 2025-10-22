@@ -23,10 +23,8 @@ class DummyModelsSmokeTests(TestCase):
             if not name.startswith('_')
         ]
 
-        found = False
         for obj in model_classes:
             if inspect.isclass(obj) and issubclass(obj, djmodels.Model):
-                found = True
                 # 모델 메타 정보 기본 검사
                 self.assertTrue(hasattr(obj, '_meta'))
                 self.assertIsNotNone(getattr(obj._meta, 'model_name', None))
@@ -69,4 +67,4 @@ class DummyViewsSmokeTests(TestCase):
                     continue
                 except Exception:
                     continue
-                self.assertTrue(isinstance(resp, HttpResponse), f'{name}.as_view() did not return HttpResponse')# Create your tests here.
+                self.assertTrue(isinstance(resp, HttpResponse), f'{name}.as_view() did not return HttpResponse')
