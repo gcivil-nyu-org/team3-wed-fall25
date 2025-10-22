@@ -36,9 +36,9 @@ after_success:
   - popd
   - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
-before_deploy:
-  - pushd backend
-
+#before_deploy:
+#  - pushd backend
+#
 
 deploy:
   provider: elasticbeanstalk
@@ -52,5 +52,5 @@ deploy:
     condition: $TRAVIS_EVENT_TYPE != pull_request
   skip_cleanup: true
 
-after_deploy:
-  - popd
+#after_deploy:
+#  - popd
