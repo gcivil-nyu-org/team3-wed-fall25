@@ -1,33 +1,32 @@
 # python
 import importlib
 import inspect
-from django.test import TestCase, RequestFactory
+
 from django.http import HttpResponse
+from django.test import RequestFactory, TestCase
 
 
 class DummyModelsSmokeTests(TestCase):
     def test_models_module_and_meta(self):
         try:
-            mod = importlib.import_module('backend.apps.dummy.models')
+            mod = importlib.import_module("backend.apps.dummy.models")
         except ImportError:
-            self.skipTest('backend.apps.dummy.models 모듈이 없음')
+            self.skipTest("backend.apps.dummy.models 모듈이 없음")
 
         try:
             from django.db import models as djmodels
         except Exception:
-            self.skipTest('Django ORM 사용 불가')
+            self.skipTest("Django ORM 사용 불가")
 
         model_classes = [
-            getattr(mod, name)
-            for name in dir(mod)
-            if not name.startswith('_')
+            getattr(mod, name) for name in dir(mod) if not name.startswith("_")
         ]
 
         for obj in model_classes:
             if inspect.isclass(obj) and issubclass(obj, djmodels.Model):
                 # 모델 메타 정보 기본 검사
-                self.assertTrue(hasattr(obj, '_meta'))
-                self.assertIsNotNone(getattr(obj._meta, 'model_name', None))
+                self.assertTrue(hasattr(obj, "_meta"))
+                self.assertIsNotNone(getattr(obj._meta, "model_name", None))
 
         # 모듈이 로드된 것은 보장
         self.assertIsNotNone(mod)
@@ -36,15 +35,15 @@ class DummyModelsSmokeTests(TestCase):
 class DummyViewsSmokeTests(TestCase):
     def test_views_callables_return_httpresponse_when_possible(self):
         try:
-            mod = importlib.import_module('backend.apps.dummy.views')
+            mod = importlib.import_module("backend.apps.dummy.views")
         except ImportError:
-            self.skipTest('backend.apps.dummy.views 모듈이 없음')
+            self.skipTest("backend.apps.dummy.views 모듈이 없음")
 
         rf = RequestFactory()
 
         # 함수형 뷰 검사
         for name, func in inspect.getmembers(mod, inspect.isfunction):
-            req = rf.get('/')
+            req = rf.get("/")
             try:
                 resp = func(req)
             except TypeError:
@@ -54,12 +53,14 @@ class DummyViewsSmokeTests(TestCase):
                 # 뷰 내부 예외는 실패로 처리하지 않음
                 continue
 
-            self.assertTrue(isinstance(resp, HttpResponse), f'{name} did not return HttpResponse')
+            self.assertTrue(
+                isinstance(resp, HttpResponse), f"{name} did not return HttpResponse"
+            )
 
         # 클래스 기반 뷰 검사 (as_view 제공)
         for name, cls in inspect.getmembers(mod, inspect.isclass):
-            if hasattr(cls, 'as_view'):
-                req = rf.get('/')
+            if hasattr(cls, "as_view"):
+                req = rf.get("/")
                 try:
                     view = cls.as_view()
                     resp = view(req)
@@ -67,4 +68,7 @@ class DummyViewsSmokeTests(TestCase):
                     continue
                 except Exception:
                     continue
-                self.assertTrue(isinstance(resp, HttpResponse), f'{name}.as_view() did not return HttpResponse')
+                self.assertTrue(
+                    isinstance(resp, HttpResponse),
+                    f"{name}.as_view() did not return HttpResponse",
+                )

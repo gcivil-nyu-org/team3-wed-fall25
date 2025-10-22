@@ -1,5 +1,6 @@
 # backend/coveragerc.py
 import os
+
 import django
 from coverage import Coverage
 from django.conf import settings
