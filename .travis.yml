@@ -30,6 +30,7 @@ script:
 
 after_success:
   - pushd backend
+  - coverage report -m
   - coveralls
   - popd
 
