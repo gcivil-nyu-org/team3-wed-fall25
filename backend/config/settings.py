@@ -119,15 +119,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-if os.getenv("USE_SQLITE_FOR_TESTS") == "1":
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-else:
-    DATABASES = {
+DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
             "NAME": env("DB_NAME"),
