@@ -25,7 +25,8 @@ script:
   - pushd backend
   - black --check .
   - flake8 .
-  - coverage run manage.py test
+  #- coverage run manage.py test
+  - python coveragerc.py
   - popd
 
 after_success:
