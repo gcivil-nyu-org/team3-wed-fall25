@@ -9,7 +9,7 @@ from django.test import RequestFactory, TestCase
 class UserModelsSmokeTests(TestCase):
     def test_models_module_and_meta(self):
         try:
-            mod = importlib.import_module("backend.apps.user.models")
+            mod = importlib.import_module("apps.user.models")
         except ImportError:
             self.skipTest("backend.apps.user.models 모듈이 없음")
 
@@ -33,7 +33,7 @@ class UserModelsSmokeTests(TestCase):
 class UserViewsSmokeTests(TestCase):
     def test_views_callables_return_httpresponse_when_possible(self):
         try:
-            mod = importlib.import_module("backend.apps.user.views")
+            mod = importlib.import_module("apps.user.views")
         except ImportError:
             self.skipTest("backend.apps.user.views 모듈이 없음")
 
