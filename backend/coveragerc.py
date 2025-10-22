@@ -1,6 +1,9 @@
 # backend/coveragerc.py
 import os
+import django
 from coverage import Coverage
+from django.conf import settings
+from django.test.utils import get_runner
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -19,11 +22,7 @@ cov = Coverage(
 cov.erase()
 cov.start()
 
-import django
 django.setup()
-
-from django.conf import settings
-from django.test.utils import get_runner
 
 TestRunner = get_runner(settings)
 test_runner = TestRunner()
