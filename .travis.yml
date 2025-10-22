@@ -34,7 +34,7 @@ after_success:
   - coverage report -m
   - coveralls
   - popd
-  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
+#  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
 #before_deploy:
 #  - pushd backend
@@ -42,14 +42,14 @@ after_success:
 
 deploy:
   provider: elasticbeanstalk
-  edge: true
+#  edge: true
   region: "us-east-1"
   app: "sweng-prod"
   env: "sweng-prod"
   bucket: "elasticbeanstalk-us-east-1-423158040784"
   on:
     branch: "devops/travis"
-    condition: $TRAVIS_EVENT_TYPE != pull_request
+    condition: '$TRAVIS_EVENT_TYPE != pull_request'
   skip_cleanup: true
 
 #after_deploy:
