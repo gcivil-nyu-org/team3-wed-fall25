@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'drf_spectacular',
     # Local apps
     'apps.user',
+    'apps.landlord',
     'apps.dummy',
     'apps.building',
     'apps.community',
