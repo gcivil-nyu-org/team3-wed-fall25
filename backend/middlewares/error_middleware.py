@@ -1,14 +1,15 @@
-from django.http import JsonResponse
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, JsonResponse
+from rest_framework.exceptions import (
+    AuthenticationFailed,
+    NotAuthenticated,
+)
+from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.exceptions import (
     ValidationError,
-    NotAuthenticated,
-    AuthenticationFailed,
-    PermissionDenied as DRFPermissionDenied,
 )
-from rest_framework.views import exception_handler as drf_exception_handler
 from rest_framework.response import Response
+from rest_framework.views import exception_handler as drf_exception_handler
 
 from common.exceptions.bad_request_error import BadRequestError
 
@@ -21,25 +22,25 @@ def custom_exception_handler(exc, context):
             detail = response.data
             if isinstance(detail, dict):
                 first_key = next(iter(detail))
-                message = detail[first_key][0] if isinstance(detail[first_key], list) else str(detail[first_key])
+                message = (
+                    detail[first_key][0]
+                    if isinstance(detail[first_key], list)
+                    else str(detail[first_key])
+                )
             else:
                 message = str(detail)
 
-            response.data = {
-                "result": False,
-                "error_message": message
-            }
+            response.data = {"result": False, "error_message": message}
             return response
 
         response.data = {
             "result": False,
-            "error_message": str(response.data.get("detail", "An error occurred."))
+            "error_message": str(response.data.get("detail", "An error occurred.")),
         }
         return response
 
     return Response(
-        {"result": False, "error_message": "Internal server error."},
-        status=500
+        {"result": False, "error_message": "Internal server error."}, status=500
     )
 
 
@@ -60,7 +61,10 @@ class ErrorMiddleware:
         # rest framework exceptions
         except ValidationError as e:
             return JsonResponse(
-                {"result": False, "error_message": str(e.detail if hasattr(e, "detail") else e)},
+                {
+                    "result": False,
+                    "error_message": str(e.detail if hasattr(e, "detail") else e),
+                },
                 status=400,
             )
         except NotAuthenticated:
@@ -89,6 +93,6 @@ class ErrorMiddleware:
             if request.path.startswith("/api/"):
                 return JsonResponse(
                     {"result": False, "error_message": "Internal server error."},
-                    status=500
+                    status=500,
                 )
             raise

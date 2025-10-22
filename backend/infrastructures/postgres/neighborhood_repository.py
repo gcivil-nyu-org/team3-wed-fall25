@@ -1,15 +1,15 @@
-from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
-from infrastructures.postgres.postgres_client import PostgresClient
+from typing import Any, Dict, List, Optional
+
 from common.models.neighborhood import (
-    NeighborhoodStats,
     HeatmapPoint,
+    NeighborhoodStats,
     NeighborhoodSummary,
-    calculate_risk_score,
-    as_neighborhood_stats,
     as_heatmap_point,
-    as_neighborhood_summary
+    as_neighborhood_summary,
+    calculate_risk_score,
 )
+from infrastructures.postgres.postgres_client import PostgresClient
 
 
 class NeighborhoodRepository:
@@ -24,15 +24,15 @@ class NeighborhoodRepository:
         max_lat: float,
         min_lng: float,
         max_lng: float,
-        data_type: str = "violations"
+        data_type: str = "violations",
     ) -> List[NeighborhoodStats]:
         """
         Get neighborhood statistics for buildings within geographic bounds.
-        
+
         Args:
             min_lat, max_lat, min_lng, max_lng: Geographic bounds
             data_type: Type of data to focus on ('violations', 'evictions', 'complaints')
-            
+
         Returns:
             List of NeighborhoodStats objects
         """
@@ -75,22 +75,31 @@ class NeighborhoodRepository:
                     )
                 )
             """
-            
+
             buildings = db.query_all(
                 buildings_query,
-                (min_lat, max_lat, min_lng, max_lng, min_lat, max_lat, min_lng, max_lng)
+                (
+                    min_lat,
+                    max_lat,
+                    min_lng,
+                    max_lng,
+                    min_lat,
+                    max_lat,
+                    min_lng,
+                    max_lng,
+                ),
             )
-            
+
             if not buildings:
                 return []
-            
+
             # Get BBLs for batch processing
-            bbls = [b['bbl'] for b in buildings if b['bbl']]
+            bbls = [b["bbl"] for b in buildings if b["bbl"]]
             if not bbls:
                 return []
-            
+
             placeholders = ", ".join(["%s"] * len(bbls))
-            
+
             # Get violation statistics
             violations_query = f"""
                 SELECT 
@@ -105,10 +114,10 @@ class NeighborhoodRepository:
                 WHERE bbl IN ({placeholders})
                 GROUP BY bbl
             """
-            
+
             violations = db.query_all(violations_query, tuple(bbls))
-            violations_dict = {v['bbl']: v for v in violations}
-            
+            violations_dict = {v["bbl"]: v for v in violations}
+
             # Get eviction statistics
             evictions_query = f"""
                 SELECT 
@@ -120,16 +129,15 @@ class NeighborhoodRepository:
                 WHERE bbl IN ({placeholders})
                 GROUP BY bbl
             """
-            
-            three_years_ago = datetime.now() - timedelta(days=3*365)
+
+            three_years_ago = datetime.now() - timedelta(days=3 * 365)
             one_year_ago = datetime.now() - timedelta(days=365)
-            
+
             evictions = db.query_all(
-                evictions_query,
-                (three_years_ago, one_year_ago) + tuple(bbls)
+                evictions_query, (three_years_ago, one_year_ago) + tuple(bbls)
             )
-            evictions_dict = {e['bbl']: e for e in evictions}
-            
+            evictions_dict = {e["bbl"]: e for e in evictions}
+
             # Get complaint statistics
             complaints_query = f"""
                 SELECT 
@@ -141,68 +149,70 @@ class NeighborhoodRepository:
                 WHERE bbl IN ({placeholders})
                 GROUP BY bbl
             """
-            
+
             complaints = db.query_all(complaints_query, tuple(bbls))
-            complaints_dict = {c['bbl']: c for c in complaints}
-            
+            complaints_dict = {c["bbl"]: c for c in complaints}
+
             # Get rent stabilization status
             rent_stabilized_query = f"""
                 SELECT DISTINCT bbl
                 FROM building_rent_stabilized_list
                 WHERE bbl IN ({placeholders})
             """
-            
+
             rent_stabilized = db.query_all(rent_stabilized_query, tuple(bbls))
-            rent_stabilized_set = {r['bbl'] for r in rent_stabilized}
-            
+            rent_stabilized_set = {r["bbl"] for r in rent_stabilized}
+
             # Combine all data
             results = []
             for building in buildings:
-                bbl = building['bbl']
+                bbl = building["bbl"]
                 if not bbl:
                     continue
-                
+
                 # Get data for this building
                 violation_data = violations_dict.get(bbl, {})
                 eviction_data = evictions_dict.get(bbl, {})
                 complaint_data = complaints_dict.get(bbl, {})
-                
+
                 # Calculate risk score
                 risk_score, risk_level = calculate_risk_score(
-                    violations=violation_data.get('open_violations', 0),
-                    evictions=eviction_data.get('evictions_3yr', 0),
-                    complaints=complaint_data.get('open_complaints', 0),
-                    rent_stabilized=bbl in rent_stabilized_set
+                    violations=violation_data.get("open_violations", 0),
+                    evictions=eviction_data.get("evictions_3yr", 0),
+                    complaints=complaint_data.get("open_complaints", 0),
+                    rent_stabilized=bbl in rent_stabilized_set,
                 )
-                
+
                 # Create NeighborhoodStats object
                 stats = NeighborhoodStats(
                     bbl=bbl,
-                    address=building.get('address', ''),
-                    borough=building.get('borough', ''),
-                    zip_code=building.get('zip_code', ''),
-                    latitude=building.get('latitude'),
-                    longitude=building.get('longitude'),
-                    total_violations=violation_data.get('total_violations', 0),
-                    open_violations=violation_data.get('open_violations', 0),
-                    class_a_violations=violation_data.get('class_a_violations', 0),
-                    class_b_violations=violation_data.get('class_b_violations', 0),
-                    class_c_violations=violation_data.get('class_c_violations', 0),
-                    rent_impairing_violations=violation_data.get('rent_impairing_violations', 0),
-                    total_evictions=eviction_data.get('total_evictions', 0),
-                    evictions_3yr=eviction_data.get('evictions_3yr', 0),
-                    evictions_1yr=eviction_data.get('evictions_1yr', 0),
-                    total_complaints=complaint_data.get('total_complaints', 0),
-                    open_complaints=complaint_data.get('open_complaints', 0),
-                    emergency_complaints=complaint_data.get('emergency_complaints', 0),
+                    address=building.get("address", ""),
+                    borough=building.get("borough", ""),
+                    zip_code=building.get("zip_code", ""),
+                    latitude=building.get("latitude"),
+                    longitude=building.get("longitude"),
+                    total_violations=violation_data.get("total_violations", 0),
+                    open_violations=violation_data.get("open_violations", 0),
+                    class_a_violations=violation_data.get("class_a_violations", 0),
+                    class_b_violations=violation_data.get("class_b_violations", 0),
+                    class_c_violations=violation_data.get("class_c_violations", 0),
+                    rent_impairing_violations=violation_data.get(
+                        "rent_impairing_violations", 0
+                    ),
+                    total_evictions=eviction_data.get("total_evictions", 0),
+                    evictions_3yr=eviction_data.get("evictions_3yr", 0),
+                    evictions_1yr=eviction_data.get("evictions_1yr", 0),
+                    total_complaints=complaint_data.get("total_complaints", 0),
+                    open_complaints=complaint_data.get("open_complaints", 0),
+                    emergency_complaints=complaint_data.get("emergency_complaints", 0),
                     is_rent_stabilized=bbl in rent_stabilized_set,
                     risk_score=risk_score,
                     risk_level=risk_level,
-                    last_updated=datetime.now()
+                    last_updated=datetime.now(),
                 )
-                
+
                 results.append(stats)
-            
+
             return results
 
     def get_heatmap_data(
@@ -213,27 +223,33 @@ class NeighborhoodRepository:
         max_lng: float,
         data_type: str = "violations",
         borough: Optional[str] = None,
-        limit: int = 50000
+        limit: int = 50000,
     ) -> List[HeatmapPoint]:
         """
         Get heatmap data points for visualization.
-        
+
         Args:
             min_lat, max_lat, min_lng, max_lng: Geographic bounds
             data_type: Type of data ('violations', 'evictions', 'complaints')
             borough: Optional borough filter
             limit: Maximum number of data points to return
-            
+
         Returns:
             List of HeatmapPoint objects
         """
         with self.client_factory() as db:
             if data_type == "violations":
-                return self._get_violations_heatmap(db, min_lat, max_lat, min_lng, max_lng, borough, limit)
+                return self._get_violations_heatmap(
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                )
             elif data_type == "evictions":
-                return self._get_evictions_heatmap(db, min_lat, max_lat, min_lng, max_lng, borough, limit)
+                return self._get_evictions_heatmap(
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                )
             elif data_type == "complaints":
-                return self._get_complaints_heatmap(db, min_lat, max_lat, min_lng, max_lng, borough, limit)
+                return self._get_complaints_heatmap(
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                )
             else:
                 return []
 
@@ -245,7 +261,7 @@ class NeighborhoodRepository:
         min_lng: float,
         max_lng: float,
         borough: Optional[str] = None,
-        limit: int = 50000
+        limit: int = 50000,
     ) -> List[HeatmapPoint]:
         """Get violations heatmap data - optimized to use all data points"""
         # Build query with optional borough filter
@@ -280,19 +296,18 @@ class NeighborhoodRepository:
                 AND e.latitude BETWEEN %s AND %s
                 AND e.longitude BETWEEN %s AND %s
         """
-        
+
         # Add borough filter if specified
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
             query += " ORDER BY COALESCE(v.violation_count, 0) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, borough, limit))
+            rows = db.query_all(
+                query, (min_lat, max_lat, min_lng, max_lng, borough, limit)
+            )
         else:
             query += " ORDER BY COALESCE(v.violation_count, 0) DESC LIMIT %s"
             rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, limit))
-        return [as_heatmap_point({
-            **row,
-            'data_type': 'violations'
-        }) for row in rows]
+        return [as_heatmap_point({**row, "data_type": "violations"}) for row in rows]
 
     def _get_evictions_heatmap(
         self,
@@ -302,11 +317,11 @@ class NeighborhoodRepository:
         min_lng: float,
         max_lng: float,
         borough: Optional[str] = None,
-        limit: int = 50000
+        limit: int = 50000,
     ) -> List[HeatmapPoint]:
         """Get evictions heatmap data - optimized to use all data points"""
-        three_years_ago = datetime.now() - timedelta(days=3*365)
-        
+        three_years_ago = datetime.now() - timedelta(days=3 * 365)
+
         # Build query with optional borough filter
         query = """
             SELECT 
@@ -332,19 +347,21 @@ class NeighborhoodRepository:
                 AND longitude BETWEEN %s AND %s
                 AND executed_date >= %s
         """
-        
+
         # Add borough filter if specified
         if borough and borough != "All Boroughs":
             query += " AND borough = %s"
             query += " GROUP BY bbl, latitude, longitude, eviction_address, borough ORDER BY COUNT(*) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, three_years_ago, borough, limit))
+            rows = db.query_all(
+                query,
+                (min_lat, max_lat, min_lng, max_lng, three_years_ago, borough, limit),
+            )
         else:
             query += " GROUP BY bbl, latitude, longitude, eviction_address, borough ORDER BY COUNT(*) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, three_years_ago, limit))
-        return [as_heatmap_point({
-            **row,
-            'data_type': 'evictions'
-        }) for row in rows]
+            rows = db.query_all(
+                query, (min_lat, max_lat, min_lng, max_lng, three_years_ago, limit)
+            )
+        return [as_heatmap_point({**row, "data_type": "evictions"}) for row in rows]
 
     def _get_complaints_heatmap(
         self,
@@ -354,7 +371,7 @@ class NeighborhoodRepository:
         min_lng: float,
         max_lng: float,
         borough: Optional[str] = None,
-        limit: int = 50000
+        limit: int = 50000,
     ) -> List[HeatmapPoint]:
         """Get complaints heatmap data - optimized to use all data points"""
         # Build query with optional borough filter
@@ -389,34 +406,33 @@ class NeighborhoodRepository:
                 AND e.latitude BETWEEN %s AND %s
                 AND e.longitude BETWEEN %s AND %s
         """
-        
+
         # Add borough filter if specified
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
             query += " ORDER BY COALESCE(c.complaint_count, 0) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, borough, limit))
+            rows = db.query_all(
+                query, (min_lat, max_lat, min_lng, max_lng, borough, limit)
+            )
         else:
             query += " ORDER BY COALESCE(c.complaint_count, 0) DESC LIMIT %s"
             rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, limit))
-        return [as_heatmap_point({
-            **row,
-            'data_type': 'complaints'
-        }) for row in rows]
+        return [as_heatmap_point({**row, "data_type": "complaints"}) for row in rows]
 
     def get_borough_summary(self, borough: str = None) -> List[NeighborhoodSummary]:
         """
         Get summary statistics by borough.
-        
+
         Args:
             borough: Specific borough to filter by (optional)
-            
+
         Returns:
             List of NeighborhoodSummary objects
         """
         with self.client_factory() as db:
             where_clause = "WHERE e.borough = %s" if borough else ""
             params = (borough,) if borough else ()
-            
+
             query = f"""
                 SELECT 
                     e.borough,
@@ -457,33 +473,30 @@ class NeighborhoodRepository:
                 GROUP BY e.borough
                 ORDER BY e.borough
             """
-            
-            three_years_ago = datetime.now() - timedelta(days=3*365)
+
+            three_years_ago = datetime.now() - timedelta(days=3 * 365)
             all_params = (three_years_ago,) + params
-            
+
             rows = db.query_all(query, all_params)
             return [as_neighborhood_summary(row) for row in rows]
 
-    def get_neighborhood_trends(
-        self,
-        bbl: str,
-        days_back: int = 365
-    ) -> Dict[str, Any]:
+    def get_neighborhood_trends(self, bbl: str, days_back: int = 365) -> Dict[str, Any]:
         """
         Get trend data for a specific building/neighborhood.
-        
+
         Args:
             bbl: Building BBL
             days_back: Number of days to look back
-            
+
         Returns:
             Dictionary with trend data
         """
         with self.client_factory() as db:
             start_date = datetime.now() - timedelta(days=days_back)
-            
+
             # Get violation trends
-            violation_trends = db.query_all("""
+            violation_trends = db.query_all(
+                """
                 SELECT 
                     DATE_TRUNC('month', inspection_date) as month,
                     COUNT(*) as count
@@ -491,10 +504,13 @@ class NeighborhoodRepository:
                 WHERE bbl = %s AND inspection_date >= %s
                 GROUP BY DATE_TRUNC('month', inspection_date)
                 ORDER BY month
-            """, (bbl, start_date))
-            
+            """,
+                (bbl, start_date),
+            )
+
             # Get eviction trends
-            eviction_trends = db.query_all("""
+            eviction_trends = db.query_all(
+                """
                 SELECT 
                     DATE_TRUNC('month', executed_date) as month,
                     COUNT(*) as count
@@ -502,10 +518,13 @@ class NeighborhoodRepository:
                 WHERE bbl = %s AND executed_date >= %s
                 GROUP BY DATE_TRUNC('month', executed_date)
                 ORDER BY month
-            """, (bbl, start_date))
-            
+            """,
+                (bbl, start_date),
+            )
+
             # Get complaint trends
-            complaint_trends = db.query_all("""
+            complaint_trends = db.query_all(
+                """
                 SELECT 
                     DATE_TRUNC('month', problem_status_date) as month,
                     COUNT(*) as count
@@ -513,10 +532,12 @@ class NeighborhoodRepository:
                 WHERE bbl = %s AND problem_status_date >= %s
                 GROUP BY DATE_TRUNC('month', problem_status_date)
                 ORDER BY month
-            """, (bbl, start_date))
-            
+            """,
+                (bbl, start_date),
+            )
+
             return {
-                'violations': violation_trends,
-                'evictions': eviction_trends,
-                'complaints': complaint_trends
+                "violations": violation_trends,
+                "evictions": eviction_trends,
+                "complaints": complaint_trends,
             }

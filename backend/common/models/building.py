@@ -1,9 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict
-from decimal import Decimal
 
-from common.models.acris import AcrisLegal, AcrisParty, AcrisMaster
+from dataclasses import dataclass, field
+from decimal import Decimal
+from typing import Dict, List, Optional
+
+from common.models.acris import AcrisLegal, AcrisMaster, AcrisParty
 from common.models.affordable_housing_record import AffordableHousingRecord
 from common.models.complaint import Complaint
 from common.models.eviction import Eviction
@@ -56,7 +57,10 @@ class Building:
         if not e:
             return
         key = (e.docket_number or "", e.court_index_number or "")
-        exists = any((x.docket_number or "", x.court_index_number or "") == key for x in self.evictions)
+        exists = any(
+            (x.docket_number or "", x.court_index_number or "") == key
+            for x in self.evictions
+        )
         if not exists:
             self.evictions.append(e)
 
@@ -72,17 +76,22 @@ class Building:
         if p and p.document_id:
             self.acris_parties.setdefault(p.document_id, []).append(p)
 
+
 def as_registration(row: dict) -> Registration:
     return Registration(**row)
+
 
 def as_registration_contact(row: dict) -> RegistrationContact:
     return RegistrationContact(**row)
 
+
 def as_affordable(row: dict) -> AffordableHousingRecord:
     return AffordableHousingRecord(**row)
 
+
 def as_complaint(row: dict) -> Complaint:
     return Complaint(**row)
+
 
 def as_violation(row: dict) -> Violation:
     if "class" in row and "class_" not in row:
@@ -90,8 +99,10 @@ def as_violation(row: dict) -> Violation:
         row.pop("class")
     return Violation(**row)
 
+
 def as_eviction(row: dict) -> Eviction:
     return Eviction(**row)
+
 
 def as_acris_master(row: dict) -> AcrisMaster:
     amt = row.get("doc_amount")
@@ -102,14 +113,18 @@ def as_acris_master(row: dict) -> AcrisMaster:
             row = {**row, "doc_amount": None}
     return AcrisMaster(**row)
 
+
 def as_acris_legal(row: dict) -> AcrisLegal:
     return AcrisLegal(**row)
+
 
 def as_acris_party(row: dict) -> AcrisParty:
     return AcrisParty(**row)
 
+
 def as_rent_tag(row: dict) -> RentStabilizedTag:
     return RentStabilizedTag(**row)
+
 
 def build_building_from_rows(
     bbl: str,

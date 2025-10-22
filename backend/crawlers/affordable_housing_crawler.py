@@ -1,9 +1,12 @@
 import time
-import requests
 from typing import Any, Dict, List, Optional, Set
-from infrastructures.postgres.postgres_client import PostgresClient
-from common.interfaces.data_crawler import DataCrawler
+
+import requests
+
 from common.exceptions.db_error import DatabaseError
+from common.interfaces.data_crawler import DataCrawler
+from infrastructures.postgres.postgres_client import PostgresClient
+
 
 class AffordableHousingCrawler(DataCrawler):
     TABLE_NAME = "building_affordable_housing"
@@ -46,11 +49,22 @@ class AffordableHousingCrawler(DataCrawler):
     }
 
     DEFAULT_SELECT_CANDIDATES = [
-        "project_id", "project_name", "project_start_date",
-        "reporting_construction_type", "extended_affordability_status", "prevailing_wage_status",
-        "extremely_low_income_units", "very_low_income_units", "low_income_units",
-        "counted_rental_units", "all_counted_units", "total_units",
-        "bbl", "boroid", "block", "lot",
+        "project_id",
+        "project_name",
+        "project_start_date",
+        "reporting_construction_type",
+        "extended_affordability_status",
+        "prevailing_wage_status",
+        "extremely_low_income_units",
+        "very_low_income_units",
+        "low_income_units",
+        "counted_rental_units",
+        "all_counted_units",
+        "total_units",
+        "bbl",
+        "boroid",
+        "block",
+        "lot",
     ]
 
     def __init__(self, timeout: int = 30, max_retries: int = 3):
@@ -60,20 +74,32 @@ class AffordableHousingCrawler(DataCrawler):
         self._resolved_map: Optional[Dict[str, Optional[str]]] = None
 
     def _headers(self) -> Dict[str, str]:
-        return {"Accept": "application/json", "User-Agent": "AffordableHousingCrawler/1.0"}
+        return {
+            "Accept": "application/json",
+            "User-Agent": "AffordableHousingCrawler/1.0",
+        }
 
     def _request(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         backoff = 1.0
         for attempt in range(1, self.max_retries + 1):
-            resp = requests.get(self.API_URL, params=params, headers=self._headers(), timeout=self.timeout)
+            resp = requests.get(
+                self.API_URL,
+                params=params,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
             if resp.ok:
                 return resp.json()
             if resp.status_code in (429, 500, 502, 503, 504):
-                print(f"[AffordableHousingCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s")
+                print(
+                    f"[AffordableHousingCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s"
+                )
                 time.sleep(backoff)
                 backoff *= 2
                 continue
-            raise requests.HTTPError(f"{resp.status_code} {resp.reason}: {resp.text[:400]}")
+            raise requests.HTTPError(
+                f"{resp.status_code} {resp.reason}: {resp.text[:400]}"
+            )
         resp.raise_for_status()
         return []
 
@@ -96,7 +122,10 @@ class AffordableHousingCrawler(DataCrawler):
         if self._resolved_map is not None:
             return self._resolved_map
         available = self._discover_schema()
-        resolved = {logical: self._resolve_field(logical, available) for logical in self.FIELD_CANDIDATES}
+        resolved = {
+            logical: self._resolve_field(logical, available)
+            for logical in self.FIELD_CANDIDATES
+        }
         self._resolved_map = resolved
         print(f"[AffordableHousingCrawler] resolved map: {resolved}")
         return resolved
@@ -110,17 +139,17 @@ class AffordableHousingCrawler(DataCrawler):
         return ",".join(valid) if valid else None
 
     def _build_params(
-            self,
-            select: Optional[List[str]] = None,
-            where: Optional[str] = None,
-            order: Optional[str] = None,
-            limit: int = 5000,
-            offset: int = 0,
-            *,
-            start_from: Optional[str] = None,
-            start_to: Optional[str] = None,
-            construction_type: Optional[str] = None,
-            extra: Optional[Dict[str, Any]] = None,
+        self,
+        select: Optional[List[str]] = None,
+        where: Optional[str] = None,
+        order: Optional[str] = None,
+        limit: int = 5000,
+        offset: int = 0,
+        *,
+        start_from: Optional[str] = None,
+        start_to: Optional[str] = None,
+        construction_type: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         params: Dict[str, Any] = {}
 
@@ -133,7 +162,7 @@ class AffordableHousingCrawler(DataCrawler):
             where_clauses.append(f"({where})")
 
         resolved = self._build_resolution_map()
-        available = self._discover_schema()
+        self._discover_schema()
 
         date_col = resolved.get("project_start_date")
         if start_from and date_col:
@@ -142,7 +171,9 @@ class AffordableHousingCrawler(DataCrawler):
             where_clauses.append(f"{date_col} < '{start_to}T23:59:59.999'")
 
         if construction_type and resolved.get("reporting_construction_type"):
-            where_clauses.append(f"{resolved['reporting_construction_type']} = '{construction_type}'")
+            where_clauses.append(
+                f"{resolved['reporting_construction_type']} = '{construction_type}'"
+            )
 
         if where_clauses:
             params["$where"] = " AND ".join(where_clauses)
@@ -170,7 +201,11 @@ class AffordableHousingCrawler(DataCrawler):
 
     @staticmethod
     def _make_bbl_from_parts(boroid: Any, block: Any, lot: Any) -> Optional[str]:
-        if boroid in (None, "", "0") or block in (None, "", "0") or lot in (None, "", "0"):
+        if (
+            boroid in (None, "", "0")
+            or block in (None, "", "0")
+            or lot in (None, "", "0")
+        ):
             return None
         try:
             return f"{int(boroid)}{int(block):05d}{int(lot):04d}"
@@ -178,22 +213,26 @@ class AffordableHousingCrawler(DataCrawler):
             return None
 
     def fetch(
-            self,
-            limit: int = 5000,
-            offset: int = 0,
-            select: Optional[List[str]] = None,
-            where: Optional[str] = None,
-            order: str = "project_start_date DESC",
-            start_from: str = "2010-01-01",
-            start_to: Optional[str] = None,
-            construction_type: Optional[str] = None,
-            extra: Optional[Dict[str, Any]] = None,
+        self,
+        limit: int = 5000,
+        offset: int = 0,
+        select: Optional[List[str]] = None,
+        where: Optional[str] = None,
+        order: str = "project_start_date DESC",
+        start_from: str = "2010-01-01",
+        start_to: Optional[str] = None,
+        construction_type: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         try:
             params = self._build_params(
-                select=select, where=where, order=order,
-                limit=limit, offset=offset,
-                start_from=start_from, start_to=start_to,
+                select=select,
+                where=where,
+                order=order,
+                limit=limit,
+                offset=offset,
+                start_from=start_from,
+                start_to=start_to,
                 construction_type=construction_type,
                 extra=extra,
             )
@@ -225,14 +264,30 @@ class AffordableHousingCrawler(DataCrawler):
                 "bbl": bbl,
                 "project_name": d.get(avail(resolved.get("project_name"))),
                 "project_start_date": d.get(avail(resolved.get("project_start_date"))),
-                "reporting_construction_type": d.get(avail(resolved.get("reporting_construction_type"))),
-                "extended_affordability_status": d.get(avail(resolved.get("extended_affordability_status"))),
-                "prevailing_wage_status": d.get(avail(resolved.get("prevailing_wage_status"))),
-                "extremely_low_income_units": self._to_int(d.get(avail(resolved.get("extremely_low_income_units")))),
-                "very_low_income_units": self._to_int(d.get(avail(resolved.get("very_low_income_units")))),
-                "low_income_units": self._to_int(d.get(avail(resolved.get("low_income_units")))),
-                "counted_rental_units": self._to_int(d.get(avail(resolved.get("counted_rental_units")))),
-                "all_counted_units": self._to_int(d.get(avail(resolved.get("all_counted_units")))),
+                "reporting_construction_type": d.get(
+                    avail(resolved.get("reporting_construction_type"))
+                ),
+                "extended_affordability_status": d.get(
+                    avail(resolved.get("extended_affordability_status"))
+                ),
+                "prevailing_wage_status": d.get(
+                    avail(resolved.get("prevailing_wage_status"))
+                ),
+                "extremely_low_income_units": self._to_int(
+                    d.get(avail(resolved.get("extremely_low_income_units")))
+                ),
+                "very_low_income_units": self._to_int(
+                    d.get(avail(resolved.get("very_low_income_units")))
+                ),
+                "low_income_units": self._to_int(
+                    d.get(avail(resolved.get("low_income_units")))
+                ),
+                "counted_rental_units": self._to_int(
+                    d.get(avail(resolved.get("counted_rental_units")))
+                ),
+                "all_counted_units": self._to_int(
+                    d.get(avail(resolved.get("all_counted_units")))
+                ),
                 "total_units": self._to_int(d.get(avail(resolved.get("total_units")))),
             }
             mapped.append(row)
@@ -252,7 +307,9 @@ class AffordableHousingCrawler(DataCrawler):
                     rows,
                     conflict_target=self.CONFLICT_TARGET,
                 )
-                print(f"[{self.__class__.__name__}] Inserted {count} rows into {self.TABLE_NAME}.")
+                print(
+                    f"[{self.__class__.__name__}] Inserted {count} rows into {self.TABLE_NAME}."
+                )
             except DatabaseError as e:
                 print(f"[{self.__class__.__name__}] Insert failed: {e}")
                 raise
