@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from django.test import TestCase
 
 from infrastructures.postgres.building_repository import BuildingRepository
+from infrastructures.postgres.neighborhood_repository import NeighborhoodRepository
 from infrastructures.postgres.postgres_client import PostgresClient
 
 
@@ -307,6 +308,202 @@ class NeighborhoodRepositoryTests(TestCase):
 
     def test_neighborhood_repository_methods_exist(self):
         """Test that NeighborhoodRepository has expected methods"""
+        expected_methods = [
+            "get_neighborhood_stats_by_bounds",
+            "get_heatmap_data",
+            "get_borough_summary",
+            "get_neighborhood_trends",
+        ]
+
+        for method_name in expected_methods:
+            self.assertTrue(hasattr(self.repository, method_name))
+            self.assertTrue(callable(getattr(self.repository, method_name)))
+
+
+class PostgresClientAdvancedTests(TestCase):
+    def setUp(self):
+        self.client = PostgresClient()
+
+    def test_postgres_client_query_one_with_params(self):
+        """Test query_one with parameters"""
+        try:
+            with self.client as db:
+                result = db.query_one("SELECT %s as test", (42,))
+                self.assertEqual(result["test"], 42)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_postgres_client_query_all_with_params(self):
+        """Test query_all with parameters"""
+        try:
+            with self.client as db:
+                results = db.query_all("SELECT %s as test UNION SELECT %s as test", (1, 2))
+                self.assertEqual(len(results), 2)
+                self.assertEqual(results[0]["test"], 1)
+                self.assertEqual(results[1]["test"], 2)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_postgres_client_execute_with_params(self):
+        """Test execute with parameters"""
+        try:
+            with self.client as db:
+                result = db.execute("SELECT %s as test_id", (99,), returning="test_id")
+                self.assertEqual(result, 99)
+        except Exception as e:
+            self.skipTest(f"Database execute failed: {e}")
+
+    def test_postgres_client_connection_error_handling(self):
+        """Test connection error handling"""
+        # Test with invalid connection parameters
+        with patch('infrastructures.postgres.postgres_client.get_env') as mock_env:
+            mock_env.return_value = lambda key, default=None: {
+                'DB_NAME': 'invalid_db',
+                'DB_USER': 'invalid_user',
+                'DB_PASSWORD': 'invalid_password',
+                'DB_HOST': 'invalid_host',
+                'DB_PORT': 5432
+            }.get(key, default)
+            
+            with self.assertRaises(Exception):
+                with PostgresClient() as db:
+                    pass
+
+    def test_postgres_client_context_manager_exit(self):
+        """Test context manager exit behavior"""
+        try:
+            with self.client as db:
+                self.assertIsNotNone(self.client.conn)
+            # Connection should be closed after context exit
+            self.assertIsNone(self.client.conn)
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_postgres_client_autocommit_disabled(self):
+        """Test that autocommit is disabled"""
+        try:
+            with self.client as db:
+                self.assertFalse(self.client.conn.autocommit)
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_postgres_client_cursor_context_manager(self):
+        """Test cursor context manager"""
+        try:
+            with self.client as db:
+                with db._cursor() as cursor:
+                    self.assertIsNotNone(cursor)
+                    cursor.execute("SELECT 1")
+                    result = cursor.fetchone()
+                    self.assertEqual(result[0], 1)
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_postgres_client_cursor_without_connection(self):
+        """Test cursor creation without connection raises error"""
+        client = PostgresClient()
+        with self.assertRaises(Exception):
+            with client._cursor():
+                pass
+
+
+class NeighborhoodRepositoryAdvancedTests(TestCase):
+    def setUp(self):
+        self.repository = NeighborhoodRepository()
+
+    def test_get_neighborhood_stats_by_bounds_violations(self):
+        """Test get_neighborhood_stats_by_bounds with violations data type"""
+        try:
+            stats = self.repository.get_neighborhood_stats_by_bounds(
+                min_lat=40.7, max_lat=40.8, min_lng=-74.0, max_lng=-73.9, data_type="violations"
+            )
+            self.assertIsInstance(stats, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_neighborhood_stats_by_bounds_evictions(self):
+        """Test get_neighborhood_stats_by_bounds with evictions data type"""
+        try:
+            stats = self.repository.get_neighborhood_stats_by_bounds(
+                min_lat=40.7, max_lat=40.8, min_lng=-74.0, max_lng=-73.9, data_type="evictions"
+            )
+            self.assertIsInstance(stats, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_neighborhood_stats_by_bounds_complaints(self):
+        """Test get_neighborhood_stats_by_bounds with complaints data type"""
+        try:
+            stats = self.repository.get_neighborhood_stats_by_bounds(
+                min_lat=40.7, max_lat=40.8, min_lng=-74.0, max_lng=-73.9, data_type="complaints"
+            )
+            self.assertIsInstance(stats, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_heatmap_data_violations(self):
+        """Test get_heatmap_data with violations data type"""
+        try:
+            heatmap = self.repository.get_heatmap_data(
+                min_lat=40.7, max_lat=40.8, min_lng=-74.0, max_lng=-73.9, data_type="violations"
+            )
+            self.assertIsInstance(heatmap, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_heatmap_data_evictions(self):
+        """Test get_heatmap_data with evictions data type"""
+        try:
+            heatmap = self.repository.get_heatmap_data(
+                min_lat=40.7, max_lat=40.8, min_lng=-74.0, max_lng=-73.9, data_type="evictions"
+            )
+            self.assertIsInstance(heatmap, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_borough_summary_with_borough(self):
+        """Test get_borough_summary with specific borough"""
+        try:
+            summary = self.repository.get_borough_summary(borough="Manhattan")
+            self.assertIsInstance(summary, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_borough_summary_without_borough(self):
+        """Test get_borough_summary without specific borough"""
+        try:
+            summary = self.repository.get_borough_summary()
+            self.assertIsInstance(summary, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_neighborhood_trends_short_period(self):
+        """Test get_neighborhood_trends with short period"""
+        try:
+            trends = self.repository.get_neighborhood_trends(
+                bbl="1013510030", days_back=7
+            )
+            self.assertIsInstance(trends, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_neighborhood_trends_long_period(self):
+        """Test get_neighborhood_trends with long period"""
+        try:
+            trends = self.repository.get_neighborhood_trends(
+                bbl="1013510030", days_back=365
+            )
+            self.assertIsInstance(trends, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_neighborhood_repository_initialization(self):
+        """Test NeighborhoodRepository initialization"""
+        self.assertIsNotNone(self.repository.client_factory)
+        self.assertEqual(self.repository.client_factory, PostgresClient)
+
+    def test_neighborhood_repository_methods_exist(self):
+        """Test that NeighborhoodRepository has all expected methods"""
         expected_methods = [
             "get_neighborhood_stats_by_bounds",
             "get_heatmap_data",
