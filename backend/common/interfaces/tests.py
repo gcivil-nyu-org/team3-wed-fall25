@@ -1,6 +1,5 @@
 # Create your tests here.
 from unittest import TestCase
-from unittest.mock import patch
 
 from common.interfaces.data_crawler import DataCrawler
 
@@ -27,6 +26,7 @@ class DataCrawlerTests(TestCase):
 
     def test_data_crawler_subclass_implementation(self):
         """Test that a concrete subclass can be created"""
+
         class ConcreteCrawler(DataCrawler):
             def fetch(self):
                 return [{"test": "data"}]
@@ -40,6 +40,7 @@ class DataCrawlerTests(TestCase):
 
     def test_data_crawler_subclass_without_implementation(self):
         """Test that subclass without implementation raises TypeError"""
+
         class IncompleteCrawler(DataCrawler):
             pass
 
