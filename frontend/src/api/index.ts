@@ -454,4 +454,217 @@ export const fetchNeighborhoodTrends = async (params: {
   }
 };
 
+// =========================================================
+// COMMUNITY API TYPES AND FUNCTIONS
+// =========================================================
+
+export interface CommunityFavorite {
+  id: number;
+  user_id: number;
+  bbl: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityReview {
+  id: number;
+  user_id: number;
+  bbl: string;
+  rating?: number;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityReviewComment {
+  id: number;
+  review_id: number;
+  user_id: number;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityMessage {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  bbl?: string;
+  body: string;
+  read_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Community API Functions
+export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
+  try {
+    const response = await axiosInstance.get<{result: boolean, data: CommunityFavorite[]}>('/community/favorites/');
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+    throw error;
+  }
+};
+
+export const addFavorite = async (bbl: string, note?: string): Promise<CommunityFavorite> => {
+  try {
+    const response = await axiosInstance.post<{result: boolean, data: CommunityFavorite}>('/community/favorites/', {
+      bbl,
+      note
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error adding favorite:", error);
+    throw error;
+  }
+};
+
+export const removeFavorite = async (favoriteId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/favorites/${favoriteId}/`);
+  } catch (error) {
+    console.error("Error removing favorite:", error);
+    throw error;
+  }
+};
+
+export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
+  try {
+    const response = await axiosInstance.get<{result: boolean, data: CommunityReview[]}>(`/community/reviews/?bbl=${bbl}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    throw error;
+  }
+};
+
+export const createReview = async (bbl: string, title: string, body: string, rating?: number): Promise<CommunityReview> => {
+  try {
+    const response = await axiosInstance.post<{result: boolean, data: CommunityReview}>('/community/reviews/', {
+      bbl,
+      title,
+      body,
+      rating
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error creating review:", error);
+    throw error;
+  }
+};
+
+export const updateReview = async (reviewId: number, title?: string, body?: string, rating?: number): Promise<CommunityReview> => {
+  try {
+    const response = await axiosInstance.put<{result: boolean, data: CommunityReview}>(`/community/reviews/${reviewId}/`, {
+      title,
+      body,
+      rating
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error updating review:", error);
+    throw error;
+  }
+};
+
+export const deleteReview = async (reviewId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/reviews/${reviewId}/`);
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    throw error;
+  }
+};
+
+export const fetchReviewComments = async (reviewId: number): Promise<CommunityReviewComment[]> => {
+  try {
+    const response = await axiosInstance.get<{result: boolean, data: CommunityReviewComment[]}>(`/community/review-comments/?review_id=${reviewId}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching review comments:", error);
+    throw error;
+  }
+};
+
+export const createReviewComment = async (reviewId: number, body: string): Promise<CommunityReviewComment> => {
+  try {
+    const response = await axiosInstance.post<{result: boolean, data: CommunityReviewComment}>('/community/review-comments/', {
+      review_id: reviewId,
+      body
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error creating review comment:", error);
+    throw error;
+  }
+};
+
+export const deleteReviewComment = async (commentId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/review-comments/${commentId}/`);
+  } catch (error) {
+    console.error("Error deleting review comment:", error);
+    throw error;
+  }
+};
+
+export const fetchInboxMessages = async (): Promise<CommunityMessage[]> => {
+  try {
+    const response = await axiosInstance.get<{result: boolean, data: CommunityMessage[]}>('/community/messages/inbox/');
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching inbox messages:", error);
+    throw error;
+  }
+};
+
+export const fetchOutboxMessages = async (): Promise<CommunityMessage[]> => {
+  try {
+    const response = await axiosInstance.get<{result: boolean, data: CommunityMessage[]}>('/community/messages/outbox/');
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching outbox messages:", error);
+    throw error;
+  }
+};
+
+export const sendMessage = async (receiverId: number, body: string, bbl?: string): Promise<CommunityMessage> => {
+  try {
+    const response = await axiosInstance.post<{result: boolean, data: CommunityMessage}>('/community/messages/send/', {
+      receiver_id: receiverId,
+      body,
+      bbl
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const markMessageAsRead = async (messageId: number): Promise<void> => {
+  try {
+    await axiosInstance.put(`/community/messages/${messageId}/read/`);
+  } catch (error) {
+    console.error("Error marking message as read:", error);
+    throw error;
+  }
+};
+
+export const deleteMessage = async (messageId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/messages/${messageId}/`);
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    throw error;
+  }
+};
+
+// =========================================================
+// END OF COMMUNITY API TYPES AND FUNCTIONS
+// =========================================================
+
 export { fetchProfile };
