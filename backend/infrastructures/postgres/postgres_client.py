@@ -1,13 +1,13 @@
 # infrastructures/db/postgres_client.py
 
-from typing import Any, Optional, Sequence, Union, List, Dict
 from contextlib import contextmanager
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 
-from common.utils.env_util import get_env
 from common.exceptions.db_error import DatabaseError
+from common.utils.env_util import get_env
 
 
 class PostgresClient:
@@ -38,8 +38,6 @@ class PostgresClient:
 
         self.conn = None
 
-
-
     def __enter__(self) -> "PostgresClient":
         try:
             self.conn = psycopg2.connect(**self._params)
@@ -63,11 +61,12 @@ class PostgresClient:
                 self.conn = None
         return False
 
-
     @contextmanager
     def _cursor(self):
         if self.conn is None:
-            raise DatabaseError("Connection not initialized. Use 'with PostgresClient.from_env() as db:'")
+            raise DatabaseError(
+                "Connection not initialized. Use 'with PostgresClient.from_env() as db:'"
+            )
         cur = None
         try:
             cur = self.conn.cursor(cursor_factory=RealDictCursor)
@@ -77,7 +76,6 @@ class PostgresClient:
         finally:
             if cur is not None:
                 cur.close()
-
 
     def execute(
         self,
@@ -92,7 +90,9 @@ class PostgresClient:
                 if returning:
                     row = cur.fetchone()
                     if row is None or returning not in row:
-                        raise DatabaseError(f"RETURNING column '{returning}' not found in result")
+                        raise DatabaseError(
+                            f"RETURNING column '{returning}' not found in result"
+                        )
                     return row[returning]
                 return cur.rowcount
             except Exception as e:
@@ -128,7 +128,9 @@ class PostgresClient:
 
     # ---------- Convenience ----------
 
-    def exists(self, sql: str, params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None) -> bool:
+    def exists(
+        self, sql: str, params: Optional[Union[Sequence[Any], Dict[str, Any]]] = None
+    ) -> bool:
         return self.query_one(sql, params) is not None
 
     def scalar(
@@ -146,12 +148,12 @@ class PostgresClient:
         return next(iter(row.values())) if row else None
 
     def bulk_insert(
-            self,
-            table: str,
-            columns: List[str],
-            rows: List[Dict[str, Any]],
-            conflict_target: Optional[List[str]] = None,  # 🔹추가
-            do_update: bool = False,  # 🔹필요하면 upsert도 지원
+        self,
+        table: str,
+        columns: List[str],
+        rows: List[Dict[str, Any]],
+        conflict_target: Optional[List[str]] = None,  # 🔹추가
+        do_update: bool = False,  # 🔹필요하면 upsert도 지원
     ) -> int:
         if not rows:
             return 0
@@ -159,13 +161,15 @@ class PostgresClient:
         values = [tuple(r.get(col) for col in columns) for r in rows]
 
         cols_sql = ", ".join(columns)
-        placeholders = "(" + ", ".join(["%s"] * len(columns)) + ")"
+        "(" + ", ".join(["%s"] * len(columns)) + ")"
 
         if conflict_target:
             conflict_cols = ", ".join(conflict_target)
             if do_update:
                 update_sql = ", ".join([f"{col}=EXCLUDED.{col}" for col in columns])
-                conflict_clause = f"ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_sql}"
+                conflict_clause = (
+                    f"ON CONFLICT ({conflict_cols}) DO UPDATE SET {update_sql}"
+                )
             else:
                 conflict_clause = f"ON CONFLICT ({conflict_cols}) DO NOTHING"
         else:

@@ -9,11 +9,12 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-from pathlib import Path
+
+# import os
 from datetime import timedelta
+from pathlib import Path
 
 from common.utils.env_util import get_env
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -50,8 +51,8 @@ RUN_ENV = env("RUN_ENV", default="production")
 if RUN_ENV == "development":
     ALLOWED_HOSTS = ["*"]
     CORS_ALLOW_ALL_ORIGINS = True
-    CORS_ALLOW_HEADERS = ['*']
-    CORS_ALLOW_METHODS = ['*']
+    CORS_ALLOW_HEADERS = ["*"]
+    CORS_ALLOW_METHODS = ["*"]
 else:
     ALLOWED_HOSTS = []
     CORS_ALLOW_ALL_ORIGINS = False
@@ -69,20 +70,20 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third-party
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'corsheaders',
-    'drf_spectacular',
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "corsheaders",
+    "drf_spectacular",
     # Local apps
-    'apps.user',
-    'apps.dummy',
-    'apps.building',
-    'apps.community',
-    'apps.neighborhood',
+    "apps.user",
+    "apps.dummy",
+    "apps.building",
+    "apps.community",
+    "apps.neighborhood",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -118,15 +119,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
         "TEST": {
             "NAME": f"test_{env('DB_NAME')}",
         },
@@ -140,9 +140,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
 ]
 
 REST_FRAMEWORK = {
@@ -150,12 +156,9 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     # "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",)
-    "DEFAULT_RENDERER_CLASSES": (
-        "middlewares.ok_middleware.OkJSONRenderer",
-    ),
-
+    "DEFAULT_RENDERER_CLASSES": ("middlewares.ok_middleware.OkJSONRenderer",),
     "EXCEPTION_HANDLER": "middlewares.error_middleware.custom_exception_handler",
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # "DEFAULT_PAGINATION_CLASS": "middlewares.pagination.Pagination",
     # "PAGE_SIZE": 20,
 }
@@ -177,8 +180,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
-
 
 
 # Default primary key field type

@@ -43,6 +43,7 @@ DROP FUNCTION IF EXISTS set_updated_at_demo_item();
 DROP TABLE IF EXISTS demo_item;
 """
 
+
 class Migration(migrations.Migration):
     initial = True
     dependencies = []

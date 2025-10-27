@@ -1,8 +1,10 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
+
 
 @dataclass
 class AcrisMaster:
@@ -12,6 +14,7 @@ class AcrisMaster:
     doc_date: Optional[datetime]
     doc_amount: Optional[Decimal]
 
+
 @dataclass
 class AcrisLegal:
     document_id: str
@@ -19,6 +22,7 @@ class AcrisLegal:
     borough: Optional[int]
     block: Optional[int]
     lot: Optional[int]
+
 
 @dataclass
 class AcrisParty:
@@ -29,4 +33,3 @@ class AcrisParty:
     city: Optional[str]
     state: Optional[str]
     zip: Optional[str]
-
