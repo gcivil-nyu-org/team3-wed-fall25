@@ -8,6 +8,7 @@ import AppAppBar from "./components/AppBar";
 import { SiteFooter } from "./components/SiteFooter";
 import { Home, Search, SignIn, SignUp, Building } from "./pages";
 import LandlordDashboard from "./pages/LandlordDashboard";
+import LandlordApply from "./pages/LandlordApply";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="search" element={<Search />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
+          <Route path="landlord/apply" element={<LandlordApply />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />

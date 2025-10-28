@@ -51,8 +51,8 @@ export default function LandlordDashboard() {
         // Replace with actual landlordId - for now use demo id
         const landlordId = "101";
         const [propsResp, violsResp, revsResp] = await Promise.all([
-          landlordApi.fetchProperties(landlordId),
-          landlordApi.fetchViolations(landlordId),
+          landlordApi.fetchProperties(),
+          landlordApi.fetchViolations(),
           landlordApi.fetchReviews(landlordId),
         ]);
         if (!mounted) return;

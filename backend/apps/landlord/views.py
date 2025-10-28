@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 
 from infrastructures.postgres.postgres_client import PostgresClient
 from infrastructures.postgres.building_repository import BuildingRepository
+from infrastructures.postgres.landlord_repository import LandlordRepository
 #from django.conf import settings
 
 
@@ -26,6 +27,137 @@ def _mock_properties():
 class PropertiesView(APIView):
     permission_classes = [AllowAny]
 
+    def get(self, request):
+        """Return list of properties (by BBL) owned by landlord (owner_user_id == landlord_id).
+
+        Uses `landlord_owners` table to look up BBLs, then queries BuildingRepository
+        for registration/address/complaints/evictions related to each BBL.
+        """
+        try:
+            # Use the authenticated user's ID
+            user_id = request.user.id if request.user and request.user.is_authenticated else None
+        except:
+            user_id = None
+        # try:
+        #     if user_id != int(landlord_id):
+        #         return Response({"error": "Unauthorized access to landlord properties."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            # find BBLs for this landlord
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (user_id,),
+                )
+
+            bbls = [r["bbl"] for r in rows]
+            if not bbls:
+                return Response([], status=status.HTTP_200_OK)
+
+            repo = BuildingRepository()
+            buildings = repo.get_many_by_bbl(bbls)
+
+            properties = []
+            for bbl, bld in buildings.items():
+                reg = getattr(bld, "registration", None) if bld else None
+                address = None
+                if reg:
+                    # Registration is a dataclass with attributes
+                    hn = getattr(reg, "house_number", None)
+                    sn = getattr(reg, "street_name", None)
+                    boro = getattr(reg, "boro", None) or getattr(reg, "boro", None)
+                    address = ", ".join([s for s in [hn, sn, boro] if s])
+
+                violations_count = len(getattr(bld, "complaints", []) or []) + len(getattr(bld, "violations", []) or [])
+                evictions_count = len(getattr(bld, "evictions", []) or [])
+
+                properties.append(
+                    {
+                        "id": bbl,
+                        "bbl": bbl,
+                        "address": address or bbl,
+                        "occupancy_status": None,
+                        "financial_performance": None,
+                        "tenant_turnover": None,
+                        "violations_count": violations_count,
+                        "evictions_count": evictions_count,
+                    }
+                )
+            return Response(properties, status=status.HTTP_200_OK)
+        except Exception as e:
+            # Log server-side in real app; here we just fall back to mock
+            print(f"[PropertiesView] DB error: {e}")
+            return Response(_mock_properties(), status=status.HTTP_200_OK)
+
+
+class ViolationsView(APIView):
+    permission_classes = [AllowAny]
+
+    
+
+    def get(self, request):
+        """Return aggregated violations/complaints for all BBLs owned by landlord."""
+        try:
+            # Use the authenticated user's ID
+            user_id = request.user.id if request.user and request.user.is_authenticated else None
+        except:
+            user_id = None
+        
+        try:
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (user_id,),
+                )
+
+            bbls = [r["bbl"] for r in rows]
+            if not bbls:
+                return Response([], status=status.HTTP_200_OK)
+
+            # reuse BuildingRepository to get complaints/violations
+            repo = BuildingRepository()
+            violations = []
+            for bbl in bbls:
+                bld = repo.get_by_bbl(bbl)
+                if not bld:
+                    continue
+                # complaints is a list of Complaint dataclasses
+                for c in getattr(bld, "complaints", []) or []:
+                    violations.append({
+                        "id": getattr(c, "complaint_id", None),
+                        "bbl": bbl,
+                        "message": getattr(c, "status_description", None) or getattr(c, "minor_category", None) or getattr(c, "major_category", None),
+                        "resolved": (getattr(c, "complaint_status", "") or "").lower() in ("closed", "close", "resolved"),
+                    })
+                # also include violations dataclass entries
+                for v in getattr(bld, "violations", []) or []:
+                    violations.append({
+                        "id": getattr(v, "violation_id", None),
+                        "bbl": bbl,
+                        "message": getattr(v, "nov_description", None) or getattr(v, "nov_type", None),
+                        "resolved": (getattr(v, "violation_status", "") or "").lower() in ("closed", "close", "resolved"),
+                    })
+
+            return Response(violations, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[ViolationsView] DB error: {e}")
+            # fallback mock
+            data = [
+                {"id": "v1", "message": "Broken fire escape", "resolved": False},
+            ]
+            return Response(data, status=status.HTTP_200_OK)
+        
+
+class PropertiesView2(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, landlord_id):
         """Return list of properties (by BBL) owned by landlord (owner_user_id == landlord_id).
 
@@ -33,6 +165,14 @@ class PropertiesView(APIView):
         for registration/address/complaints/evictions related to each BBL.
         """
         try:
+            # Use the authenticated user's ID
+            user_id = request.user.id if request.user and request.user.is_authenticated else None
+        except:
+            user_id = None
+        try:
+            if user_id != int(landlord_id):
+                return Response({"error": "Unauthorized access to landlord properties."}, status=status.HTTP_403_FORBIDDEN)
+            
             # find BBLs for this landlord
             with PostgresClient() as db:
                 rows = db.query_all(
@@ -84,7 +224,7 @@ class PropertiesView(APIView):
             return Response(_mock_properties(), status=status.HTTP_200_OK)
 
 
-class ViolationsView(APIView):
+class ViolationsView2(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, landlord_id):
@@ -152,4 +292,69 @@ class ReviewsView(APIView):
         if True:
             return Response(mock_reviews, status=status.HTTP_200_OK)
         return Response([], status=status.HTTP_200_OK)
+    
+class LandlordApplicationView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        """Handle landlord application submission."""
+        try:
+            data = request.data
+            bbl = data.get("bbl")
+            country = data.get("country")
+            agree_terms = data.get("agree_terms")
+            # Optional: keep these if you want them in a different table
+            full_name = data.get("full_name")
+            email = data.get("email")
+            phone = data.get("phone")
+            experience_years = data.get("experience_years")
+
+            if not all([bbl, country, agree_terms]):
+                print("[LandlordApplyView] Missing required fields.")
+                return Response({"error": "BBL, country, and terms agreement are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate BBL format
+            if not bbl.isdigit() or len(bbl) != 10:
+                print("[LandlordApplyView] Invalid BBL format.")
+                return Response({"error": "Invalid BBL format. Must be 10 digits."}, status=status.HTTP_400_BAD_REQUEST)
+
+            user_id = request.user.id
+
+            with PostgresClient() as db:
+                # Check for existing application
+                existing = db.query_one(
+                    """
+                    SELECT id FROM landlord_owners 
+                    WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (bbl, user_id)
+                )
+                
+                if existing:
+                    print("[LandlordApplyView] Application already exists for this user and BBL.")
+                    return Response({"error": "You already have an application for this BBL."}, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Insert into landlord_owners
+                db.execute(
+                    """
+                    INSERT INTO landlord_owners (bbl, owner_user_id, created_at, updated_at)
+                    VALUES (%s, %s, NOW(), NOW())
+                    """,
+                    (bbl, user_id),
+                )
+                
+                # Optional: If you still want to store the additional info in landlord_applications
+                # if all([full_name, email, phone, experience_years]):
+                #     db.execute(
+                #         """
+                #         INSERT INTO landlord_applications (full_name, email, phone, experience_years, country, agree_terms, user_id)
+                #         VALUES (%s, %s, %s, %s, %s, %s, %s)
+                #         """,
+                #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
+                #     )
+
+            return Response({"message": "Application submitted successfully."}, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            print(f"[LandlordApplyView] DB error: {e}")
+            return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

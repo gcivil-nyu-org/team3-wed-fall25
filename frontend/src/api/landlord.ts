@@ -24,8 +24,9 @@ export interface ReviewDTO {
   flagged?: boolean;
 }
 
-export async function fetchProperties(landlordId: string) {
-  const resp = await axios.get<PropertyDTO[]>(`/landlord/${landlordId}/properties/`);
+export async function fetchProperties() {
+  // const resp = await axios.get<PropertyDTO[]>(`/landlord/${landlordId}/properties/`);
+  const resp = await axios.get<PropertyDTO[]>(`/landlord/properties/`);
   let data = resp.data as any;
   // Handle wrapped responses like { result: true, data: [...] }
   if (data && typeof data === "object" && Array.isArray(data.data)) {
@@ -38,8 +39,9 @@ export async function fetchProperties(landlordId: string) {
   return data as PropertyDTO[];
 }
 
-export async function fetchViolations(landlordId: string) {
-  const resp = await axios.get<ViolationDTO[]>(`/landlord/${landlordId}/violations/`);
+export async function fetchViolations() {
+  // const resp = await axios.get<ViolationDTO[]>(`/landlord/${landlordId}/violations/`);
+  const resp = await axios.get<ViolationDTO[]>(`/landlord/violations/`);
   let data = resp.data as any;
   if (data && typeof data === "object" && Array.isArray(data.data)) {
     return data.data as ViolationDTO[];
@@ -63,3 +65,43 @@ export async function fetchReviews(landlordId: string) {
   }
   return data as ReviewDTO[];
 }
+
+
+function getCsrfToken(): string {
+  // Try to get CSRF token from cookie
+  const name = 'csrftoken';
+  let cookieValue = '';
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+export async function submitApplication(applicationData: {
+  name: string;
+  email: string;
+  bbl: string;
+  country: string;
+  agreeTerms: boolean;
+}) {
+  const resp = await axios.post(`/landlord/apply/`, applicationData, {
+    withCredentials: true, // Important for session authentication
+    headers: {
+      "X-CSRFToken": getCsrfToken(), // Add CSRF token
+    },
+  });
+  let data = resp.data as any;
+  if (resp.status >= 200 && resp.status < 300) {
+    return data;
+  } else {
+    throw new Error(data.error || "Failed to submit application");
+  }
+}
+
