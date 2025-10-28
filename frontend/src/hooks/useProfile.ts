@@ -22,7 +22,6 @@ export const useProfile = () => {
         const data = (response as any)?.data?.data ?? (response as any)?.data ?? null;
         setUser(data);
       } catch (err) {
-        // If profile fetch fails, clear the token and user state
         sessionStorage.removeItem("access_token");
         sessionStorage.removeItem("refresh_token");
         setUser(null);
