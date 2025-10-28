@@ -1,7 +1,8 @@
 import { Box, Button, TextField, Typography, Container, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Alert, Paper } from "@mui/material";
 import { Link } from "react-router";
 import { useState } from "react";
-import { registerUser } from "../api/auth";
+import { registerUser } from "../api";
+import type { UserRegistration } from "../types";
 import BusinessIcon from "@mui/icons-material/Business";
 
 export default function SignUp() {
@@ -25,11 +26,15 @@ export default function SignUp() {
     setMessage(null);
 
     try {
-      const response = await registerUser({
+      const userData: UserRegistration = {
         username: name,
         email: email,
-        password: password
-      });
+        password: password,
+        confirm_password: confirmPassword,
+        role: role,
+      };
+      
+      const response = await registerUser(userData);
       
       setMessage({ type: 'success', text: 'Account created successfully! You can now sign in.' });
       console.log("Registration successful:", response.data);
