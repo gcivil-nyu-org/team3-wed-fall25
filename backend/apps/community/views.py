@@ -176,7 +176,7 @@ def review_comments_list_create(request):
         comments = CommunityReviewComments.objects.filter(
             review_id=review_id,
             deleted_at__isnull=True
-        ).order_by('created_at')
+        ).order_by('-created_at')
         serializer = CommunityReviewCommentsSerializer(comments, many=True)
         return Response(serializer.data)
     
