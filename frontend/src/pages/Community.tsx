@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -24,7 +24,7 @@ import {
   Divider,
   Avatar,
   Badge,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Favorite,
   FavoriteBorder,
@@ -38,8 +38,8 @@ import {
   Add,
   LocationOn,
   Person,
-} from '@mui/icons-material';
-import { useProfile } from '../hooks/useProfile';
+} from "@mui/icons-material";
+import { useProfile } from "../hooks/useProfile";
 import {
   fetchFavorites,
   addFavorite,
@@ -59,7 +59,7 @@ import {
   type CommunityReview,
   type CommunityReviewComment,
   type CommunityMessage,
-} from '../api/index';
+} from "../api/index";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -83,61 +83,69 @@ function TabPanel(props: TabPanelProps) {
 }
 
 const Community: React.FC = () => {
-  const { profile, isLoading: profileLoading } = useProfile();
+  // const { profile, isLoading: profileLoading } = useProfile();
   const [tabValue, setTabValue] = useState(0);
   const [favorites, setFavorites] = useState<CommunityFavorite[]>([]);
   const [reviews, setReviews] = useState<CommunityReview[]>([]);
   const [messages, setMessages] = useState<CommunityMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Dialog states
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
-  const [selectedBbl, setSelectedBbl] = useState<string>('');
-  const [newReview, setNewReview] = useState({ title: '', body: '', rating: 0 });
-  const [newMessage, setNewMessage] = useState({ receiverId: 0, body: '', bbl: '' });
+  const [selectedBbl, setSelectedBbl] = useState<string>("");
+  const [newReview, setNewReview] = useState({
+    title: "",
+    body: "",
+    rating: 0,
+  });
+  const [newMessage, setNewMessage] = useState({
+    receiverId: 0,
+    body: "",
+    bbl: "",
+  });
 
   // Load data based on active tab
-  useEffect(() => {
-    if (profile && !profileLoading) {
-      loadTabData();
-    }
-  }, [tabValue, profile, profileLoading]);
+  // useEffect(() => {
+  //   if (profile && !profileLoading) {
+  //     loadTabData();
+  //   }
+  // }, [tabValue, profile, profileLoading]);
 
-  const loadTabData = async () => {
-    if (!profile) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      switch (tabValue) {
-        case 0: // Favorites
-          const favoritesData = await fetchFavorites();
-          setFavorites(favoritesData);
-          break;
-        case 1: // Reviews
-          // For now, show empty state - in real app, you'd fetch user's reviews
-          setReviews([]);
-          break;
-        case 2: // Messages
-          const [inboxData, outboxData] = await Promise.all([
-            fetchInboxMessages(),
-            fetchOutboxMessages()
-          ]);
-          setMessages([...inboxData, ...outboxData].sort((a, b) => 
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ));
-          break;
-      }
-    } catch (err) {
-      setError('Failed to load data. Please try again.');
-      console.error('Error loading data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const loadTabData = async () => {
+  //   if (!profile) return;
+
+  //   setLoading(true);
+  //   setError(null);
+
+  //   try {
+  //     switch (tabValue) {
+  //       case 0: // Favorites
+  //         const favoritesData = await fetchFavorites();
+  //         setFavorites(favoritesData);
+  //         break;
+  //       case 1: // Reviews
+  //         // For now, show empty state - in real app, you'd fetch user's reviews
+  //         setReviews([]);
+  //         break;
+  //       case 2: // Messages
+  //         const [inboxData, outboxData] = await Promise.all([
+  //           fetchInboxMessages(),
+  //           fetchOutboxMessages()
+  //         ]);
+  //         setMessages([...inboxData, ...outboxData].sort((a, b) =>
+  //           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  //         ));
+  //         break;
+  //     }
+  //   } catch (err) {
+  //     setError('Failed to load data. Please try again.');
+  //     console.error('Error loading data:', err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -146,18 +154,18 @@ const Community: React.FC = () => {
   const handleAddFavorite = async (bbl: string, note?: string) => {
     try {
       const newFavorite = await addFavorite(bbl, note);
-      setFavorites(prev => [newFavorite, ...prev]);
+      setFavorites((prev) => [newFavorite, ...prev]);
     } catch (err) {
-      setError('Failed to add favorite. Please try again.');
+      setError("Failed to add favorite. Please try again.");
     }
   };
 
   const handleRemoveFavorite = async (favoriteId: number) => {
     try {
       await removeFavorite(favoriteId);
-      setFavorites(prev => prev.filter(fav => fav.id !== favoriteId));
+      setFavorites((prev) => prev.filter((fav) => fav.id !== favoriteId));
     } catch (err) {
-      setError('Failed to remove favorite. Please try again.');
+      setError("Failed to remove favorite. Please try again.");
     }
   };
 
@@ -169,12 +177,12 @@ const Community: React.FC = () => {
         newReview.body,
         newReview.rating > 0 ? newReview.rating : undefined
       );
-      setReviews(prev => [review, ...prev]);
+      setReviews((prev) => [review, ...prev]);
       setReviewDialogOpen(false);
-      setNewReview({ title: '', body: '', rating: 0 });
-      setSelectedBbl('');
+      setNewReview({ title: "", body: "", rating: 0 });
+      setSelectedBbl("");
     } catch (err) {
-      setError('Failed to create review. Please try again.');
+      setError("Failed to create review. Please try again.");
     }
   };
 
@@ -185,44 +193,44 @@ const Community: React.FC = () => {
         newMessage.body,
         newMessage.bbl || undefined
       );
-      setMessages(prev => [message, ...prev]);
+      setMessages((prev) => [message, ...prev]);
       setMessageDialogOpen(false);
-      setNewMessage({ receiverId: 0, body: '', bbl: '' });
+      setNewMessage({ receiverId: 0, body: "", bbl: "" });
     } catch (err) {
-      setError('Failed to send message. Please try again.');
+      setError("Failed to send message. Please try again.");
     }
   };
 
-  if (profileLoading) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4, textAlign: 'center' }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
-      </Container>
-    );
-  }
+  // if (profileLoading) {
+  //   return (
+  //     <Container maxWidth="lg" sx={{ py: 4, textAlign: 'center' }}>
+  //       <CircularProgress />
+  //       <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
+  //     </Container>
+  //   );
+  // }
 
-  if (!profile) {
-    return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="info">
-          Please sign in to access community features.
-        </Alert>
-      </Container>
-    );
-  }
+  // if (!profile) {
+  //   return (
+  //     <Container maxWidth="lg" sx={{ py: 4 }}>
+  //       <Alert severity="info">
+  //         Please sign in to access community features.
+  //       </Alert>
+  //     </Container>
+  //   );
+  // }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography 
-        variant="h3" 
-        component="h1" 
-        gutterBottom 
-        sx={{ 
-          fontWeight: 700, 
+      <Typography
+        variant="h3"
+        component="h1"
+        gutterBottom
+        sx={{
+          fontWeight: 700,
           color: "#2D3748",
           fontFamily: '"Montserrat", "Roboto", sans-serif',
-          mb: 4
+          mb: 4,
         }}
       >
         Community Hub
@@ -234,29 +242,37 @@ const Community: React.FC = () => {
         </Alert>
       )}
 
-      <Paper sx={{ width: '100%' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="community tabs">
-            <Tab 
+      <Paper sx={{ width: "100%" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="community tabs"
+          >
+            <Tab
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Favorite />
                   <span>My Favorites</span>
                   {favorites.length > 0 && (
-                    <Chip label={favorites.length} size="small" color="primary" />
+                    <Chip
+                      label={favorites.length}
+                      size="small"
+                      color="primary"
+                    />
                   )}
                 </Box>
-              } 
+              }
             />
-            <Tab 
+            <Tab
               label={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                   <Star />
                   <span>Reviews</span>
                 </Box>
-              } 
+              }
             />
-            <Tab 
+            {/* <Tab 
               label={
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Message />
@@ -271,12 +287,19 @@ const Community: React.FC = () => {
                   )}
                 </Box>
               } 
-            />
+            /> */}
           </Tabs>
         </Box>
 
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+            }}
+          >
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
               Saved Buildings
             </Typography>
@@ -284,12 +307,12 @@ const Community: React.FC = () => {
               variant="outlined"
               startIcon={<Add />}
               onClick={() => {
-                const bbl = prompt('Enter BBL (10-digit number):');
-                const note = prompt('Add a note (optional):');
+                const bbl = prompt("Enter BBL (10-digit number):");
+                const note = prompt("Add a note (optional):");
                 if (bbl && bbl.match(/^\d{10}$/)) {
                   handleAddFavorite(bbl, note || undefined);
                 } else if (bbl) {
-                  setError('Please enter a valid 10-digit BBL number.');
+                  setError("Please enter a valid 10-digit BBL number.");
                 }
               }}
             >
@@ -298,12 +321,14 @@ const Community: React.FC = () => {
           </Box>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
             </Box>
           ) : favorites.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center', backgroundColor: '#f5f5f5' }}>
-              <FavoriteBorder sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+            <Paper
+              sx={{ p: 4, textAlign: "center", backgroundColor: "#f5f5f5" }}
+            >
+              <FavoriteBorder sx={{ fontSize: 64, color: "#ccc", mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No saved buildings yet
               </Typography>
@@ -314,9 +339,19 @@ const Community: React.FC = () => {
           ) : (
             <Stack spacing={2}>
               {favorites.map((favorite) => (
-                <Card key={favorite.id} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Card
+                  key={favorite.id}
+                  sx={{ display: "flex", alignItems: "center" }}
+                >
                   <CardContent sx={{ flex: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
+                    >
                       <LocationOn color="action" />
                       <Typography variant="h6">BBL: {favorite.bbl}</Typography>
                     </Box>
@@ -333,7 +368,9 @@ const Community: React.FC = () => {
                     <Button
                       size="small"
                       color="primary"
-                      onClick={() => window.open(`/building/${favorite.bbl}`, '_blank')}
+                      onClick={() =>
+                        window.open(`/building/${favorite.bbl}`, "_blank")
+                      }
                     >
                       View Details
                     </Button>
@@ -351,7 +388,14 @@ const Community: React.FC = () => {
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+            }}
+          >
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
               Building Reviews
             </Typography>
@@ -359,12 +403,14 @@ const Community: React.FC = () => {
               variant="contained"
               startIcon={<Add />}
               onClick={() => {
-                const bbl = prompt('Enter BBL for the building you want to review:');
+                const bbl = prompt(
+                  "Enter BBL for the building you want to review:"
+                );
                 if (bbl && bbl.match(/^\d{10}$/)) {
                   setSelectedBbl(bbl);
                   setReviewDialogOpen(true);
                 } else if (bbl) {
-                  setError('Please enter a valid 10-digit BBL number.');
+                  setError("Please enter a valid 10-digit BBL number.");
                 }
               }}
             >
@@ -372,19 +418,27 @@ const Community: React.FC = () => {
             </Button>
           </Box>
 
-          <Paper sx={{ p: 4, textAlign: 'center', backgroundColor: '#f5f5f5' }}>
-            <Star sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+          <Paper sx={{ p: 4, textAlign: "center", backgroundColor: "#f5f5f5" }}>
+            <Star sx={{ fontSize: 64, color: "#ccc", mb: 2 }} />
             <Typography variant="h6" color="text.secondary" gutterBottom>
               No reviews yet
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Write reviews about buildings to help other tenants make informed decisions.
+              Write reviews about buildings to help other tenants make informed
+              decisions.
             </Typography>
           </Paper>
         </TabPanel>
 
         <TabPanel value={tabValue} index={2}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+            }}
+          >
             <Typography variant="h5" sx={{ fontWeight: 600 }}>
               Messages
             </Typography>
@@ -392,17 +446,17 @@ const Community: React.FC = () => {
               variant="contained"
               startIcon={<Send />}
               onClick={() => {
-                const receiverId = prompt('Enter receiver user ID:');
-                const bbl = prompt('Enter BBL (optional):');
+                const receiverId = prompt("Enter receiver user ID:");
+                const bbl = prompt("Enter BBL (optional):");
                 if (receiverId && !isNaN(Number(receiverId))) {
-                  setNewMessage({ 
-                    receiverId: Number(receiverId), 
-                    body: '', 
-                    bbl: bbl || '' 
+                  setNewMessage({
+                    receiverId: Number(receiverId),
+                    body: "",
+                    bbl: bbl || "",
                   });
                   setMessageDialogOpen(true);
                 } else if (receiverId) {
-                  setError('Please enter a valid user ID number.');
+                  setError("Please enter a valid user ID number.");
                 }
               }}
             >
@@ -411,12 +465,14 @@ const Community: React.FC = () => {
           </Box>
 
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress />
             </Box>
           ) : messages.length === 0 ? (
-            <Paper sx={{ p: 4, textAlign: 'center', backgroundColor: '#f5f5f5' }}>
-              <Message sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+            <Paper
+              sx={{ p: 4, textAlign: "center", backgroundColor: "#f5f5f5" }}
+            >
+              <Message sx={{ fontSize: 64, color: "#ccc", mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
                 No messages yet
               </Typography>
@@ -427,25 +483,42 @@ const Community: React.FC = () => {
           ) : (
             <Stack spacing={2}>
               {messages.map((message) => (
-                <Card key={message.id} sx={{ opacity: message.read_at ? 0.7 : 1 }}>
+                <Card
+                  key={message.id}
+                  sx={{ opacity: message.read_at ? 0.7 : 1 }}
+                >
                   <CardContent>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 1,
+                      }}
+                    >
                       <Avatar sx={{ width: 32, height: 32 }}>
                         <Person />
                       </Avatar>
-                      <Typography variant="subtitle2">
+                      {/* <Typography variant="subtitle2">
                         {message.sender_id === profile.id ? 'You' : `User ${message.sender_id}`}
                         {message.receiver_id === profile.id ? ' → You' : ` → User ${message.receiver_id}`}
-                      </Typography>
-                      {!message.read_at && message.receiver_id === profile.id && (
+                      </Typography> */}
+                      {/* {!message.read_at && message.receiver_id === profile.id && (
                         <Chip label="Unread" size="small" color="primary" />
-                      )}
+                      )} */}
                     </Box>
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       {message.body}
                     </Typography>
                     {message.bbl && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          mb: 1,
+                        }}
+                      >
                         <LocationOn fontSize="small" color="action" />
                         <Typography variant="caption" color="text.secondary">
                           BBL: {message.bbl}
@@ -456,7 +529,7 @@ const Community: React.FC = () => {
                       {new Date(message.created_at).toLocaleString()}
                     </Typography>
                   </CardContent>
-                  <CardActions>
+                  {/* <CardActions>
                     {!message.read_at && message.receiver_id === profile.id && (
                       <Button
                         size="small"
@@ -487,7 +560,7 @@ const Community: React.FC = () => {
                     >
                       <Delete />
                     </IconButton>
-                  </CardActions>
+                  </CardActions> */}
                 </Card>
               ))}
             </Stack>
@@ -496,14 +569,21 @@ const Community: React.FC = () => {
       </Paper>
 
       {/* Review Dialog */}
-      <Dialog open={reviewDialogOpen} onClose={() => setReviewDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={reviewDialogOpen}
+        onClose={() => setReviewDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Write a Review</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             label="Title"
             value={newReview.title}
-            onChange={(e) => setNewReview(prev => ({ ...prev, title: e.target.value }))}
+            onChange={(e) =>
+              setNewReview((prev) => ({ ...prev, title: e.target.value }))
+            }
             sx={{ mb: 2, mt: 1 }}
           />
           <Box sx={{ mb: 2 }}>
@@ -513,7 +593,7 @@ const Community: React.FC = () => {
             <Rating
               value={newReview.rating}
               onChange={(event, newValue) => {
-                setNewReview(prev => ({ ...prev, rating: newValue || 0 }));
+                setNewReview((prev) => ({ ...prev, rating: newValue || 0 }));
               }}
             />
           </Box>
@@ -523,12 +603,14 @@ const Community: React.FC = () => {
             rows={4}
             label="Review"
             value={newReview.body}
-            onChange={(e) => setNewReview(prev => ({ ...prev, body: e.target.value }))}
+            onChange={(e) =>
+              setNewReview((prev) => ({ ...prev, body: e.target.value }))
+            }
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setReviewDialogOpen(false)}>Cancel</Button>
-          <Button 
+          <Button
             onClick={handleCreateReview}
             variant="contained"
             disabled={!newReview.title || !newReview.body}
@@ -539,22 +621,34 @@ const Community: React.FC = () => {
       </Dialog>
 
       {/* Message Dialog */}
-      <Dialog open={messageDialogOpen} onClose={() => setMessageDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={messageDialogOpen}
+        onClose={() => setMessageDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
         <DialogTitle>Send Message</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
             label="Receiver User ID"
             type="number"
-            value={newMessage.receiverId || ''}
-            onChange={(e) => setNewMessage(prev => ({ ...prev, receiverId: Number(e.target.value) }))}
+            value={newMessage.receiverId || ""}
+            onChange={(e) =>
+              setNewMessage((prev) => ({
+                ...prev,
+                receiverId: Number(e.target.value),
+              }))
+            }
             sx={{ mb: 2, mt: 1 }}
           />
           <TextField
             fullWidth
             label="BBL (optional)"
             value={newMessage.bbl}
-            onChange={(e) => setNewMessage(prev => ({ ...prev, bbl: e.target.value }))}
+            onChange={(e) =>
+              setNewMessage((prev) => ({ ...prev, bbl: e.target.value }))
+            }
             sx={{ mb: 2 }}
           />
           <TextField
@@ -563,12 +657,14 @@ const Community: React.FC = () => {
             rows={4}
             label="Message"
             value={newMessage.body}
-            onChange={(e) => setNewMessage(prev => ({ ...prev, body: e.target.value }))}
+            onChange={(e) =>
+              setNewMessage((prev) => ({ ...prev, body: e.target.value }))
+            }
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setMessageDialogOpen(false)}>Cancel</Button>
-          <Button 
+          <Button
             onClick={handleSendMessage}
             variant="contained"
             disabled={!newMessage.receiverId || !newMessage.body}
