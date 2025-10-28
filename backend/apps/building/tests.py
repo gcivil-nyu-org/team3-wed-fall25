@@ -2,20 +2,19 @@
 # python
 import importlib
 import inspect
-import unittest
 from decimal import Decimal
 
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 
+from common.models.acris import AcrisMaster
+from common.models.affordable_housing_record import AffordableHousingRecord
 from common.models.building import (
     Building,
     as_acris_master,
     as_violation,
     build_building_from_rows,
 )
-from common.models.acris import AcrisMaster
-from common.models.affordable_housing_record import AffordableHousingRecord
 from common.models.complaint import Complaint
 from common.models.eviction import Eviction
 from common.models.registration import Registration
@@ -802,8 +801,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_default_serializer_datetime(self):
         """Test _default_serializer with datetime"""
-        from apps.building.views import _default_serializer
         from datetime import datetime
+
+        from apps.building.views import _default_serializer
 
         dt = datetime(2023, 1, 1, 12, 0, 0)
         result = _default_serializer(dt)
@@ -811,8 +811,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_default_serializer_date(self):
         """Test _default_serializer with date"""
-        from apps.building.views import _default_serializer
         from datetime import date
+
+        from apps.building.views import _default_serializer
 
         d = date(2023, 1, 1)
         result = _default_serializer(d)
@@ -820,8 +821,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_default_serializer_decimal(self):
         """Test _default_serializer with Decimal"""
-        from apps.building.views import _default_serializer
         from decimal import Decimal
+
+        from apps.building.views import _default_serializer
 
         dec = Decimal("123.45")
         result = _default_serializer(dec)
@@ -846,8 +848,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_dict(self):
         """Test _to_primitive with dict"""
-        from apps.building.views import _to_primitive
         from datetime import datetime
+
+        from apps.building.views import _to_primitive
 
         data = {"bbl": "1234567890", "date": datetime(2023, 1, 1, 12, 0, 0)}
         result = _to_primitive(data)
@@ -856,8 +859,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_list(self):
         """Test _to_primitive with list"""
-        from apps.building.views import _to_primitive
         from datetime import date
+
+        from apps.building.views import _to_primitive
 
         data = [date(2023, 1, 1), date(2023, 1, 2)]
         result = _to_primitive(data)
@@ -865,8 +869,9 @@ class BuildingViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_decimal(self):
         """Test _to_primitive with Decimal"""
-        from apps.building.views import _to_primitive
         from decimal import Decimal
+
+        from apps.building.views import _to_primitive
 
         result = _to_primitive(Decimal("123.45"))
         self.assertEqual(result, "123.45")
@@ -946,8 +951,8 @@ class BuildingViewsHelperFunctionTests(TestCase):
     def test_is_empty_building_with_affordable(self):
         """Test _is_empty_building with affordable housing"""
         from apps.building.views import _is_empty_building
-        from common.models.building import Building
         from common.models.affordable_housing_record import AffordableHousingRecord
+        from common.models.building import Building
 
         building = Building(bbl="1234567890")
         building.affordable = [
@@ -1076,8 +1081,8 @@ class BuildingViewsHelperFunctionTests(TestCase):
     def test_is_empty_building_with_acris_master(self):
         """Test _is_empty_building with acris master data"""
         from apps.building.views import _is_empty_building
-        from common.models.building import Building
         from common.models.acris import AcrisMaster
+        from common.models.building import Building
 
         building = Building(bbl="1234567890")
         building.acris_master = {

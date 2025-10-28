@@ -267,8 +267,9 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_dict(self):
         """Test _to_primitive with dict"""
-        from apps.neighborhood.views import _to_primitive
         from datetime import datetime
+
+        from apps.neighborhood.views import _to_primitive
 
         data = {"bbl": "1234567890", "date": datetime(2023, 1, 1, 12, 0, 0)}
         result = _to_primitive(data)
@@ -277,8 +278,9 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_list(self):
         """Test _to_primitive with list"""
-        from apps.neighborhood.views import _to_primitive
         from datetime import date
+
+        from apps.neighborhood.views import _to_primitive
 
         data = [date(2023, 1, 1), date(2023, 1, 2)]
         result = _to_primitive(data)
@@ -286,17 +288,19 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
 
     def test_to_primitive_decimal(self):
         """Test _to_primitive with Decimal"""
-        from apps.neighborhood.views import _to_primitive
         from decimal import Decimal
+
+        from apps.neighborhood.views import _to_primitive
 
         result = _to_primitive(Decimal("123.45"))
         self.assertEqual(result, "123.45")
 
     def test_to_primitive_nested_structure(self):
         """Test _to_primitive with nested structure"""
-        from apps.neighborhood.views import _to_primitive
         from datetime import datetime
         from decimal import Decimal
+
+        from apps.neighborhood.views import _to_primitive
 
         data = {
             "building": {
@@ -315,14 +319,14 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
     def test_neighborhood_views_comprehensive_coverage_final(self):
         """Test comprehensive coverage of neighborhood views - final push"""
         try:
+            from rest_framework.test import APIClient
+
             from apps.neighborhood.views import (
-                NeighborhoodStatsView,
-                HeatmapDataView,
                 BoroughSummaryView,
+                HeatmapDataView,
+                NeighborhoodStatsView,
                 NeighborhoodTrendsView,
             )
-            from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -368,14 +372,7 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
     def test_neighborhood_views_error_scenarios(self):
         """Test neighborhood views error scenarios"""
         try:
-            from apps.neighborhood.views import (
-                NeighborhoodStatsView,
-                HeatmapDataView,
-                BoroughSummaryView,
-                NeighborhoodTrendsView,
-            )
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -399,14 +396,7 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
     def test_neighborhood_views_edge_cases(self):
         """Test neighborhood views edge cases"""
         try:
-            from apps.neighborhood.views import (
-                NeighborhoodStatsView,
-                HeatmapDataView,
-                BoroughSummaryView,
-                NeighborhoodTrendsView,
-            )
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -428,14 +418,7 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
     def test_neighborhood_views_integration_comprehensive(self):
         """Test comprehensive neighborhood views integration"""
         try:
-            from apps.neighborhood.views import (
-                NeighborhoodStatsView,
-                HeatmapDataView,
-                BoroughSummaryView,
-                NeighborhoodTrendsView,
-            )
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
