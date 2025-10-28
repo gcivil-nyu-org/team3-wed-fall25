@@ -16,7 +16,8 @@ class CommunityReviewsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CommunityReviews
-        fields = ['id', 'user_id', 'username', 'email', 'bbl', 'rating', 'title', 'body', 'created_at', 'updated_at']
+        fields = ['id', 'user_id', 'username', 'email', 'bbl',
+                  'rating', 'title', 'body', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_username(self, obj):
@@ -40,7 +41,8 @@ class CommunityReviewCommentsSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CommunityReviewComments
-        fields = ['id', 'review_id', 'user_id', 'username', 'email', 'body', 'created_at', 'updated_at']
+        fields = ['id', 'review_id', 'user_id', 'username', 'email',
+                  'body', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_username(self, obj):
@@ -66,7 +68,9 @@ class CommunityMessagesSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = CommunityMessages
-        fields = ['id', 'sender_id', 'sender_username', 'sender_email', 'receiver_id', 'receiver_username', 'receiver_email', 'bbl', 'body', 'read_at', 'created_at', 'updated_at']
+        fields = ['id', 'sender_id', 'sender_username', 'sender_email',
+                  'receiver_id', 'receiver_username', 'receiver_email',
+                  'bbl', 'body', 'read_at', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_sender_username(self, obj):
