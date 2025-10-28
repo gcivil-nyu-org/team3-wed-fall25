@@ -91,17 +91,29 @@ export async function submitApplication(applicationData: {
   country: string;
   agreeTerms: boolean;
 }) {
-  const resp = await axios.post(`/landlord/apply/`, applicationData, {
-    withCredentials: true, // Important for session authentication
-    headers: {
-      "X-CSRFToken": getCsrfToken(), // Add CSRF token
-    },
-  });
-  let data = resp.data as any;
-  if (resp.status >= 200 && resp.status < 300) {
-    return data;
-  } else {
-    throw new Error(data.error || "Failed to submit application");
+  try {
+    const resp = await axios.post(`/landlord/apply/`, applicationData, {
+      // withCredentials: true,
+      headers: {
+        "Content-Type": "application/json", // Add this
+        "X-CSRFToken": getCsrfToken(),
+      },
+    });
+    
+    let data = resp.data as any;
+    if (resp.status >= 200 && resp.status < 300) {
+      return data;
+    } else {
+      throw new Error(data.error || "Failed to submit application" + resp.status);
+    }
+  } catch (error: any) {
+    console.error('Axios error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
   }
 }
 
+// const resp = await axios.post(`/landlord/apply/`, applicationData);

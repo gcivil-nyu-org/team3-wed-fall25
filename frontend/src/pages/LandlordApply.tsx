@@ -95,7 +95,7 @@ export default function LandlordApply() {
       // Show error message
       setSnackbar({
         open: true,
-        message: "Failed to submit application. Please try again.",
+        message: "Failed to submit application. Please try again." + (error instanceof Error ? `Error: ${error.message}` : ""),
         severity: "error",
       });
       console.error("Submission error:", error);
