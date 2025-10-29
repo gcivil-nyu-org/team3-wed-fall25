@@ -1,6 +1,6 @@
 # Create your tests here.
-from django.test import TestCase
 from django.conf import settings
+from django.test import TestCase
 
 
 class ConfigSettingsTests(TestCase):
@@ -220,8 +220,8 @@ class ConfigIntegrationTests(TestCase):
 
     def test_jwt_setup(self):
         """Test that JWT is properly set up"""
-        from rest_framework_simplejwt.tokens import RefreshToken
         from django.contrib.auth.models import User
+        from rest_framework_simplejwt.tokens import RefreshToken
 
         # Test that JWT tokens can be created
         user = User.objects.create_user(username="test", password="test")
