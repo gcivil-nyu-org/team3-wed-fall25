@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     # Local apps
     "apps.user",
     "apps.dummy",
+    "apps.landlord",
     "apps.building",
     "apps.community",
     "apps.neighborhood",
@@ -116,52 +117,38 @@ TEMPLATES = [
 TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]  # backend/templates
 
 # Custom User Model
-AUTH_USER_MODEL = "user.CustomUser"
+AUTH_USER_MODEL = 'user.CustomUser'
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
-    "apps.user.authentication.EmailBackend",  # Custom email authentication
-    "django.contrib.auth.backends.ModelBackend",  # Default username authentication
+    'apps.user.authentication.EmailBackend',  # Custom email authentication
+    'django.contrib.auth.backends.ModelBackend',  # Default username authentication
 ]
 
 # Frontend URL for email verification links
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 # Email Configuration
-# Use console backend in development, SMTP in production
-if RUN_ENV == "development" or DEBUG:
-    EMAIL_BACKEND = env(
-        "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
-    )
-else:
-    EMAIL_BACKEND = env(
-        "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
-    )
-
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env(
-    "DEFAULT_FROM_EMAIL", default="noreply@housingtransparency.com"
-)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@housingtransparency.com")
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# All database credentials must be set via environment variables
-# For local development: Create a .env file in project root with DB_* variables
-# For production: Set environment variables in deployment platform (AWS Elastic Beanstalk)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
+        "NAME": env("DB_NAME", default="housing_transparency"),
+        "USER": env("DB_USER", default="postgres"),
+        "PASSWORD": env("DB_PASSWORD", default="password"),
+        "HOST": env("DB_HOST", default="localhost"),
+        "PORT": env("DB_PORT", default="5432"),
         "TEST": {
-            "NAME": f"test_{env('DB_NAME')}",
+            "NAME": f"test_{env('DB_NAME', default='housing_transparency')}",
         },
     }
 }
