@@ -6,4 +6,4 @@ export * from './neighborhood';
 export * from './community';
 
 // Re-export types for backward compatibility
-export type { HeatmapPoint, BoroughSummary } from '../types';
+export type { HeatmapPoint, BoroughSummary, BuildingData } from '../types';

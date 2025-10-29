@@ -68,7 +68,6 @@ export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
     const response = await axiosInstance.get<any>(
       `${API_ENDPOINTS.COMMUNITY.REVIEWS}?bbl=${bbl}`
     );
-    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
     const data = response.data?.data || response.data;
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -82,7 +81,6 @@ export const fetchMyReviews = async (): Promise<CommunityReview[]> => {
     const response = await axiosInstance.get<any>(
       `${API_ENDPOINTS.COMMUNITY.REVIEWS}mine/`
     );
-    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
     const data = response.data?.data || response.data;
     return Array.isArray(data) ? data : [];
   } catch (error) {
@@ -200,7 +198,6 @@ export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
     const response = await axiosInstance.get<any>(
       API_ENDPOINTS.COMMUNITY.FAVORITES
     );
-    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
     const data = response.data?.data || response.data;
     return Array.isArray(data) ? data : [];
   } catch (error) {

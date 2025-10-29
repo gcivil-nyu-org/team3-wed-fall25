@@ -38,6 +38,7 @@ export default function AppAppBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isAdmin = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
 
   const toggleDrawer = (newOpen: boolean) => () => {
     setOpen(newOpen);
@@ -52,7 +53,13 @@ export default function AppAppBar() {
   };
 
   const handleLogout = () => {
+    // Logout regular user
     logout();
+    // Clear admin session if present
+    if (isAdmin) {
+      sessionStorage.removeItem('admin_authenticated');
+      sessionStorage.removeItem('admin_username');
+    }
     handleProfileMenuClose();
     navigate('/');
   };
@@ -174,38 +181,24 @@ export default function AppAppBar() {
                   Community
                 </Button>
               </NavLink>
+            <NavLink to="/landlords">
               <Button
                 variant="text"
                 size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
               >
                 Landlords
               </Button>
-              <Button
-                variant="text"
-                size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
-              >
-                Admin
-              </Button>
+            </NavLink>
             </Box>
 
           {/* Auth Buttons / User Profile */}
@@ -216,7 +209,7 @@ export default function AppAppBar() {
               alignItems: "center",
             }}
           >
-            {user ? (
+            {user || isAdmin ? (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography
@@ -227,7 +220,7 @@ export default function AppAppBar() {
                       fontSize: "0.85rem",
                     }}
                   >
-                    Welcome, {user?.first_name || 'User'}
+                    Welcome, {user?.first_name || sessionStorage.getItem('admin_username') || 'User'}
                   </Typography>
                   <IconButton
                     onClick={handleProfileMenuOpen}
@@ -247,7 +240,7 @@ export default function AppAppBar() {
                         fontWeight: 600,
                       }}
                     >
-                      {getInitials(user?.first_name, user?.last_name)}
+                      {user ? getInitials(user?.first_name, user?.last_name) : 'AD'}
                     </Avatar>
                   </IconButton>
                 </Box>
@@ -264,10 +257,18 @@ export default function AppAppBar() {
                     },
                   }}
                 >
-                  <MenuItem onClick={handleProfileClick}>
-                    <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
-                    My Profile
-                  </MenuItem>
+                  {user && (
+                    <MenuItem onClick={handleProfileClick}>
+                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                      My Profile
+                    </MenuItem>
+                  )}
+                  {isAdmin && (
+                    <MenuItem onClick={() => { navigate('/admin/dashboard'); handleProfileMenuClose(); }}>
+                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                      Admin Dashboard
+                    </MenuItem>
+                  )}
                   <MenuItem onClick={handleLogout}>
                     <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
                     Logout

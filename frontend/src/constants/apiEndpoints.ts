@@ -18,4 +18,14 @@ export const API_ENDPOINTS = {
     BOROUGH_SUMMARY: '/neighborhood/borough-summary/',
     TRENDS: '/neighborhood/trends/',
   },
+  COMMUNITY: {
+    REVIEWS: '/community/reviews/',
+    REVIEW_COMMENTS: '/community/review-comments/',
+    FAVORITES: '/community/favorites/',
+    MESSAGES_INBOX: '/community/messages/inbox/',
+    MESSAGES_OUTBOX: '/community/messages/outbox/',
+    MESSAGES_SEND: '/community/messages/send/',
+    MESSAGES_MARK_READ: '/community/messages',
+    MESSAGES_DELETE: '/community/messages',
+  },
 } as const;
