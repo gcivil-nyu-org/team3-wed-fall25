@@ -9,7 +9,7 @@ class EmailBackend(ModelBackend):
     """
     Custom authentication backend that allows users to log in using their email address
     """
-    
+
     def authenticate(self, request, username=None, password=None, **kwargs):
         try:
             # Try to find user by email
@@ -21,9 +21,9 @@ class EmailBackend(ModelBackend):
         except User.MultipleObjectsReturned:
             # If multiple users found, return None
             return None
-        
+
         return None
-    
+
     def get_user(self, user_id):
         try:
             return User.objects.get(pk=user_id)
