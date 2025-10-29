@@ -7,7 +7,6 @@ import CssBaseline from "@mui/material/CssBaseline";
 import AppAppBar from "./components/AppBar";
 import { SiteFooter } from "./components/SiteFooter";
 
-import LandlordDashboard from "./pages/LandlordDashboard";
 import LandlordApply from "./pages/LandlordApply";
 import BuildingDetail from "./pages/BuildingDetail";
 import {
@@ -18,8 +17,10 @@ import {
   Building,
   Community,
   Message,
+  Profile,
 } from "./pages";
 import SimplifiedMap from "./pages/SimplifiedMap";
+import VerifyEmail from "./pages/VerifyEmail";
 
 function App() {
   return (
@@ -58,10 +59,12 @@ function App() {
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply" element={<LandlordApply />} />
           <Route path="landlord/building/:bbl" element={<BuildingDetail />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="message" element={<Message />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />
+        <Route path="verify-email" element={<VerifyEmail />} />
       </Routes>
     </ThemeProvider>
   );
