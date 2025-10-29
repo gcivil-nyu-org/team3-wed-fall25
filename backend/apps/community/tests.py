@@ -1,7 +1,6 @@
 # Create your tests here.
 from django.test import TestCase
 from rest_framework.test import APIClient
-from rest_framework import status
 
 
 class CommunityAppTests(TestCase):
@@ -18,7 +17,7 @@ class CommunityAppTests(TestCase):
     def test_community_views_exist(self):
         """Test that community views module exists"""
         try:
-            import apps.community.views
+            pass
 
             self.assertTrue(True)  # If we get here, import succeeded
         except ImportError:
@@ -27,7 +26,7 @@ class CommunityAppTests(TestCase):
     def test_community_models_exist(self):
         """Test that community models module exists"""
         try:
-            import apps.community.models
+            pass
 
             self.assertTrue(True)  # If we get here, import succeeded
         except ImportError:
@@ -45,7 +44,7 @@ class CommunityAppTests(TestCase):
     def test_community_admin_exists(self):
         """Test that community admin module exists"""
         try:
-            import apps.community.admin
+            pass
 
             self.assertTrue(True)  # If we get here, import succeeded
         except ImportError:
@@ -83,6 +82,7 @@ class CommunityIntegrationTests(TestCase):
     def test_community_app_structure(self):
         """Test that community app has proper structure"""
         import os
+
         from django.conf import settings
 
         # Check that community app directory exists

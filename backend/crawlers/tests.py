@@ -1,19 +1,20 @@
 # Create your tests here.
 from unittest import TestCase
 from unittest.mock import Mock, patch
+
 import requests
 
-from crawlers.violation_crawler import ViolationCrawler
-from crawlers.eviction_crawler import EvictionCrawler
-from crawlers.complaint_crawler import ComplaintCrawler
-from crawlers.registration_crawler import RegistrationCrawler
-from crawlers.registration_contact_crawler import RegistrationContactCrawler
-from crawlers.affordable_housing_crawler import AffordableHousingCrawler
-from crawlers.acris_master_crawler import AcrisMasterCrawler
 from crawlers.acris_legals_crawler import AcrisLegalsCrawler
+from crawlers.acris_master_crawler import AcrisMasterCrawler
 from crawlers.acris_parties_crawler import AcrisPartiesCrawler
+from crawlers.affordable_housing_crawler import AffordableHousingCrawler
+from crawlers.complaint_crawler import ComplaintCrawler
+from crawlers.eviction_crawler import EvictionCrawler
+from crawlers.registration_contact_crawler import RegistrationContactCrawler
+from crawlers.registration_crawler import RegistrationCrawler
 from crawlers.rent_stabilized_loader import RentStabilizedLoader
-from crawlers.run_crawlers import run_crawler, main
+from crawlers.run_crawlers import main, run_crawler
+from crawlers.violation_crawler import ViolationCrawler
 
 
 class CrawlerBaseTests(TestCase):

@@ -1,7 +1,7 @@
 # Create your tests here.
+import os
 from unittest import TestCase
 from unittest.mock import patch
-import os
 
 from utils.env_util import get_env
 

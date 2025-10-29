@@ -1,19 +1,20 @@
 # Create your tests here.
 from unittest import TestCase
 from unittest.mock import Mock, patch
+
 from django.http import JsonResponse
 from django.test import RequestFactory
 from rest_framework.exceptions import (
-    ValidationError,
-    NotAuthenticated,
     AuthenticationFailed,
+    NotAuthenticated,
+    ValidationError,
 )
 from rest_framework.response import Response
 
+from common.exceptions.bad_request_error import BadRequestError
 from middlewares.error_middleware import ErrorMiddleware, custom_exception_handler
 from middlewares.ok_middleware import OkJSONRenderer
 from middlewares.pagenation import Pagination
-from common.exceptions.bad_request_error import BadRequestError
 
 
 class ErrorMiddlewareTests(TestCase):
