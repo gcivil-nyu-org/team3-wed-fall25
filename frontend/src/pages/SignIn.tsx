@@ -1,240 +1,192 @@
-import { Box, Button, TextField, Typography, Container, Alert, Paper } from "@mui/material";
-import { Link, useNavigate } from "react-router";
-import { useState } from "react";
-import { loginUser } from "../api/auth";
-import BusinessIcon from "@mui/icons-material/Business";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router";
+import { Box, Button, Typography, Alert } from "@mui/material";
+import { AuthLayout, FormField } from "../components/auth";
+import { useAuth } from "../hooks";
+import { COLORS } from "../constants";
+import type { LoginCredentials } from "../types";
 
 export default function SignIn() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [showResendOption, setShowResendOption] = useState(false);
+  
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, loading } = useAuth();
+
+  useEffect(() => {
+    // Check if we should show resend option (from email verification failure)
+    if (location.state?.showResendOption) {
+      setShowResendOption(true);
+      setMessage({
+        type: 'error',
+        text: 'Please verify your email before signing in. Check your inbox for a verification link.'
+      });
+    }
+  }, [location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    setLoading(true);
     setMessage(null);
 
     try {
-      console.log("Attempting login with:", { username, password });
-      const response = await loginUser({
-        username: username,
+      const credentials: LoginCredentials = {
+        email: email,
         password: password
-      });
+      };
       
-      console.log("Login response:", response);
-      console.log("Response data:", response.data);
+      const result = await login(credentials);
       
-      // Store JWT tokens - handle the custom response format
-      const responseData = response.data?.data || response.data;
-      const accessToken = responseData?.access || responseData?.access_token || responseData?.token;
-      const refreshToken = responseData?.refresh || responseData?.refresh_token;
-      
-      if (accessToken) {
-        localStorage.setItem('access_token', accessToken);
-        if (refreshToken) {
-          localStorage.setItem('refresh_token', refreshToken);
-        }
+      if (result.success) {
         setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
-        console.log("Login successful, JWT token:", accessToken);
         
         // Redirect to home page after successful login
         setTimeout(() => {
-          console.log("Redirecting to home page...");
           navigate('/');
         }, 1500);
       } else {
-        console.log("No access token in response:", response.data);
-        console.log("Available keys in response:", Object.keys(response.data || {}));
-        setMessage({ type: 'error', text: `Login failed: No access token received. Response: ${JSON.stringify(response.data)}` });
+        // Check if it's an email verification error
+        if (result.authError?.detail?.includes('email') || result.error?.includes('verify')) {
+          setShowResendOption(true);
+          setMessage({ 
+            type: 'error', 
+            text: 'Please verify your email before signing in. Check your inbox for a verification link.' 
+          });
+        } else {
+          setMessage({ 
+            type: 'error', 
+            text: result.error || 'Login failed. Please check your credentials.' 
+          });
+        }
       }
-      
     } catch (error: any) {
-      console.error("Login error:", error);
-      console.error("Error response:", error.response);
       setMessage({ 
         type: 'error', 
-        text: error.response?.data?.error_message || error.response?.data?.detail || 'Login failed. Please check your credentials.' 
+        text: error.message || 'Login failed. Please try again.' 
       });
-    } finally {
-      setLoading(false);
     }
   };
 
-  return (
-    <Box 
-      sx={{ 
-        minHeight: "100vh", 
-        display: "flex", 
-        alignItems: "center", 
-        justifyContent: "center", 
-        p: 4,
-        background: "linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)"
-      }}
-    >
-      <Container maxWidth="sm">
-        <Box sx={{ textAlign: "center", mb: 4 }}>
-          <Link to="/" style={{ textDecoration: "none" }}>
-            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 2 }}>
-              <BusinessIcon sx={{ fontSize: 32, color: "#FF6B35" }} />
-              <Typography 
-                variant="h4" 
-                sx={{ 
-                  fontWeight: 700, 
-                  color: "#2D3748",
-                  fontFamily: '"Montserrat", "Roboto", sans-serif'
-                }}
-              >
-                Housing Transparency
-              </Typography>
-            </Box>
-          </Link>
-        </Box>
+  const handleResendVerification = () => {
+    navigate('/signup', { 
+      state: { 
+        showResendMessage: true,
+        email: email
+      } 
+    });
+  };
 
-        <Paper 
+  return (
+    <AuthLayout title="Welcome Back">
+      {message && (
+        <Alert 
+          severity={message.type} 
           sx={{ 
-            p: 4, 
-            borderRadius: 4,
-            boxShadow: "0 16px 48px rgba(255, 107, 53, 0.1)",
-            border: "1px solid rgba(255, 107, 53, 0.1)",
-            backgroundColor: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(10px)"
+            mb: 3,
+            borderRadius: 2,
+            "& .MuiAlert-message": {
+              fontSize: "0.9rem"
+            }
           }}
         >
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            sx={{ 
-              textAlign: "center", 
-              mb: 3,
-              fontWeight: 700,
-              color: "#2D3748",
-              fontFamily: '"Montserrat", "Roboto", sans-serif'
-            }}
-          >
-            Welcome Back
-          </Typography>
-          
-          {message && (
-            <Alert 
-              severity={message.type} 
-              sx={{ 
-                mb: 3,
-                borderRadius: 2,
-                "& .MuiAlert-message": {
-                  fontSize: "0.9rem"
-                }
-              }}
-            >
-              {message.text}
-            </Alert>
-          )}
-          
-          <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <TextField
-              label="Username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              fullWidth
-              required
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  "& fieldset": {
-                    borderColor: "rgba(255, 107, 53, 0.2)",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "rgba(255, 107, 53, 0.4)",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#FF6B35",
-                  },
-                },
-                "& .MuiInputLabel-root.Mui-focused": {
-                  color: "#FF6B35",
-                },
-              }}
-            />
+          {message.text}
+        </Alert>
+      )}
+      
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <FormField
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
 
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              fullWidth
-              required
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  "& fieldset": {
-                    borderColor: "rgba(255, 107, 53, 0.2)",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "rgba(255, 107, 53, 0.4)",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#FF6B35",
-                  },
-                },
-                "& .MuiInputLabel-root.Mui-focused": {
-                  color: "#FF6B35",
-                },
-              }}
-            />
+        <FormField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
 
+        {showResendOption && (
+          <Box sx={{ textAlign: 'center', py: 2 }}>
+            <Typography variant="body2" sx={{ color: '#4A5568', mb: 2 }}>
+              Didn't receive the verification email?
+            </Typography>
             <Button 
-              type="submit" 
-              variant="contained" 
-              size="large" 
-              fullWidth
-              disabled={loading}
+              variant="outlined" 
+              onClick={handleResendVerification}
               sx={{
-                backgroundColor: "#FF6B35",
-                color: "white",
+                borderColor: COLORS.PRIMARY,
+                color: COLORS.PRIMARY,
                 fontWeight: 600,
-                fontSize: "1.1rem",
-                py: 1.5,
+                px: 3,
+                py: 1,
                 borderRadius: 2,
-                boxShadow: "0 4px 12px rgba(255, 107, 53, 0.3)",
                 "&:hover": {
-                  backgroundColor: "#E55A2B",
-                  boxShadow: "0 6px 16px rgba(255, 107, 53, 0.4)",
-                },
-                "&:disabled": {
-                  backgroundColor: "rgba(255, 107, 53, 0.5)",
+                  borderColor: COLORS.PRIMARY_HOVER,
+                  backgroundColor: "rgba(255, 107, 53, 0.04)",
                 },
               }}
             >
-              {loading ? "Logging In..." : "Log In"}
+              Resend Verification Email
             </Button>
           </Box>
+        )}
 
-          <Box sx={{ textAlign: "center", mt: 3 }}>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: "#4A5568",
-                fontSize: "0.9rem"
-              }}
-            >
-              Don't have an account?{" "}
-              <Link 
-                to="/signup" 
-                style={{ 
-                  color: "#FF6B35", 
-                  textDecoration: "none", 
-                  fontWeight: 600
-                }}
-              >
-                Sign up
-              </Link>
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+        <Button 
+          type="submit" 
+          variant="contained" 
+          size="large" 
+          fullWidth
+          disabled={loading}
+          sx={{
+            backgroundColor: COLORS.PRIMARY,
+            color: "white",
+            fontWeight: 600,
+            fontSize: "1.1rem",
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: "0 4px 12px rgba(255, 107, 53, 0.3)",
+            "&:hover": {
+              backgroundColor: COLORS.PRIMARY_HOVER,
+              boxShadow: "0 6px 16px rgba(255, 107, 53, 0.4)",
+            },
+            "&:disabled": {
+              backgroundColor: "rgba(255, 107, 53, 0.5)",
+            },
+          }}
+        >
+          {loading ? "Logging In..." : "Log In"}
+        </Button>
+      </Box>
+
+      <Box sx={{ textAlign: "center", mt: 3 }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: "#4A5568",
+            fontSize: "0.9rem"
+          }}
+        >
+          Don't have an account?{" "}
+          <Link 
+            to="/signup" 
+            style={{ 
+              color: COLORS.PRIMARY, 
+              textDecoration: "none", 
+              fontWeight: 600
+            }}
+          >
+            Sign up
+          </Link>
+        </Typography>
+      </Box>
+    </AuthLayout>
   );
 }
