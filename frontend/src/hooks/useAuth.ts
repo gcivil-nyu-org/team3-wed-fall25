@@ -25,10 +25,21 @@ export const useAuth = () => {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        const token = sessionStorage.getItem('access_token');
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+        
         const response = await fetchProfile();
-        setUser(response.data);
+        const userData = response.data?.data || response.data;
+        setUser(userData);
       } catch (err) {
-        setError('Failed to load user profile');
+        // If profile fetch fails, clear the token and user state
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        setUser(null);
+        setError(null);
       } finally {
         setLoading(false);
       }
@@ -43,16 +54,38 @@ export const useAuth = () => {
     
     try {
       const response = await loginUser(credentials);
-      const responseData = response.data?.data || response.data;
-      const accessToken = responseData?.access || responseData?.access_token || responseData?.token;
-      const refreshToken = responseData?.refresh || responseData?.refresh_token;
+      const responseData = response.data;
+      const authData = responseData?.data; // Extract the nested 'data' object
+      const accessToken = authData?.access || authData?.access_token || authData?.token;
+      const refreshToken = authData?.refresh || authData?.refresh_token;
+      const userData = authData?.user; // User data is not directly in login response, will be fetched by fallback
       
       if (accessToken) {
-        localStorage.setItem('access_token', accessToken);
+        sessionStorage.setItem('access_token', accessToken);
         if (refreshToken) {
-          localStorage.setItem('refresh_token', refreshToken);
+          sessionStorage.setItem('refresh_token', refreshToken);
         }
-        return { success: true, user: responseData?.user };
+        
+        // Set user data in state
+        if (userData) {
+          console.log('Setting user data from login response:', userData);
+          setUser(userData);
+        } else {
+          // If no user data in login response, fetch it from profile endpoint
+          try {
+            console.log('No user data in login response, fetching from profile...');
+            const profileResponse = await fetchProfile();
+            console.log('Profile response:', profileResponse.data);
+            const userData = profileResponse.data?.data || profileResponse.data;
+            console.log('Setting user with profile data:', userData);
+            setUser(userData);
+            console.log('User state should now be set');
+          } catch (profileErr) {
+            console.warn('Could not fetch user profile after login:', profileErr);
+          }
+        }
+        
+        return { success: true, user: userData };
       } else {
         throw new Error('No access token received');
       }
@@ -74,13 +107,36 @@ export const useAuth = () => {
     
     try {
       const response = await registerUser(userData);
-      return { success: true, message: response.data.message };
+      return { 
+        success: true, 
+        message: response.data.message || 'Registration successful! Please check your email to verify your account.' 
+      };
     } catch (err: any) {
       const errorMessage = err.response?.data?.error_message || 
                           err.response?.data?.message ||
                           'Registration failed';
       setError(errorMessage);
-      return { success: false, error: errorMessage, fieldErrors: err.response?.data };
+      
+      // Handle field-specific errors
+      const fieldErrors: Record<string, string> = {};
+      if (err.response?.data) {
+        const data = err.response.data;
+        
+        // Map backend field errors to frontend field names
+        if (data.username) fieldErrors.firstName = data.username[0];
+        if (data.email) fieldErrors.email = data.email[0];
+        if (data.password) fieldErrors.password = data.password[0];
+        if (data.role) fieldErrors.role = data.role[0];
+        if (data.tenant_type) fieldErrors.tenant_type = data.tenant_type[0];
+        if (data.landlord_type) fieldErrors.landlord_type = data.landlord_type[0];
+        if (data.organization_name) fieldErrors.organization_name = data.organization_name[0];
+      }
+      
+      return { 
+        success: false, 
+        error: errorMessage, 
+        fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined
+      };
     } finally {
       setLoading(false);
     }
@@ -119,9 +175,10 @@ export const useAuth = () => {
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    sessionStorage.removeItem('access_token');
+    sessionStorage.removeItem('refresh_token');
     setUser(null);
+    setError(null);
   };
 
   return {
