@@ -49,7 +49,6 @@ export async function fetchProperties() {
       console.warn("fetchProperties: unexpected response, expected array", data);
       return [];
     }
-    print("fetchProperties: received data", data);
     return data as PropertyDTO[];
     
   } catch (error) {
@@ -124,23 +123,6 @@ export async function fetchReviews(landlordId: string) {
   }
 }
 
-
-function getCsrfToken(): string {
-  // Try to get CSRF token from cookie
-  const name = 'csrftoken';
-  let cookieValue = '';
-  if (document.cookie && document.cookie !== '') {
-    const cookies = document.cookie.split(';');
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === (name + '=')) {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
 
 export async function submitApplication(applicationData: {
   name: string;
