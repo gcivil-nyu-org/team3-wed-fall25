@@ -4,6 +4,7 @@ export * from './auth';
 export * from './building';
 export * from './neighborhood';
 
+<<<<<<< HEAD
 // Re-export BuildingData from types for backward compatibility
 export type { BuildingData } from '../types';
 
@@ -412,3 +413,89 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 
 // Re-export fetchProfile for backward compatibility
 export { fetchProfile } from './auth';
+
+// Re-export types for backward compatibility
+export type { HeatmapPoint, BoroughSummary } from '../types';
+  console.warn('deleteReviewComment not implemented yet');
+  return true;
+};
+
+export const addFavorite = async (bbl: string, note?: string) => {
+  // TODO: Implement add favorite API
+  console.warn('addFavorite not implemented yet');
+  return { id: 'temp', bbl, note, created_at: new Date().toISOString() };
+};
+
+export const removeFavorite = async (favoriteId: string) => {
+  // TODO: Implement remove favorite API
+  console.warn('removeFavorite not implemented yet');
+  return true;
+};
+
+export const fetchInboxMessages = async () => {
+  // TODO: Implement fetch inbox messages API
+  console.warn('fetchInboxMessages not implemented yet');
+  return [];
+};
+
+export const fetchOutboxMessages = async () => {
+  // TODO: Implement fetch outbox messages API
+  console.warn('fetchOutboxMessages not implemented yet');
+  return [];
+};
+
+export const sendMessage = async (recipientId: string, subject: string, body: string) => {
+  // TODO: Implement send message API
+  console.warn('sendMessage not implemented yet');
+  return { id: 'temp', recipient_id: recipientId, subject, body, created_at: new Date().toISOString() };
+};
+
+export const markMessageAsRead = async (messageId: string) => {
+  // TODO: Implement mark message as read API
+  console.warn('markMessageAsRead not implemented yet');
+  return true;
+};
+
+export const deleteMessage = async (messageId: string) => {
+  // TODO: Implement delete message API
+  console.warn('deleteMessage not implemented yet');
+  return true;
+};
+
+export type CommunityReview = {
+  id: string;
+  bbl: string;
+  user_id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommunityFavorite = {
+  id: string;
+  user_id: string;
+  bbl: string;
+  created_at: string;
+};
+
+export type CommunityReviewComment = {
+  id: string;
+  review_id: string;
+  user_id: string;
+  comment: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CommunityMessage = {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  subject: string;
+  body: string;
+  is_read: boolean;
+  created_at: string;
+  updated_at: string;
+};
+>>>>>>> 2d7655d (fix: add missing community API exports to prevent frontend crashes)
