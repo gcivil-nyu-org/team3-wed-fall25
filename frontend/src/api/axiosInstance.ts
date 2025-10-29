@@ -1,11 +1,11 @@
 import axios from "axios";
 
 // Prefer Vite env var VITE_API_BASE, fall back to relative /api so Vite proxy can handle dev
-const baseURL = (import.meta as any).env?.VITE_API_BASE ?? "/api";
+// const baseURL = (import.meta as any).env?.VITE_API_BASE ?? "/api";
 
 const axiosInstance = axios.create({
-  baseURL,
-  timeout: 5000,
+  baseURL: "/api", // Use relative path for production compatibility
+  timeout: 30000, // Increased timeout for large datasets
   headers: {
     "Content-Type": "application/json",
   },

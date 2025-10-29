@@ -241,4 +241,217 @@ export const searchBuildings = async (params: {
   }
 };
 
+// Neighborhood Explorer Types
+export interface NeighborhoodStats {
+  bbl: string;
+  address: string;
+  borough: string;
+  zip_code: string;
+  latitude?: number;
+  longitude?: number;
+  total_violations: number;
+  open_violations: number;
+  class_a_violations: number;
+  class_b_violations: number;
+  class_c_violations: number;
+  rent_impairing_violations: number;
+  total_evictions: number;
+  evictions_3yr: number;
+  evictions_1yr: number;
+  total_complaints: number;
+  open_complaints: number;
+  emergency_complaints: number;
+  is_rent_stabilized: boolean;
+  risk_score: number;
+  risk_level: string;
+  last_updated?: string;
+}
+
+export interface HeatmapPoint {
+  bbl: string;
+  latitude: number;
+  longitude: number;
+  intensity: number; // 0.0 to 1.0
+  data_type: string; // 'violations', 'evictions', 'complaints'
+  count: number;
+  address: string;
+  borough: string;
+}
+
+export interface BoroughSummary {
+  borough: string;
+  total_buildings: number;
+  avg_violations_per_building: number;
+  avg_evictions_per_building: number;
+  total_rent_stabilized: number;
+  high_risk_buildings: number;
+  medium_risk_buildings: number;
+  low_risk_buildings: number;
+}
+
+export interface NeighborhoodTrends {
+  violations: Array<{
+    month: string;
+    count: number;
+  }>;
+  evictions: Array<{
+    month: string;
+    count: number;
+  }>;
+  complaints: Array<{
+    month: string;
+    count: number;
+  }>;
+}
+
+// Neighborhood API Response Types
+export interface NeighborhoodStatsApiResponse {
+  result: boolean;
+  data: NeighborhoodStats[];
+  count: number;
+  bounds: {
+    min_lat: number;
+    max_lat: number;
+    min_lng: number;
+    max_lng: number;
+  };
+  data_type: string;
+}
+
+export interface HeatmapDataApiResponse {
+  result: boolean;
+  data: HeatmapPoint[];
+  count: number;
+  bounds: {
+    min_lat: number;
+    max_lat: number;
+    min_lng: number;
+    max_lng: number;
+  };
+  data_type: string;
+}
+
+export interface BoroughSummaryApiResponse {
+  result: boolean;
+  data: BoroughSummary[];
+  count: number;
+  borough?: string;
+}
+
+export interface NeighborhoodTrendsApiResponse {
+  result: boolean;
+  data: NeighborhoodTrends;
+  bbl: string;
+  days_back: number;
+}
+
+// Neighborhood API Functions
+export const fetchNeighborhoodStats = async (params: {
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+  data_type?: string;
+}): Promise<NeighborhoodStatsApiResponse> => {
+  try {
+    const searchParams = new URLSearchParams();
+    searchParams.append('min_lat', params.min_lat.toString());
+    searchParams.append('max_lat', params.max_lat.toString());
+    searchParams.append('min_lng', params.min_lng.toString());
+    searchParams.append('max_lng', params.max_lng.toString());
+    if (params.data_type) searchParams.append('data_type', params.data_type);
+
+    const response = await axiosInstance.get<NeighborhoodStatsApiResponse>(
+      `/neighborhood/stats/?${searchParams.toString()}`
+    );
+    
+    if (!response.data.result) {
+      throw new Error("Failed to fetch neighborhood stats");
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching neighborhood stats:", error);
+    throw error;
+  }
+};
+
+export const fetchHeatmapData = async (params: {
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+  data_type?: string;
+  borough?: string;
+  limit?: number;
+}): Promise<HeatmapDataApiResponse> => {
+  try {
+    const searchParams = new URLSearchParams();
+    searchParams.append('min_lat', params.min_lat.toString());
+    searchParams.append('max_lat', params.max_lat.toString());
+    searchParams.append('min_lng', params.min_lng.toString());
+    searchParams.append('max_lng', params.max_lng.toString());
+    if (params.data_type) searchParams.append('data_type', params.data_type);
+    if (params.borough) searchParams.append('borough', params.borough);
+    if (params.limit) searchParams.append('limit', params.limit.toString());
+
+    const response = await axiosInstance.get<HeatmapDataApiResponse>(
+      `/neighborhood/heatmap/?${searchParams.toString()}`
+    );
+    
+    if (!response.data.result) {
+      throw new Error("Failed to fetch heatmap data");
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching heatmap data:", error);
+    throw error;
+  }
+};
+
+export const fetchBoroughSummary = async (borough?: string): Promise<BoroughSummaryApiResponse> => {
+  try {
+    const searchParams = new URLSearchParams();
+    if (borough) searchParams.append('borough', borough);
+
+    const response = await axiosInstance.get<BoroughSummaryApiResponse>(
+      `/neighborhood/borough-summary/?${searchParams.toString()}`
+    );
+    
+    if (!response.data.result) {
+      throw new Error("Failed to fetch borough summary");
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching borough summary:", error);
+    throw error;
+  }
+};
+
+export const fetchNeighborhoodTrends = async (params: {
+  bbl: string;
+  days_back?: number;
+}): Promise<NeighborhoodTrendsApiResponse> => {
+  try {
+    const searchParams = new URLSearchParams();
+    searchParams.append('bbl', params.bbl);
+    if (params.days_back) searchParams.append('days_back', params.days_back.toString());
+
+    const response = await axiosInstance.get<NeighborhoodTrendsApiResponse>(
+      `/neighborhood/trends/?${searchParams.toString()}`
+    );
+    
+    if (!response.data.result) {
+      throw new Error("Failed to fetch neighborhood trends");
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching neighborhood trends:", error);
+    throw error;
+  }
+};
+
 export { fetchProfile };

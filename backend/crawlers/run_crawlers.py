@@ -1,14 +1,15 @@
 # crawlers/run_crawlers.py
 import time
-from crawlers.registration_crawler import RegistrationCrawler
-from crawlers.complaint_crawler import ComplaintCrawler
-from crawlers.violation_crawler import ViolationCrawler
-from crawlers.registration_contact_crawler import RegistrationContactCrawler
-from crawlers.affordable_housing_crawler import AffordableHousingCrawler
-from crawlers.acris_master_crawler import AcrisMasterCrawler
+
 from crawlers.acris_legals_crawler import AcrisLegalsCrawler
+from crawlers.acris_master_crawler import AcrisMasterCrawler
 from crawlers.acris_parties_crawler import AcrisPartiesCrawler
+from crawlers.affordable_housing_crawler import AffordableHousingCrawler
+from crawlers.complaint_crawler import ComplaintCrawler
 from crawlers.eviction_crawler import EvictionCrawler
+from crawlers.registration_contact_crawler import RegistrationContactCrawler
+from crawlers.registration_crawler import RegistrationCrawler
+from crawlers.violation_crawler import ViolationCrawler
 
 
 def run_crawler(crawler, limit=5000):

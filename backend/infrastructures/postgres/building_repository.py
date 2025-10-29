@@ -1,9 +1,10 @@
-from typing import List, Dict, Any, Optional, Sequence
-from infrastructures.postgres.postgres_client import PostgresClient
+from typing import Any, Dict, List, Sequence
 
 from common.models.building import (
     build_building_from_rows,
 )
+from infrastructures.postgres.postgres_client import PostgresClient
+
 
 class BuildingRepository:
 
@@ -127,7 +128,9 @@ class BuildingRepository:
                 """,
                 (bbl,),
             )
-            doc_ids = sorted({r["document_id"] for r in acris_legal_rows if r.get("document_id")})
+            doc_ids = sorted(
+                {r["document_id"] for r in acris_legal_rows if r.get("document_id")}
+            )
 
             acris_master_rows: List[Dict[str, Any]] = []
             acris_party_rows: List[Dict[str, Any]] = []

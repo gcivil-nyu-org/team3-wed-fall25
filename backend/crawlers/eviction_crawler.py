@@ -1,9 +1,11 @@
 import time
-import requests
 from typing import Any, Dict, List, Optional, Set
-from infrastructures.postgres.postgres_client import PostgresClient
-from common.interfaces.data_crawler import DataCrawler
+
+import requests
+
 from common.exceptions.db_error import DatabaseError
+from common.interfaces.data_crawler import DataCrawler
+from infrastructures.postgres.postgres_client import PostgresClient
 
 
 class EvictionCrawler(DataCrawler):
@@ -96,15 +98,24 @@ class EvictionCrawler(DataCrawler):
     def _request(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         backoff = 1.0
         for attempt in range(1, self.max_retries + 1):
-            resp = requests.get(self.API_URL, params=params, headers=self._headers(), timeout=self.timeout)
+            resp = requests.get(
+                self.API_URL,
+                params=params,
+                headers=self._headers(),
+                timeout=self.timeout,
+            )
             if resp.ok:
                 return resp.json()
             if resp.status_code in (429, 500, 502, 503, 504):
-                print(f"[EvictionCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s")
+                print(
+                    f"[EvictionCrawler] attempt {attempt} -> {resp.status_code}, retry in {backoff:.1f}s"
+                )
                 time.sleep(backoff)
                 backoff *= 2
                 continue
-            raise requests.HTTPError(f"{resp.status_code} {resp.reason}: {resp.text[:400]}")
+            raise requests.HTTPError(
+                f"{resp.status_code} {resp.reason}: {resp.text[:400]}"
+            )
         resp.raise_for_status()
         return []
 
@@ -145,7 +156,10 @@ class EvictionCrawler(DataCrawler):
         if self._resolved_map is not None:
             return self._resolved_map
         available = self._discover_schema()
-        resolved = {logical: self._resolve_field(logical, available) for logical in self.FIELD_CANDIDATES}
+        resolved = {
+            logical: self._resolve_field(logical, available)
+            for logical in self.FIELD_CANDIDATES
+        }
         self._resolved_map = resolved
         print(f"[EvictionCrawler] resolved map: {resolved}")
         return resolved
@@ -181,7 +195,7 @@ class EvictionCrawler(DataCrawler):
             where_clauses.append(f"({where})")
 
         resolved = self._build_resolution_map()
-        available = self._discover_schema()
+        self._discover_schema()
 
         date_col = resolved.get("executed_date")
         if start_from and date_col:
@@ -223,17 +237,17 @@ class EvictionCrawler(DataCrawler):
 
     # 1) fetch 시그니처에 debug 파라미터 추가
     def fetch(
-            self,
-            limit: int = 5000,
-            offset: int = 0,
-            select: Optional[List[str]] = None,
-            where: Optional[str] = None,
-            order: str = "executed_date DESC",
-            start_from: str = "2010-01-01",
-            start_to: Optional[str] = None,
-            extra: Optional[Dict[str, Any]] = None,
-            *,
-            debug: bool = False,  # <= 추가
+        self,
+        limit: int = 5000,
+        offset: int = 0,
+        select: Optional[List[str]] = None,
+        where: Optional[str] = None,
+        order: str = "executed_date DESC",
+        start_from: str = "2010-01-01",
+        start_to: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
+        *,
+        debug: bool = False,  # <= 추가
     ) -> List[Dict[str, Any]]:
         try:
             # 2) 디버그: 샘플 5건을 풀 필드로 찍어보기 (select를 의도적으로 생략)
@@ -245,13 +259,19 @@ class EvictionCrawler(DataCrawler):
                 date_col_dbg = resolved_dbg.get("executed_date")
                 where_clauses_dbg: List[str] = []
                 if start_from and date_col_dbg:
-                    where_clauses_dbg.append(f"{date_col_dbg} >= '{start_from}T00:00:00.000'")
+                    where_clauses_dbg.append(
+                        f"{date_col_dbg} >= '{start_from}T00:00:00.000'"
+                    )
                 if start_to and date_col_dbg:
-                    where_clauses_dbg.append(f"{date_col_dbg} < '{start_to}T23:59:59.999'")
+                    where_clauses_dbg.append(
+                        f"{date_col_dbg} < '{start_to}T23:59:59.999'"
+                    )
                 if where_clauses_dbg:
                     sample_params["$where"] = " AND ".join(where_clauses_dbg)
 
-                print("[EvictionCrawler][DEBUG] Sampling 5 rows with ALL fields (no $select)…")
+                print(
+                    "[EvictionCrawler][DEBUG] Sampling 5 rows with ALL fields (no $select)…"
+                )
                 sample = self._request(sample_params)
                 if not sample:
                     print("[EvictionCrawler][DEBUG] Sample returned 0 rows.")
@@ -260,16 +280,21 @@ class EvictionCrawler(DataCrawler):
                     all_keys = set()
                     for r in sample:
                         all_keys.update(r.keys())
-                    print(f"[EvictionCrawler][DEBUG] Keys in sample: {sorted(all_keys)}")
+                    print(
+                        f"[EvictionCrawler][DEBUG] Keys in sample: {sorted(all_keys)}"
+                    )
 
                     # 샘플 3건만 이쁘게 출력
                     from pprint import pformat
+
                     for i, r in enumerate(sample[:3]):
                         print(f"[EvictionCrawler][DEBUG] Row[{i}]: {pformat(r)}")
 
                     # BBL 존재 비율
                     bbl_present = sum(1 for r in sample if r.get("bbl"))
-                    print(f"[EvictionCrawler][DEBUG] bbl present {bbl_present}/{len(sample)} rows in sample.")
+                    print(
+                        f"[EvictionCrawler][DEBUG] bbl present {bbl_present}/{len(sample)} rows in sample."
+                    )
 
             # 기존 파라미터 구성 및 페치
             params = self._build_params(
@@ -298,10 +323,14 @@ class EvictionCrawler(DataCrawler):
         if debug:
             bbl_col = avail(resolved.get("bbl"))
             if bbl_col is None:
-                print("[EvictionCrawler][DEBUG] Resolved bbl column is None (dataset doesn’t expose bbl).")
+                print(
+                    "[EvictionCrawler][DEBUG] Resolved bbl column is None (dataset doesn’t expose bbl)."
+                )
             else:
                 bbl_present_batch = sum(1 for r in data if r.get(bbl_col))
-                print(f"[EvictionCrawler][DEBUG] bbl present in fetched batch: {bbl_present_batch}/{len(data)}")
+                print(
+                    f"[EvictionCrawler][DEBUG] bbl present in fetched batch: {bbl_present_batch}/{len(data)}"
+                )
 
         mapped: List[Dict[str, Any]] = []
         for d in data:
@@ -314,16 +343,24 @@ class EvictionCrawler(DataCrawler):
                 "eviction_zip": d.get(avail(resolved.get("eviction_zip"))),
                 "eviction_address": d.get(avail(resolved.get("eviction_address"))),
                 "eviction_apt_num": d.get(avail(resolved.get("eviction_apt_num"))),
-                "community_board": self._to_int(d.get(avail(resolved.get("community_board")))),
-                "council_district": self._to_int(d.get(avail(resolved.get("council_district")))),
+                "community_board": self._to_int(
+                    d.get(avail(resolved.get("community_board")))
+                ),
+                "council_district": self._to_int(
+                    d.get(avail(resolved.get("council_district")))
+                ),
                 "census_tract": d.get(avail(resolved.get("census_tract"))),
                 "nta": d.get(avail(resolved.get("nta"))),
                 "latitude": self._to_float(d.get(avail(resolved.get("latitude")))),
                 "longitude": self._to_float(d.get(avail(resolved.get("longitude")))),
                 "executed_date": d.get(avail(resolved.get("executed_date"))),
-                "residential_commercial_ind": d.get(avail(resolved.get("residential_commercial_ind"))),
+                "residential_commercial_ind": d.get(
+                    avail(resolved.get("residential_commercial_ind"))
+                ),
                 "ejectment": d.get(avail(resolved.get("ejectment"))),
-                "eviction_possession": d.get(avail(resolved.get("eviction_possession"))),
+                "eviction_possession": d.get(
+                    avail(resolved.get("eviction_possession"))
+                ),
                 "marshal_first_name": d.get(avail(resolved.get("marshal_first_name"))),
                 "marshal_last_name": d.get(avail(resolved.get("marshal_last_name"))),
             }
@@ -340,7 +377,9 @@ class EvictionCrawler(DataCrawler):
         filtered = [r for r in rows if r.get("bbl")]
         skipped = len(rows) - len(filtered)
         if skipped > 0:
-            print(f"[{self.__class__.__name__}] Skipped {skipped} rows with NULL/empty bbl.")
+            print(
+                f"[{self.__class__.__name__}] Skipped {skipped} rows with NULL/empty bbl."
+            )
 
         if not filtered:
             print(f"[{self.__class__.__name__}] No rows left after filtering by bbl.")
@@ -354,7 +393,9 @@ class EvictionCrawler(DataCrawler):
                     filtered,
                     conflict_target=self.CONFLICT_TARGET,
                 )
-                print(f"[{self.__class__.__name__}] Inserted {count} rows into {self.TABLE_NAME}.")
+                print(
+                    f"[{self.__class__.__name__}] Inserted {count} rows into {self.TABLE_NAME}."
+                )
             except DatabaseError as e:
                 print(f"[{self.__class__.__name__}] Insert failed: {e}")
                 raise

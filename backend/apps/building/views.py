@@ -1,12 +1,12 @@
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from rest_framework.permissions import AllowAny
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from infrastructures.postgres.building_repository import BuildingRepository
 
@@ -42,21 +42,25 @@ def _to_primitive(value):
 
 def _is_empty_building(b) -> bool:
     """등록/태그/컨텐츠가 전혀 없으면 비어있다고 간주 (취향껏 조정)"""
-    return all([
-        b.registration is None,
-        b.rent_stabilized is None,
-        not b.contacts,
-        not b.affordable,
-        not b.complaints,
-        not b.violations,
-        not b.evictions,
-        not b.acris_master,
-        not b.acris_legals,
-        not b.acris_parties,
-    ])
+    return all(
+        [
+            b.registration is None,
+            b.rent_stabilized is None,
+            not b.contacts,
+            not b.affordable,
+            not b.complaints,
+            not b.violations,
+            not b.evictions,
+            not b.acris_master,
+            not b.acris_legals,
+            not b.acris_parties,
+        ]
+    )
+
 
 def _safe_len(x):
     return len(x) if x is not None else 0
+
 
 def _sum_dict_values_len(d):
     if not isinstance(d, dict):
@@ -68,27 +72,37 @@ class BuildingByBblView(APIView):
     """
     GET /api/building?bbl=1000010001
     """
+
     permission_classes = [AllowAny]
+
     def get(self, request):
         bbl = request.query_params.get("bbl")
         if not bbl:
-            return Response({"detail": "Query parameter 'bbl' is required."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Query parameter 'bbl' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not (len(bbl) == 10 and bbl.isdigit()):
-            return Response({"detail": "Invalid bbl format. Expected 10-digit numeric string."},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Invalid bbl format. Expected 10-digit numeric string."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             repo = BuildingRepository()
             building = repo.get_by_bbl(bbl)
         except Exception as e:
-            return Response({"detail": f"Internal error while fetching building: {e}"},
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": f"Internal error while fetching building: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         if building is None or _is_empty_building(building):
-            return Response({"detail": "Building not found for given bbl."},
-                            status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"detail": "Building not found for given bbl."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         payload = _to_primitive(building)
         payload["counts"] = {
@@ -98,7 +112,11 @@ class BuildingByBblView(APIView):
             "violations": _safe_len(getattr(building, "violations", None)),
             "evictions": _safe_len(getattr(building, "evictions", None)),
             "acris_docs": _safe_len(getattr(building, "acris_master", None)),
-            "acris_legals": _sum_dict_values_len(getattr(building, "acris_legals", None)),
-            "acris_parties": _sum_dict_values_len(getattr(building, "acris_parties", None)),
+            "acris_legals": _sum_dict_values_len(
+                getattr(building, "acris_legals", None)
+            ),
+            "acris_parties": _sum_dict_values_len(
+                getattr(building, "acris_parties", None)
+            ),
         }
         return Response(payload, status=status.HTTP_200_OK)

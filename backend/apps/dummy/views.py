@@ -1,18 +1,20 @@
 # Create your views here.
 # backend/apps/dummy/views.py
 from typing import Any, Dict
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 
-from infrastructures.postgres.postgres_client import PostgresClient
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from common.exceptions.db_error import DatabaseError
+from infrastructures.postgres.postgres_client import PostgresClient
 
 from .serializers import (
     DummyItemCreateSerializer,
-    DummyItemUpdateSerializer,
     DummyItemSerializer,
+    DummyItemUpdateSerializer,
 )
+
 
 def _row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
     return {
@@ -22,6 +24,7 @@ def _row_to_item(row: Dict[str, Any]) -> Dict[str, Any]:
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
+
 
 class DummyItemListCreateView(APIView):
     def get(self, request):
@@ -37,7 +40,9 @@ class DummyItemListCreateView(APIView):
             data = [_row_to_item(r) for r in rows]
             return Response(data, status=status.HTTP_200_OK)
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def post(self, request):
         serializer = DummyItemCreateSerializer(data=request.data)
@@ -62,9 +67,15 @@ class DummyItemListCreateView(APIView):
                     """,
                     (new_id,),
                 )
-            return Response(DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_201_CREATED)
+            return Response(
+                DummyItemSerializer(_row_to_item(row)).data,
+                status=status.HTTP_201_CREATED,
+            )
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class DummyItemDetailView(APIView):
     def get_object(self, item_id: int):
@@ -82,10 +93,16 @@ class DummyItemDetailView(APIView):
         try:
             row = self.get_object(item_id)
             if not row:
-                return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-            return Response(DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK)
+                return Response(
+                    {"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+            return Response(
+                DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK
+            )
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def put(self, request, item_id: int):
         serializer = DummyItemCreateSerializer(data=request.data)  # title 필수
@@ -97,7 +114,9 @@ class DummyItemDetailView(APIView):
                 # 존재 확인
                 exists = db.exists("SELECT 1 FROM demo_item WHERE id=%s", (item_id,))
                 if not exists:
-                    return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+                    return Response(
+                        {"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND
+                    )
 
                 db.execute(
                     """
@@ -114,9 +133,13 @@ class DummyItemDetailView(APIView):
                     """,
                     (item_id,),
                 )
-            return Response(DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK)
+            return Response(
+                DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK
+            )
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def patch(self, request, item_id: int):
         serializer = DummyItemUpdateSerializer(data=request.data, partial=True)
@@ -124,7 +147,9 @@ class DummyItemDetailView(APIView):
         payload = serializer.validated_data
 
         if not payload:
-            return Response({"detail": "No fields to update"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "No fields to update"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         fields = []
         params = []
@@ -140,7 +165,9 @@ class DummyItemDetailView(APIView):
             with PostgresClient() as db:
                 exists = db.exists("SELECT 1 FROM demo_item WHERE id=%s", (item_id,))
                 if not exists:
-                    return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+                    return Response(
+                        {"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND
+                    )
 
                 sql = f"UPDATE demo_item SET {', '.join(fields)} WHERE id=%s"
                 params.append(item_id)
@@ -150,16 +177,24 @@ class DummyItemDetailView(APIView):
                     "SELECT id, title, detail, created_at, updated_at FROM demo_item WHERE id=%s",
                     (item_id,),
                 )
-            return Response(DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK)
+            return Response(
+                DummyItemSerializer(_row_to_item(row)).data, status=status.HTTP_200_OK
+            )
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def delete(self, request, item_id: int):
         try:
             with PostgresClient() as db:
                 count = db.execute("DELETE FROM demo_item WHERE id=%s", (item_id,))
             if count == 0:
-                return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(
+                    {"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND
+                )
             return Response(status=status.HTTP_204_NO_CONTENT)
         except DatabaseError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

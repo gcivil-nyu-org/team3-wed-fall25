@@ -28,7 +28,7 @@ def _mock_properties():
 
 
 class PropertiesView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         """Return list of properties (by BBL) owned by landlord (owner_user_id == landlord_id).
@@ -44,6 +44,7 @@ class PropertiesView(APIView):
         # try:
         #     if user_id != int(landlord_id):
         #         return Response({"error": "Unauthorized access to landlord properties."}, status=status.HTTP_403_FORBIDDEN)
+        print(f"Fetching properties for user_id: {user_id}")
         try:
             # find BBLs for this landlord
             with PostgresClient() as db:
@@ -57,6 +58,7 @@ class PropertiesView(APIView):
                 )
 
             bbls = [r["bbl"] for r in rows]
+            print("Found BBLs for landlord:", bbls)
             if not bbls:
                 return Response([], status=status.HTTP_200_OK)
 
@@ -89,6 +91,7 @@ class PropertiesView(APIView):
                         "evictions_count": evictions_count,
                     }
                 )
+            print("Returning properties:", properties)
             return Response(properties, status=status.HTTP_200_OK)
         except Exception as e:
             # Log server-side in real app; here we just fall back to mock
@@ -97,7 +100,7 @@ class PropertiesView(APIView):
 
 
 class ViolationsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     
 
@@ -109,6 +112,8 @@ class ViolationsView(APIView):
         except:
             user_id = None
         
+
+        print(f"Fetching violations for user_id: {user_id}")
         try:
             with PostgresClient() as db:
                 rows = db.query_all(
@@ -314,6 +319,7 @@ class LandlordApplicationView(APIView):
             phone = data.get("phone")
             experience_years = data.get("experience_years")
 
+            
             if not all([bbl, country, agree_terms]):
                 print("[LandlordApplyView] Missing required fields.")
                 return Response({"error": "BBL, country, and terms agreement are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -375,13 +381,15 @@ def landlord_apply_get(request):
         data = request.data
         bbl = data.get("bbl")
         country = data.get("country")
-        agree_terms = data.get("agree_terms")
+        agree_terms = data.get("agreeTerms")
         # Optional: keep these if you want them in a different table
-        full_name = data.get("full_name")
+        name = data.get("name")
         email = data.get("email")
         phone = data.get("phone")
         experience_years = data.get("experience_years")
 
+        print("landlord application data:", data)
+        
         if not all([bbl, country, agree_terms]):
             print("[LandlordApplyView] Missing required fields.")
             return Response({"error": "BBL, country, and terms agreement are required."}, status=status.HTTP_400_BAD_REQUEST)
@@ -392,7 +400,7 @@ def landlord_apply_get(request):
             return Response({"error": "Invalid BBL format. Must be 10 digits."}, status=status.HTTP_400_BAD_REQUEST)
 
         user_id = request.user.id
-
+        print(f"landlord application by user_id: {user_id}")
         with PostgresClient() as db:
             # Check for existing application
             existing = db.query_one(
