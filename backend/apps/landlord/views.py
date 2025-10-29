@@ -31,22 +31,14 @@ class PropertiesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """Return list of properties (by BBL) owned by landlord (owner_user_id == landlord_id).
-
-        Uses `landlord_owners` table to look up BBLs, then queries BuildingRepository
-        for registration/address/complaints/evictions related to each BBL.
-        """
+        """Return list of properties (by BBL) owned by landlord."""
         try:
-            # Use the authenticated user's ID
             user_id = request.user.id if request.user and request.user.is_authenticated else None
         except:
             user_id = None
-        # try:
-        #     if user_id != int(landlord_id):
-        #         return Response({"error": "Unauthorized access to landlord properties."}, status=status.HTTP_403_FORBIDDEN)
+        
         print(f"Fetching properties for user_id: {user_id}")
         try:
-            # find BBLs for this landlord
             with PostgresClient() as db:
                 rows = db.query_all(
                     """
@@ -67,15 +59,13 @@ class PropertiesView(APIView):
 
             properties = []
             for bbl, bld in buildings.items():
-                reg = getattr(bld, "registration", None) if bld else None
-                address = None
-                if reg:
-                    # Registration is a dataclass with attributes
-                    hn = getattr(reg, "house_number", None)
-                    sn = getattr(reg, "street_name", None)
-                    boro = getattr(reg, "boro", None) or getattr(reg, "boro", None)
-                    address = ", ".join([s for s in [hn, sn, boro] if s])
-
+                # Debug: print the building object structure
+                # print(f"Building {bbl} type: {type(bld)}")
+                # if bld:
+                #     print(f"Building {bbl} attributes: {dir(bld)}")
+                
+                address = self._get_address_from_building(bld, bbl)
+                print(f"Property {bbl} address: {address}")
                 violations_count = len(getattr(bld, "complaints", []) or []) + len(getattr(bld, "violations", []) or [])
                 evictions_count = len(getattr(bld, "evictions", []) or [])
 
@@ -83,7 +73,7 @@ class PropertiesView(APIView):
                     {
                         "id": bbl,
                         "bbl": bbl,
-                        "address": address or bbl,
+                        "address": address,
                         "occupancy_status": None,
                         "financial_performance": None,
                         "tenant_turnover": None,
@@ -91,12 +81,46 @@ class PropertiesView(APIView):
                         "evictions_count": evictions_count,
                     }
                 )
-            print("Returning properties:", properties)
+            # print("Returning properties:", properties)
             return Response(properties, status=status.HTTP_200_OK)
         except Exception as e:
-            # Log server-side in real app; here we just fall back to mock
             print(f"[PropertiesView] DB error: {e}")
             return Response(_mock_properties(), status=status.HTTP_200_OK)
+
+    def _get_address_from_building(self, bld, bbl):
+        """Extract address from Building object"""
+        if not bld or not bld.registration:
+            return f"Property {bbl}"
+        
+        reg = bld.registration
+        print("Registration object attributes:", dir(reg))
+        
+        # Access the Registration attributes directly
+        house_number = reg.house_number if reg.house_number else None
+        street_name = reg.street_name if reg.street_name else None
+        borough = reg.boro if reg.boro else None
+        zip_code = reg.zip if reg.zip else None
+        
+        # Build address
+        address_parts = []
+        
+        # Street address
+        street_parts = []
+        if house_number:
+            street_parts.append(str(house_number))
+        if street_name:
+            street_parts.append(str(street_name))
+        
+        if street_parts:
+            address_parts.append(" ".join(street_parts))
+        
+        # Borough and ZIP
+        if borough:
+            address_parts.append(str(borough))
+        if zip_code:
+            address_parts.append(str(zip_code))
+        
+        return ", ".join(address_parts) if address_parts else f"Property {bbl}"
 
 
 class ViolationsView(APIView):
