@@ -20,8 +20,8 @@ const ReviewForm = ({
 }) => {
   const [title, setTitle] = useState<string>(review?.title || "");
   const [body, setBody] = useState<string>(review?.body || "");
-  const [rating, setRating] = useState<CommunityReview["rating"]>(
-    review?.rating
+  const [rating, setRating] = useState<number>(
+    review?.rating || 0
   );
 
   const handleSubmit = async () => {

@@ -21,8 +21,10 @@ import {
   CheckCircle
 } from "@mui/icons-material";
 import { Link } from "react-router";
+import { useAuth } from "../hooks";
 
 export default function Home() {
+  const { user } = useAuth();
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)' }}>
       {/* Hero Section */}
@@ -525,7 +527,8 @@ export default function Home() {
         </Container>
         </Box>
 
-        {/* CTA Section */}
+        {/* CTA Section (hidden when logged in) */}
+      {!user && (
       <Box sx={{ py: { xs: 8, md: 12 } }}>
         <Container maxWidth="lg">
           <Paper 
@@ -613,6 +616,7 @@ export default function Home() {
           </Paper>
       </Container>
         </Box>
+      )}
     </Box>
   );
 }

@@ -43,9 +43,9 @@ export default function SignIn() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
         
-        // Redirect to home page after successful login
+        // Redirect to dashboard after successful login
         setTimeout(() => {
-          navigate('/');
+          navigate('/dashboard');
         }, 1500);
       } else {
         // Check if it's an email verification error

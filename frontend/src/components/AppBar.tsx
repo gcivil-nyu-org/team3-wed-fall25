@@ -38,6 +38,7 @@ export default function AppAppBar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isAdmin = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
 
   const toggleDrawer = (newOpen: boolean) => () => {
     setOpen(newOpen);
@@ -52,7 +53,13 @@ export default function AppAppBar() {
   };
 
   const handleLogout = () => {
+    // Logout regular user
     logout();
+    // Clear admin session if present
+    if (isAdmin) {
+      sessionStorage.removeItem('admin_authenticated');
+      sessionStorage.removeItem('admin_username');
+    }
     handleProfileMenuClose();
     navigate('/');
   };
@@ -102,7 +109,7 @@ export default function AppAppBar() {
 
           {/* Navigation Links */}
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
-            <NavLink to="/">
+              <NavLink to="/">
               <Button
                 variant="text"
                 size="small"
@@ -117,10 +124,10 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                Home
-              </Button>
-            </NavLink>
-            <NavLink to="/search">
+                  Home
+                </Button>
+              </NavLink>
+              <NavLink to="/search">
               <Button
                 variant="text"
                 size="small"
@@ -135,9 +142,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                Search
-              </Button>
-            </NavLink>
+                  Search
+                </Button>
+              </NavLink>
             <NavLink to="/map">
               <Button
                 variant="text"
@@ -153,9 +160,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                Map
-              </Button>
-            </NavLink>
+                  Map
+                </Button>
+              </NavLink>
             <NavLink to="/community">
               <Button
                 variant="text"
@@ -171,10 +178,10 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                Community
-              </Button>
-            </NavLink>
-            <NavLink to="/landlord/dashboard">
+                  Community
+                </Button>
+              </NavLink>
+            <NavLink to="/landlords">
               <Button
                 variant="text"
                 size="small"
@@ -192,41 +199,7 @@ export default function AppAppBar() {
                 Landlords
               </Button>
             </NavLink>
-            <NavLink to="/message">
-              <Button
-                variant="text"
-                size="small"
-                sx={{
-                  color: "#4A5568",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    color: "#FF6B35",
-                    backgroundColor: "rgba(255, 107, 53, 0.05)",
-                  },
-                }}
-              >
-                Message
-              </Button>
-            </NavLink>
-            <Button
-              variant="text"
-              size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
-            >
-              Admin
-            </Button>
-          </Box>
+            </Box>
 
           {/* Auth Buttons / User Profile */}
           <Box
@@ -236,7 +209,7 @@ export default function AppAppBar() {
               alignItems: "center",
             }}
           >
-            {user ? (
+            {user || isAdmin ? (
               <>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography
@@ -247,7 +220,7 @@ export default function AppAppBar() {
                       fontSize: "0.85rem",
                     }}
                   >
-                    Welcome, {user?.first_name || 'User'}
+                    Welcome, {user?.first_name || sessionStorage.getItem('admin_username') || 'User'}
                   </Typography>
                   <IconButton
                     onClick={handleProfileMenuOpen}
@@ -267,7 +240,7 @@ export default function AppAppBar() {
                         fontWeight: 600,
                       }}
                     >
-                      {getInitials(user?.first_name, user?.last_name)}
+                      {user ? getInitials(user?.first_name, user?.last_name) : 'AD'}
                     </Avatar>
                   </IconButton>
                 </Box>
@@ -284,10 +257,18 @@ export default function AppAppBar() {
                     },
                   }}
                 >
-                  <MenuItem onClick={handleProfileClick}>
-                    <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
-                    My Profile
-                  </MenuItem>
+                  {user && (
+                    <MenuItem onClick={handleProfileClick}>
+                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                      My Profile
+                    </MenuItem>
+                  )}
+                  {isAdmin && (
+                    <MenuItem onClick={() => { navigate('/admin/dashboard'); handleProfileMenuClose(); }}>
+                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                      Admin Dashboard
+                    </MenuItem>
+                  )}
                   <MenuItem onClick={handleLogout}>
                     <LogoutIcon sx={{ mr: 1, fontSize: 20 }} />
                     Logout
@@ -341,8 +322,8 @@ export default function AppAppBar() {
           </Box>
           {/* Mobile Menu */}
           <Box sx={{ display: { xs: "flex", md: "none" } }}>
-            <IconButton
-              aria-label="Menu button"
+            <IconButton 
+              aria-label="Menu button" 
               onClick={toggleDrawer(true)}
               sx={{ color: "#4A5568" }}
             >
@@ -383,22 +364,12 @@ export default function AppAppBar() {
                       Housing Transparency
                     </Typography>
                   </Box>
-                  <IconButton
-                    onClick={toggleDrawer(false)}
-                    sx={{ color: "#4A5568" }}
-                  >
+                  <IconButton onClick={toggleDrawer(false)} sx={{ color: "#4A5568" }}>
                     <CloseIcon />
                   </IconButton>
                 </Box>
 
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 1,
-                    mb: 3,
-                  }}
-                >
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
                   <NavLink to="/" style={{ textDecoration: "none" }}>
                     <Button
                       fullWidth
@@ -475,10 +446,7 @@ export default function AppAppBar() {
                       Community
                     </Button>
                   </NavLink>
-                  <NavLink
-                    to="/landlord/dashboard"
-                    style={{ textDecoration: "none" }}
-                  >
+                  <NavLink to="/landlords" style={{ textDecoration: "none" }}>
                     <Button
                       fullWidth
                       variant="text"
@@ -497,47 +465,9 @@ export default function AppAppBar() {
                       Landlords
                     </Button>
                   </NavLink>
-                  <NavLink to="/message" style={{ textDecoration: "none" }}>
-                    <Button
-                      fullWidth
-                      variant="text"
-                      sx={{
-                        justifyContent: "flex-start",
-                        color: "#4A5568",
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.9rem",
-                        "&:hover": {
-                          color: "#FF6B35",
-                          backgroundColor: "rgba(255, 107, 53, 0.05)",
-                        },
-                      }}
-                    >
-                      Message
-                    </Button>
-                  </NavLink>
-                  <Button
-                    fullWidth
-                    variant="text"
-                    sx={{
-                      justifyContent: "flex-start",
-                      color: "#4A5568",
-                      fontWeight: 500,
-                      textTransform: "uppercase",
-                      fontSize: "0.9rem",
-                      "&:hover": {
-                        color: "#FF6B35",
-                        backgroundColor: "rgba(255, 107, 53, 0.05)",
-                      },
-                    }}
-                  >
-                    Admin
-                  </Button>
                 </Box>
 
-                <Divider
-                  sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }}
-                />
+                <Divider sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }} />
 
                 {user ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -654,5 +584,7 @@ export default function AppAppBar() {
         </StyledToolbar>
       </Container>
     </AppBar>
-  );
+  
+);
 }
+
