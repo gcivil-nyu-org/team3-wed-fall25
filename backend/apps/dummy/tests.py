@@ -800,7 +800,7 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_method_coverage(self):
         """Test dummy views method coverage"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
+            from apps.dummy.views import DummyItemDetailView, DummyItemListCreateView
 
             # Test that views have expected methods
             list_view = DummyItemListCreateView()
@@ -826,9 +826,7 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_edge_cases(self):
         """Test dummy views edge cases"""
         try:
-            from apps.dummy.views import DummyItemDetailView
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -850,14 +848,14 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_comprehensive_coverage_final(self):
         """Test comprehensive coverage of dummy views - final push"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
+            from rest_framework.test import APIClient
+
             from apps.dummy.serializers import (
                 DummyItemCreateSerializer,
-                DummyItemUpdateSerializer,
                 DummyItemSerializer,
+                DummyItemUpdateSerializer,
             )
-            from rest_framework.test import APIClient
-            from rest_framework import status
+            from apps.dummy.views import DummyItemDetailView, DummyItemListCreateView
 
             client = APIClient()
 
@@ -921,8 +919,8 @@ class DummyViewsMethodCoverageTests(TestCase):
         try:
             from apps.dummy.serializers import (
                 DummyItemCreateSerializer,
-                DummyItemUpdateSerializer,
                 DummyItemSerializer,
+                DummyItemUpdateSerializer,
             )
 
             # Test create serializer with various data
@@ -955,9 +953,7 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_error_scenarios(self):
         """Test dummy views error scenarios"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -992,10 +988,7 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_integration_comprehensive(self):
         """Test comprehensive dummy views integration"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
-            from apps.dummy.serializers import DummyItemCreateSerializer
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -1032,14 +1025,14 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_final_coverage_push(self):
         """Test dummy views final coverage push"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
+            from rest_framework.test import APIClient
+
             from apps.dummy.serializers import (
                 DummyItemCreateSerializer,
-                DummyItemUpdateSerializer,
                 DummyItemSerializer,
+                DummyItemUpdateSerializer,
             )
-            from rest_framework.test import APIClient
-            from rest_framework import status
+            from apps.dummy.views import DummyItemDetailView, DummyItemListCreateView
 
             client = APIClient()
 
@@ -1116,9 +1109,9 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_comprehensive_method_coverage(self):
         """Test comprehensive method coverage for dummy views"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
-            from rest_framework.test import APIClient
-            from rest_framework import status
+            pass
+
+            from apps.dummy.views import DummyItemDetailView, DummyItemListCreateView
 
             # Test all HTTP methods
             list_view = DummyItemListCreateView()
@@ -1159,9 +1152,7 @@ class DummyViewsMethodCoverageTests(TestCase):
     def test_dummy_views_error_handling_comprehensive(self):
         """Test comprehensive error handling for dummy views"""
         try:
-            from apps.dummy.views import DummyItemListCreateView, DummyItemDetailView
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -1201,8 +1192,8 @@ class DummyViewsMethodCoverageTests(TestCase):
         try:
             from apps.dummy.serializers import (
                 DummyItemCreateSerializer,
-                DummyItemUpdateSerializer,
                 DummyItemSerializer,
+                DummyItemUpdateSerializer,
             )
 
             # Test serializer instantiation

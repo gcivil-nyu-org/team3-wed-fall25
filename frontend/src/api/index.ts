@@ -136,12 +136,14 @@ export interface BuildingApiResponse {
 
 export const fetchBuilding = async (bbl: string): Promise<BuildingData> => {
   try {
-    const response = await axiosInstance.get<BuildingApiResponse>(`/building/?bbl=${bbl}`);
-    
+    const response = await axiosInstance.get<BuildingApiResponse>(
+      `/building/?bbl=${bbl}`
+    );
+
     if (!response.data.result) {
       throw new Error("Failed to fetch building data");
     }
-    
+
     return response.data.data;
   } catch (error) {
     console.error("Error fetching building data:", error);
@@ -185,24 +187,31 @@ export const searchBuildings = async (params: {
 }): Promise<SearchApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
-    
-    if (params.query) searchParams.append('q', params.query);
-    if (params.borough && params.borough !== 'All Boroughs') searchParams.append('borough', params.borough);
-    if (params.rentStabilized) searchParams.append('rent_stabilized', 'true');
-    if (params.evictionsMin !== undefined) searchParams.append('evictions_min', params.evictionsMin.toString());
-    if (params.evictionsMax !== undefined) searchParams.append('evictions_max', params.evictionsMax.toString());
-    if (params.violationsMin !== undefined) searchParams.append('violations_min', params.violationsMin.toString());
-    if (params.violationsMax !== undefined) searchParams.append('violations_max', params.violationsMax.toString());
-    if (params.zipCode) searchParams.append('zip', params.zipCode);
-    if (params.page) searchParams.append('page', params.page.toString());
-    if (params.limit) searchParams.append('limit', params.limit.toString());
 
-    const response = await axiosInstance.get<SearchApiResponse>(`/buildings/search/?${searchParams.toString()}`);
-    
+    if (params.query) searchParams.append("q", params.query);
+    if (params.borough && params.borough !== "All Boroughs")
+      searchParams.append("borough", params.borough);
+    if (params.rentStabilized) searchParams.append("rent_stabilized", "true");
+    if (params.evictionsMin !== undefined)
+      searchParams.append("evictions_min", params.evictionsMin.toString());
+    if (params.evictionsMax !== undefined)
+      searchParams.append("evictions_max", params.evictionsMax.toString());
+    if (params.violationsMin !== undefined)
+      searchParams.append("violations_min", params.violationsMin.toString());
+    if (params.violationsMax !== undefined)
+      searchParams.append("violations_max", params.violationsMax.toString());
+    if (params.zipCode) searchParams.append("zip", params.zipCode);
+    if (params.page) searchParams.append("page", params.page.toString());
+    if (params.limit) searchParams.append("limit", params.limit.toString());
+
+    const response = await axiosInstance.get<SearchApiResponse>(
+      `/buildings/search/?${searchParams.toString()}`
+    );
+
     if (!response.data.result) {
       throw new Error("Failed to search buildings");
     }
-    
+
     return response.data;
   } catch (error) {
     console.error("Error searching buildings:", error);
@@ -217,21 +226,29 @@ export const searchBuildings = async (params: {
           borough: building.registration.boro,
           zip: building.registration.zip,
           evictions3yr: building.evictions.length,
-          openViolations: building.violations.filter(v => v.violation_status === 'Open').length,
-          riskLevel: building.evictions.length > 5 || building.violations.filter(v => v.violation_status === 'Open').length > 10 
-            ? "High Risk" 
-            : building.evictions.length > 2 || building.violations.filter(v => v.violation_status === 'Open').length > 5 
-            ? "Moderate Risk" 
-            : "Low Risk",
+          openViolations: building.violations.filter(
+            (v) => v.violation_status === "Open"
+          ).length,
+          riskLevel:
+            building.evictions.length > 5 ||
+            building.violations.filter((v) => v.violation_status === "Open")
+              .length > 10
+              ? "High Risk"
+              : building.evictions.length > 2 ||
+                  building.violations.filter(
+                    (v) => v.violation_status === "Open"
+                  ).length > 5
+                ? "Moderate Risk"
+                : "Low Risk",
           rentStabilized: building.rent_stabilized.status === "RENT_STABILIZED",
         };
-        
+
         return {
           result: true,
           data: [searchResult],
           total: 1,
           page: 1,
-          limit: 1
+          limit: 1,
         };
       } catch (buildingError) {
         throw error; // Throw original search error
@@ -355,20 +372,20 @@ export const fetchNeighborhoodStats = async (params: {
 }): Promise<NeighborhoodStatsApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
-    searchParams.append('min_lat', params.min_lat.toString());
-    searchParams.append('max_lat', params.max_lat.toString());
-    searchParams.append('min_lng', params.min_lng.toString());
-    searchParams.append('max_lng', params.max_lng.toString());
-    if (params.data_type) searchParams.append('data_type', params.data_type);
+    searchParams.append("min_lat", params.min_lat.toString());
+    searchParams.append("max_lat", params.max_lat.toString());
+    searchParams.append("min_lng", params.min_lng.toString());
+    searchParams.append("max_lng", params.max_lng.toString());
+    if (params.data_type) searchParams.append("data_type", params.data_type);
 
     const response = await axiosInstance.get<NeighborhoodStatsApiResponse>(
       `/neighborhood/stats/?${searchParams.toString()}`
     );
-    
+
     if (!response.data.result) {
       throw new Error("Failed to fetch neighborhood stats");
     }
-    
+
     return response.data;
   } catch (error) {
     console.error("Error fetching neighborhood stats:", error);
@@ -387,22 +404,22 @@ export const fetchHeatmapData = async (params: {
 }): Promise<HeatmapDataApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
-    searchParams.append('min_lat', params.min_lat.toString());
-    searchParams.append('max_lat', params.max_lat.toString());
-    searchParams.append('min_lng', params.min_lng.toString());
-    searchParams.append('max_lng', params.max_lng.toString());
-    if (params.data_type) searchParams.append('data_type', params.data_type);
-    if (params.borough) searchParams.append('borough', params.borough);
-    if (params.limit) searchParams.append('limit', params.limit.toString());
+    searchParams.append("min_lat", params.min_lat.toString());
+    searchParams.append("max_lat", params.max_lat.toString());
+    searchParams.append("min_lng", params.min_lng.toString());
+    searchParams.append("max_lng", params.max_lng.toString());
+    if (params.data_type) searchParams.append("data_type", params.data_type);
+    if (params.borough) searchParams.append("borough", params.borough);
+    if (params.limit) searchParams.append("limit", params.limit.toString());
 
     const response = await axiosInstance.get<HeatmapDataApiResponse>(
       `/neighborhood/heatmap/?${searchParams.toString()}`
     );
-    
+
     if (!response.data.result) {
       throw new Error("Failed to fetch heatmap data");
     }
-    
+
     return response.data;
   } catch (error) {
     console.error("Error fetching heatmap data:", error);
@@ -410,19 +427,21 @@ export const fetchHeatmapData = async (params: {
   }
 };
 
-export const fetchBoroughSummary = async (borough?: string): Promise<BoroughSummaryApiResponse> => {
+export const fetchBoroughSummary = async (
+  borough?: string
+): Promise<BoroughSummaryApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
-    if (borough) searchParams.append('borough', borough);
+    if (borough) searchParams.append("borough", borough);
 
     const response = await axiosInstance.get<BoroughSummaryApiResponse>(
       `/neighborhood/borough-summary/?${searchParams.toString()}`
     );
-    
+
     if (!response.data.result) {
       throw new Error("Failed to fetch borough summary");
     }
-    
+
     return response.data;
   } catch (error) {
     console.error("Error fetching borough summary:", error);
@@ -436,22 +455,347 @@ export const fetchNeighborhoodTrends = async (params: {
 }): Promise<NeighborhoodTrendsApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
-    searchParams.append('bbl', params.bbl);
-    if (params.days_back) searchParams.append('days_back', params.days_back.toString());
+    searchParams.append("bbl", params.bbl);
+    if (params.days_back)
+      searchParams.append("days_back", params.days_back.toString());
 
     const response = await axiosInstance.get<NeighborhoodTrendsApiResponse>(
       `/neighborhood/trends/?${searchParams.toString()}`
     );
-    
+
     if (!response.data.result) {
       throw new Error("Failed to fetch neighborhood trends");
     }
-    
+
     return response.data;
   } catch (error) {
     console.error("Error fetching neighborhood trends:", error);
     throw error;
   }
 };
+
+// =========================================================
+// COMMUNITY API TYPES AND FUNCTIONS
+// =========================================================
+
+export interface CommunityFavorite {
+  id: number;
+  user_id: number;
+  bbl: string;
+  note?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityReview {
+  id: number;
+  user_id: number;
+  bbl: string;
+  rating?: number;
+  title: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  email: string;
+  username: string;
+}
+
+export interface CommunityReviewComment {
+  id: number;
+  review_id: number;
+  user_id: number;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  email: string;
+  username: string;
+}
+
+export interface CommunityMessage {
+  id: number;
+  sender_id: number;
+  receiver_id: number;
+  bbl?: string;
+  body: string;
+  read_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Community API Functions
+export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityFavorite[];
+    }>("/community/favorites/", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching favorites:", error);
+    throw error;
+  }
+};
+
+export const addFavorite = async (
+  bbl: string,
+  note?: string
+): Promise<CommunityFavorite> => {
+  try {
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityFavorite;
+    }>(
+      "/community/favorites/",
+      {
+        bbl,
+        note,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error("Error adding favorite:", error);
+    throw error;
+  }
+};
+
+export const removeFavorite = async (favoriteId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/favorites/${favoriteId}/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
+  } catch (error) {
+    console.error("Error removing favorite:", error);
+    throw error;
+  }
+};
+
+export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReview[];
+    }>(`/community/reviews/?bbl=${bbl}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    throw error;
+  }
+};
+
+export const createReview = async (
+  bbl: string,
+  title: string,
+  body: string,
+  rating?: number
+): Promise<CommunityReview> => {
+  try {
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityReview;
+    }>(
+      "/community/reviews/",
+      {
+        bbl,
+        title,
+        body,
+        rating,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error("Error creating review:", error);
+    throw error;
+  }
+};
+
+export const updateReview = async (
+  reviewId: number,
+  title?: string,
+  body?: string,
+  rating?: number
+): Promise<CommunityReview> => {
+  try {
+    const response = await axiosInstance.put<{
+      result: boolean;
+      data: CommunityReview;
+    }>(
+      `/community/reviews/${reviewId}/`,
+      {
+        title,
+        body,
+        rating,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error("Error updating review:", error);
+    throw error;
+  }
+};
+
+export const deleteReview = async (
+  reviewId: number
+): Promise<{ detail: string }> => {
+  try {
+    const response = await axiosInstance.delete<{
+      result: boolean;
+      data: { detail: string };
+    }>(`/community/reviews/${reviewId}/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
+
+    return response.data.data;
+  } catch (error) {
+    console.error("Error deleting review:", error);
+    throw error;
+  }
+};
+
+export const fetchReviewComments = async (
+  reviewId: number
+): Promise<CommunityReviewComment[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReviewComment[];
+    }>(`/community/review-comments/?review_id=${reviewId}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching review comments:", error);
+    throw error;
+  }
+};
+
+export const createReviewComment = async (
+  reviewId: number,
+  body: string
+): Promise<CommunityReviewComment> => {
+  try {
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityReviewComment;
+    }>(
+      "/community/review-comments/",
+      {
+        review_id: reviewId,
+        body,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+    return response.data.data;
+  } catch (error) {
+    console.error("Error creating review comment:", error);
+    throw error;
+  }
+};
+
+export const deleteReviewComment = async (commentId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/review-comments/${commentId}/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting review comment:", error);
+    throw error;
+  }
+};
+
+export const fetchInboxMessages = async (): Promise<CommunityMessage[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityMessage[];
+    }>("/community/messages/inbox/");
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching inbox messages:", error);
+    throw error;
+  }
+};
+
+export const fetchOutboxMessages = async (): Promise<CommunityMessage[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityMessage[];
+    }>("/community/messages/outbox/");
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching outbox messages:", error);
+    throw error;
+  }
+};
+
+export const sendMessage = async (
+  receiverId: number,
+  body: string,
+  bbl?: string
+): Promise<CommunityMessage> => {
+  try {
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityMessage;
+    }>("/community/messages/send/", {
+      receiver_id: receiverId,
+      body,
+      bbl,
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+export const markMessageAsRead = async (messageId: number): Promise<void> => {
+  try {
+    await axiosInstance.put(`/community/messages/${messageId}/read/`);
+  } catch (error) {
+    console.error("Error marking message as read:", error);
+    throw error;
+  }
+};
+
+export const deleteMessage = async (messageId: number): Promise<void> => {
+  try {
+    await axiosInstance.delete(`/community/messages/${messageId}/`);
+  } catch (error) {
+    console.error("Error deleting message:", error);
+    throw error;
+  }
+};
+
+// =========================================================
+// END OF COMMUNITY API TYPES AND FUNCTIONS
+// =========================================================
 
 export { fetchProfile };

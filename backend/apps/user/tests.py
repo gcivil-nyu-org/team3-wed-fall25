@@ -116,6 +116,7 @@ class UserSerializerTests(TestCase):
     def test_user_serializer_fields(self):
         """Test UserSerializer fields"""
         from django.contrib.auth.models import User
+
         from apps.user.serializers import UserSerializer
 
         user = User.objects.create_user(
@@ -139,8 +140,8 @@ class UserViewsAPITests(TestCase):
     def test_register_view_success(self):
         """Test RegisterView with valid data"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -158,8 +159,8 @@ class UserViewsAPITests(TestCase):
     def test_register_view_invalid_data(self):
         """Test RegisterView with invalid data"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -170,8 +171,8 @@ class UserViewsAPITests(TestCase):
     def test_me_view_unauthenticated(self):
         """Test MeView without authentication"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("profile")
@@ -181,8 +182,8 @@ class UserViewsAPITests(TestCase):
     def test_me_view_authenticated(self):
         """Test MeView with authentication"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         client.force_authenticate(user=self.user)
@@ -195,8 +196,8 @@ class UserViewsAPITests(TestCase):
     def test_me_view_jwt_authentication(self):
         """Test MeView with JWT authentication"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
         from rest_framework_simplejwt.tokens import RefreshToken
 
         client = APIClient()
@@ -213,8 +214,9 @@ class UserViewsAPITests(TestCase):
 class UserViewsHelperFunctionTests(TestCase):
     def test_register_view_permissions(self):
         """Test RegisterView permission classes"""
-        from apps.user.views import RegisterView
         from rest_framework.permissions import AllowAny
+
+        from apps.user.views import RegisterView
 
         view = RegisterView()
         self.assertEqual(len(view.permission_classes), 1)
@@ -222,8 +224,9 @@ class UserViewsHelperFunctionTests(TestCase):
 
     def test_me_view_permissions(self):
         """Test MeView permission classes"""
-        from apps.user.views import MeView
         from rest_framework.permissions import IsAuthenticated
+
+        from apps.user.views import MeView
 
         view = MeView()
         self.assertEqual(len(view.permission_classes), 1)
@@ -231,16 +234,17 @@ class UserViewsHelperFunctionTests(TestCase):
 
     def test_register_view_queryset(self):
         """Test RegisterView queryset"""
-        from apps.user.views import RegisterView
         from django.contrib.auth.models import User
+
+        from apps.user.views import RegisterView
 
         view = RegisterView()
         self.assertEqual(view.queryset.model, User)
 
     def test_register_view_serializer_class(self):
         """Test RegisterView serializer class"""
-        from apps.user.views import RegisterView
         from apps.user.serializers import RegisterSerializer
+        from apps.user.views import RegisterView
 
         view = RegisterView()
         self.assertEqual(view.serializer_class, RegisterSerializer)
@@ -250,8 +254,8 @@ class UserViewsErrorHandlingTests(TestCase):
     def test_register_view_missing_fields(self):
         """Test RegisterView with missing required fields"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -265,8 +269,8 @@ class UserViewsErrorHandlingTests(TestCase):
     def test_register_view_empty_data(self):
         """Test RegisterView with empty data"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -276,8 +280,8 @@ class UserViewsErrorHandlingTests(TestCase):
     def test_me_view_invalid_token(self):
         """Test MeView with invalid JWT token"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("profile")
@@ -290,8 +294,8 @@ class UserViewsEdgeCaseTests(TestCase):
     def test_register_view_long_username(self):
         """Test RegisterView with very long username"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -309,8 +313,8 @@ class UserViewsEdgeCaseTests(TestCase):
     def test_register_view_special_characters(self):
         """Test RegisterView with special characters in username"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         client = APIClient()
         url = reverse("signup")
@@ -329,8 +333,8 @@ class UserViewsEdgeCaseTests(TestCase):
         """Test MeView returns correct user data"""
         from django.contrib.auth.models import User
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         user1 = User.objects.create_user(
             username="user1", email="user1@example.com", password="password123"
@@ -351,9 +355,8 @@ class UserViewsIntegrationTests(TestCase):
     def test_register_and_login_flow(self):
         """Test complete register and login flow"""
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
-        from django.contrib.auth.models import User
+        from rest_framework.test import APIClient
 
         client = APIClient()
 
@@ -387,8 +390,8 @@ class UserViewsIntegrationTests(TestCase):
         """Test register with duplicate email"""
         from django.contrib.auth.models import User
         from django.urls import reverse
-        from rest_framework.test import APIClient
         from rest_framework import status
+        from rest_framework.test import APIClient
 
         # Create first user
         User.objects.create_user(
@@ -412,10 +415,10 @@ class UserViewsIntegrationTests(TestCase):
     def test_user_views_comprehensive_coverage_final(self):
         """Test comprehensive coverage of user views - final push"""
         try:
-            from apps.user.views import RegisterView, MeView
-            from apps.user.serializers import RegisterSerializer, MeSerializer
             from rest_framework.test import APIClient
-            from rest_framework import status
+
+            from apps.user.serializers import MeSerializer, RegisterSerializer
+            from apps.user.views import MeView, RegisterView
 
             client = APIClient()
 
@@ -462,7 +465,7 @@ class UserViewsIntegrationTests(TestCase):
     def test_user_views_serializer_validation_comprehensive(self):
         """Test comprehensive serializer validation"""
         try:
-            from apps.user.serializers import RegisterSerializer, MeSerializer
+            from apps.user.serializers import MeSerializer, RegisterSerializer
 
             # Test registration serializer with various data
             registration_cases = [
@@ -533,9 +536,7 @@ class UserViewsIntegrationTests(TestCase):
     def test_user_views_error_scenarios(self):
         """Test user views error scenarios"""
         try:
-            from apps.user.views import RegisterView, MeView
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -562,9 +563,7 @@ class UserViewsIntegrationTests(TestCase):
     def test_user_views_edge_cases(self):
         """Test user views edge cases"""
         try:
-            from apps.user.views import RegisterView, MeView
             from rest_framework.test import APIClient
-            from rest_framework import status
 
             client = APIClient()
 
@@ -607,7 +606,7 @@ class UserViewsIntegrationTests(TestCase):
     def test_user_views_method_coverage(self):
         """Test user views method coverage"""
         try:
-            from apps.user.views import RegisterView, MeView
+            from apps.user.views import MeView, RegisterView
 
             # Test that views have expected methods
             register_view = RegisterView()
