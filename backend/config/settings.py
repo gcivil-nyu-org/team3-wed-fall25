@@ -117,25 +117,29 @@ TEMPLATES = [
 TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]  # backend/templates
 
 # Custom User Model
-AUTH_USER_MODEL = 'user.CustomUser'
+AUTH_USER_MODEL = "user.CustomUser"
 
 # Authentication Backends
 AUTHENTICATION_BACKENDS = [
-    'apps.user.authentication.EmailBackend',  # Custom email authentication
-    'django.contrib.auth.backends.ModelBackend',  # Default username authentication
+    "apps.user.authentication.EmailBackend",  # Custom email authentication
+    "django.contrib.auth.backends.ModelBackend",  # Default username authentication
 ]
 
 # Frontend URL for email verification links
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 # Email Configuration
-EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
+)
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@housingtransparency.com")
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default="noreply@housingtransparency.com"
+)
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
