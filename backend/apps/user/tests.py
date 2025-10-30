@@ -96,6 +96,7 @@ class UserSerializerTests(TestCase):
     def test_register_serializer_create_user(self):
         """Test RegisterSerializer create method"""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         data = {
@@ -117,6 +118,7 @@ class UserSerializerTests(TestCase):
     def test_user_serializer_fields(self):
         """Test UserSerializer fields"""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         from apps.user.serializers import UserSerializer
@@ -134,6 +136,7 @@ class UserSerializerTests(TestCase):
 class UserViewsAPITests(TestCase):
     def setUp(self):
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         self.user = User.objects.create_user(
@@ -156,6 +159,7 @@ class UserViewsAPITests(TestCase):
         response = client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
 
         self.assertTrue(User.objects.filter(username="newuser").exists())
@@ -240,9 +244,8 @@ class UserViewsHelperFunctionTests(TestCase):
         """Test RegisterView queryset"""
         from apps.user.views import RegisterView
         from django.contrib.auth import get_user_model
-        User = get_user_model()
 
-        from apps.user.views import RegisterView
+        User = get_user_model()
 
         view = RegisterView()
         self.assertEqual(view.queryset.model, User)
@@ -338,6 +341,7 @@ class UserViewsEdgeCaseTests(TestCase):
     def test_me_view_different_user_data(self):
         """Test MeView returns correct user data"""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         from django.urls import reverse
         from rest_framework import status
@@ -364,8 +368,11 @@ class UserViewsIntegrationTests(TestCase):
         from django.urls import reverse
         from rest_framework import status
         from rest_framework.test import APIClient
+<<<<<<< HEAD
         from django.contrib.auth import get_user_model
         User = get_user_model()
+=======
+>>>>>>> 8f2e20c (backend: fix flake8 issues in user tests; remove unused imports; format with Black)
 
         client = APIClient()
 
@@ -398,6 +405,7 @@ class UserViewsIntegrationTests(TestCase):
     def test_register_duplicate_email(self):
         """Test register with duplicate email"""
         from django.contrib.auth import get_user_model
+
         User = get_user_model()
         from django.urls import reverse
         from rest_framework import status
