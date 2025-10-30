@@ -2,8 +2,6 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth import authenticate
-from django.core.exceptions import ValidationError
 
 from .models import CustomUser
 from .serializers import (
