@@ -218,17 +218,18 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
             />
           )}
 
-          {rent_stabilized.status === "RENT_STABILIZED" && (
-            <Chip
-              label="Rent Stabilized"
-              sx={{
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                color: "#3B82F6",
-                border: "1px solid rgba(59, 130, 246, 0.2)",
-                fontWeight: 600,
-              }}
-            />
-          )}
+          {rent_stabilized !== null &&
+            rent_stabilized.status === "RENT_STABILIZED" && (
+              <Chip
+                label="Rent Stabilized"
+                sx={{
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  color: "#3B82F6",
+                  border: "1px solid rgba(59, 130, 246, 0.2)",
+                  fontWeight: 600,
+                }}
+              />
+            )}
           <Chip
             label={`${counts.violations} Violations`}
             sx={{
@@ -469,14 +470,20 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
                 >
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>Status:</strong>{" "}
-                    {building.rent_stabilized.status}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>Source Year:</strong>{" "}
-                    {building.rent_stabilized.source_year}
-                  </Typography>
+                  {building.rent_stabilized !== null && (
+                    <>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>Status:</strong>{" "}
+                        {building.rent_stabilized.status}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Source Year:
+                        </strong>{" "}
+                        {building.rent_stabilized.source_year}
+                      </Typography>
+                    </>
+                  )}
                 </Box>
               </Paper>
             </Box>
@@ -656,7 +663,7 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
         );
 
       case "reviews":
-        return <ReviewTab />;
+        return <ReviewTab bbl={building.bbl} />;
 
       default:
         return null;
