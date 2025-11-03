@@ -37,7 +37,7 @@ class PropertiesView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except:
+        except Exception as e:
             user_id = None
 
         print(f"Fetching properties for user_id: {user_id}")
@@ -140,7 +140,7 @@ class ViolationsView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except:
+        except Exception as e:
             user_id = None
 
         print(f"Fetching violations for user_id: {user_id}")
@@ -222,7 +222,7 @@ class PropertiesView2(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except:
+        except Exception as e:
             user_id = None
         try:
             if user_id != int(landlord_id):
@@ -445,7 +445,8 @@ class LandlordApplicationView(APIView):
                 # if all([full_name, email, phone, experience_years]):
                 #     db.execute(
                 #         """
-                #         INSERT INTO landlord_applications (full_name, email, phone, experience_years, country, agree_terms, user_id)
+                #         INSERT INTO landlord_applications (full_name, email, phone, 
+                #           experience_years, country, agree_terms, user_id)
                 #         VALUES (%s, %s, %s, %s, %s, %s, %s)
                 #         """,
                 #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
