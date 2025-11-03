@@ -3,7 +3,6 @@ from .views import (
     PropertiesView,
     ViolationsView,
     ReviewsView,
-    LandlordApplicationView,
     landlord_apply_get,
 )
 

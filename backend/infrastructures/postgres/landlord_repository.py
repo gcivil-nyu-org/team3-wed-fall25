@@ -1,9 +1,5 @@
-from typing import List, Dict, Any, Optional, Sequence
 from infrastructures.postgres.postgres_client import PostgresClient
 
-from common.models.building import (
-    build_building_from_rows,
-)
 
 
 class LandlordRepository:

@@ -3,12 +3,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from infrastructures.postgres.postgres_client import PostgresClient
 from infrastructures.postgres.building_repository import BuildingRepository
-from infrastructures.postgres.landlord_repository import LandlordRepository
 
 # from django.conf import settings
 
@@ -394,10 +391,10 @@ class LandlordApplicationView(APIView):
             country = data.get("country")
             agree_terms = data.get("agree_terms")
             # Optional: keep these if you want them in a different table
-            full_name = data.get("full_name")
-            email = data.get("email")
-            phone = data.get("phone")
-            experience_years = data.get("experience_years")
+            data.get("full_name")
+            data.get("email")
+            data.get("phone")
+            data.get("experience_years")
 
             if not all([bbl, country, agree_terms]):
                 print("[LandlordApplyView] Missing required fields.")
@@ -478,10 +475,10 @@ def landlord_apply_get(request):
         country = data.get("country")
         agree_terms = data.get("agreeTerms")
         # Optional: keep these if you want them in a different table
-        name = data.get("name")
-        email = data.get("email")
-        phone = data.get("phone")
-        experience_years = data.get("experience_years")
+        data.get("name")
+        data.get("email")
+        data.get("phone")
+        data.get("experience_years")
 
         print("landlord application data:", data)
 
