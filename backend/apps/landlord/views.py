@@ -37,7 +37,7 @@ class PropertiesView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as e:
+        except Exception as _:
             user_id = None
 
         print(f"Fetching properties for user_id: {user_id}")
@@ -140,7 +140,7 @@ class ViolationsView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as e:
+        except Exception as _:
             user_id = None
 
         print(f"Fetching violations for user_id: {user_id}")
@@ -222,7 +222,7 @@ class PropertiesView2(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as e:
+        except Exception as _:
             user_id = None
         try:
             if user_id != int(landlord_id):
@@ -278,7 +278,7 @@ class PropertiesView2(APIView):
                     }
                 )
             return Response(properties, status=status.HTTP_200_OK)
-        except Exception:
+        except Exception as e:
             # Log server-side in real app; here we just fall back to mock
             print(f"[PropertiesView] DB error: {e}")
             return Response(_mock_properties(), status=status.HTTP_200_OK)
@@ -342,7 +342,7 @@ class ViolationsView2(APIView):
                     )
 
             return Response(violations, status=status.HTTP_200_OK)
-        except Exception as _:
+        except Exception as e:
             print(f"[ViolationsView] DB error: {e}")
             # fallback mock
             data = [
@@ -457,7 +457,7 @@ class LandlordApplicationView(APIView):
                 status=status.HTTP_201_CREATED,
             )
 
-        except Exception as _:
+        except Exception as e:
             print(f"[LandlordApplyView] DB error: {e}")
             return Response(
                 {"error": "Internal server error."},
