@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Optional
 
 from common.models.building import (
     build_building_from_rows,
@@ -180,3 +180,73 @@ class BuildingRepository:
             except Exception as e:
                 print(f"[BuildingRepository] get_by_bbl failed for {bbl}: {e}")
         return result
+
+    def get_registration_by_bbl(self, bbl: str) -> Optional[Dict[str, Any]]:
+        """
+        registration(및 contacts)만 반환한다.
+        반환 스키마:
+        {
+          "bbl": ..., "bin": ..., "boro_id": ..., "boro": ..., "block": ..., "lot": ...,
+          "house_number": ..., "street_name": ..., "zip": ..., "community_board": ...,
+          "last_registration_date": ..., "registration_end_date": ...,
+          "registration_id": ..., "building_id": ...,
+          "contacts": [ { ... }, ... ]  # registration_id가 있을 때만
+        }
+        """
+        with self.client_factory() as db:
+            reg_row = db.query_one(
+                """
+                SELECT bbl,
+                       bin,
+                       boro_id,
+                       boro,
+                       block,
+                       lot,
+                       house_number,
+                       street_name,
+                       zip,
+                       community_board,
+                       last_registration_date,
+                       registration_end_date,
+                       registration_id,
+                       building_id
+                FROM building_registrations
+                WHERE bbl = %s
+                """,
+                (bbl,),
+            )
+
+            if not reg_row:
+                return None
+
+            contacts: List[Dict[str, Any]] = []
+            if reg_row.get("registration_id") is not None:
+                contacts = db.query_all(
+                    """
+                    SELECT registration_contact_id,
+                           registration_id,
+                           type,
+                           contact_description,
+                           first_name,
+                           last_name,
+                           corporation_name,
+                           business_house_number,
+                           business_street_name,
+                           business_city,
+                           business_state,
+                           business_zip,
+                           business_apartment
+                    FROM building_registration_contacts
+                    WHERE registration_id = %s
+                    """,
+                    (reg_row["registration_id"],),
+                )
+
+            # 표준 반환 dict 구성
+            reg = dict(reg_row)  # shallow copy
+            if contacts:
+                reg["contacts"] = contacts
+            else:
+                reg["contacts"] = []
+
+            return reg
