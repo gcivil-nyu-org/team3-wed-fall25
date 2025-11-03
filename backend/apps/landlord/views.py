@@ -278,7 +278,7 @@ class PropertiesView2(APIView):
                     }
                 )
             return Response(properties, status=status.HTTP_200_OK)
-        except Exception as e:
+        except Exception:
             # Log server-side in real app; here we just fall back to mock
             print(f"[PropertiesView] DB error: {e}")
             return Response(_mock_properties(), status=status.HTTP_200_OK)
@@ -342,7 +342,7 @@ class ViolationsView2(APIView):
                     )
 
             return Response(violations, status=status.HTTP_200_OK)
-        except Exception as e:
+        except Exception as _:
             print(f"[ViolationsView] DB error: {e}")
             # fallback mock
             data = [
@@ -457,7 +457,7 @@ class LandlordApplicationView(APIView):
                 status=status.HTTP_201_CREATED,
             )
 
-        except Exception as e:
+        except Exception as _:
             print(f"[LandlordApplyView] DB error: {e}")
             return Response(
                 {"error": "Internal server error."},
