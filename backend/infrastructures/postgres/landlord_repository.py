@@ -5,6 +5,7 @@ from common.models.building import (
     build_building_from_rows,
 )
 
+
 class LandlordRepository:
 
     def __init__(self):
@@ -22,22 +23,22 @@ class LandlordRepository:
                     SELECT id FROM landlord_owners 
                     WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
                     """,
-                    (bbl, owner_user_id)
+                    (bbl, owner_user_id),
                 )
-                
+
                 if existing:
                     return False  # Already exists
-                
+
                 # Insert new application
                 db.execute(
                     """
                     INSERT INTO landlord_owners (bbl, owner_user_id, created_at, updated_at)
                     VALUES (%s, %s, NOW(), NOW())
                     """,
-                    (bbl, owner_user_id)
+                    (bbl, owner_user_id),
                 )
                 return True
-                
+
             except Exception as e:
                 print(f"[LandlordRepository] Error creating landlord application: {e}")
                 return False

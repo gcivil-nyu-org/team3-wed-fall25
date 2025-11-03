@@ -40,7 +40,6 @@ urlpatterns = [
     path("api/building/", include("apps.building.urls")),
     path("api/community/", include("apps.community.urls")),
     path("api/landlord/", include("apps.landlord.urls")),
-
     path("api/neighborhood/", include("apps.neighborhood.urls")),
     path("api/dummy/", include("apps.dummy.urls")),
     re_path(

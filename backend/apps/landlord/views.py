@@ -9,11 +9,13 @@ from django.utils.decorators import method_decorator
 from infrastructures.postgres.postgres_client import PostgresClient
 from infrastructures.postgres.building_repository import BuildingRepository
 from infrastructures.postgres.landlord_repository import LandlordRepository
-#from django.conf import settings
+
+# from django.conf import settings
 
 
 # DB-backed endpoints for landlord data. If DB access fails, return sensible mock data
 # so the frontend can still operate in development mode.
+
 
 def _mock_properties():
     return [
@@ -33,10 +35,14 @@ class PropertiesView(APIView):
     def get(self, request):
         """Return list of properties (by BBL) owned by landlord."""
         try:
-            user_id = request.user.id if request.user and request.user.is_authenticated else None
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
         except:
             user_id = None
-        
+
         print(f"Fetching properties for user_id: {user_id}")
         try:
             with PostgresClient() as db:
@@ -63,10 +69,12 @@ class PropertiesView(APIView):
                 # print(f"Building {bbl} type: {type(bld)}")
                 # if bld:
                 #     print(f"Building {bbl} attributes: {dir(bld)}")
-                
+
                 address = self._get_address_from_building(bld, bbl)
                 print(f"Property {bbl} address: {address}")
-                violations_count = len(getattr(bld, "complaints", []) or []) + len(getattr(bld, "violations", []) or [])
+                violations_count = len(getattr(bld, "complaints", []) or []) + len(
+                    getattr(bld, "violations", []) or []
+                )
                 evictions_count = len(getattr(bld, "evictions", []) or [])
 
                 properties.append(
@@ -91,51 +99,52 @@ class PropertiesView(APIView):
         """Extract address from Building object"""
         if not bld or not bld.registration:
             return f"Property {bbl}"
-        
+
         reg = bld.registration
         print("Registration object attributes:", dir(reg))
-        
+
         # Access the Registration attributes directly
         house_number = reg.house_number if reg.house_number else None
         street_name = reg.street_name if reg.street_name else None
         borough = reg.boro if reg.boro else None
         zip_code = reg.zip if reg.zip else None
-        
+
         # Build address
         address_parts = []
-        
+
         # Street address
         street_parts = []
         if house_number:
             street_parts.append(str(house_number))
         if street_name:
             street_parts.append(str(street_name))
-        
+
         if street_parts:
             address_parts.append(" ".join(street_parts))
-        
+
         # Borough and ZIP
         if borough:
             address_parts.append(str(borough))
         if zip_code:
             address_parts.append(str(zip_code))
-        
+
         return ", ".join(address_parts) if address_parts else f"Property {bbl}"
 
 
 class ViolationsView(APIView):
     permission_classes = [IsAuthenticated]
 
-    
-
     def get(self, request):
         """Return aggregated violations/complaints for all BBLs owned by landlord."""
         try:
             # Use the authenticated user's ID
-            user_id = request.user.id if request.user and request.user.is_authenticated else None
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
         except:
             user_id = None
-        
 
         print(f"Fetching violations for user_id: {user_id}")
         try:
@@ -162,20 +171,33 @@ class ViolationsView(APIView):
                     continue
                 # complaints is a list of Complaint dataclasses
                 for c in getattr(bld, "complaints", []) or []:
-                    violations.append({
-                        "id": getattr(c, "complaint_id", None),
-                        "bbl": bbl,
-                        "message": getattr(c, "status_description", None) or getattr(c, "minor_category", None) or getattr(c, "major_category", None),
-                        "resolved": (getattr(c, "complaint_status", "") or "").lower() in ("closed", "close", "resolved"),
-                    })
+                    violations.append(
+                        {
+                            "id": getattr(c, "complaint_id", None),
+                            "bbl": bbl,
+                            "message": getattr(c, "status_description", None)
+                            or getattr(c, "minor_category", None)
+                            or getattr(c, "major_category", None),
+                            "resolved": (
+                                getattr(c, "complaint_status", "") or ""
+                            ).lower()
+                            in ("closed", "close", "resolved"),
+                        }
+                    )
                 # also include violations dataclass entries
                 for v in getattr(bld, "violations", []) or []:
-                    violations.append({
-                        "id": getattr(v, "violation_id", None),
-                        "bbl": bbl,
-                        "message": getattr(v, "nov_description", None) or getattr(v, "nov_type", None),
-                        "resolved": (getattr(v, "violation_status", "") or "").lower() in ("closed", "close", "resolved"),
-                    })
+                    violations.append(
+                        {
+                            "id": getattr(v, "violation_id", None),
+                            "bbl": bbl,
+                            "message": getattr(v, "nov_description", None)
+                            or getattr(v, "nov_type", None),
+                            "resolved": (
+                                getattr(v, "violation_status", "") or ""
+                            ).lower()
+                            in ("closed", "close", "resolved"),
+                        }
+                    )
 
             return Response(violations, status=status.HTTP_200_OK)
         except Exception as e:
@@ -185,7 +207,7 @@ class ViolationsView(APIView):
                 {"id": "v1", "message": "Broken fire escape", "resolved": False},
             ]
             return Response(data, status=status.HTTP_200_OK)
-        
+
 
 class PropertiesView2(APIView):
     permission_classes = [AllowAny]
@@ -198,13 +220,20 @@ class PropertiesView2(APIView):
         """
         try:
             # Use the authenticated user's ID
-            user_id = request.user.id if request.user and request.user.is_authenticated else None
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
         except:
             user_id = None
         try:
             if user_id != int(landlord_id):
-                return Response({"error": "Unauthorized access to landlord properties."}, status=status.HTTP_403_FORBIDDEN)
-            
+                return Response(
+                    {"error": "Unauthorized access to landlord properties."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             # find BBLs for this landlord
             with PostgresClient() as db:
                 rows = db.query_all(
@@ -234,7 +263,9 @@ class PropertiesView2(APIView):
                     boro = getattr(reg, "boro", None) or getattr(reg, "boro", None)
                     address = ", ".join([s for s in [hn, sn, boro] if s])
 
-                violations_count = len(getattr(bld, "complaints", []) or []) + len(getattr(bld, "violations", []) or [])
+                violations_count = len(getattr(bld, "complaints", []) or []) + len(
+                    getattr(bld, "violations", []) or []
+                )
                 evictions_count = len(getattr(bld, "evictions", []) or [])
 
                 properties.append(
@@ -285,20 +316,33 @@ class ViolationsView2(APIView):
                     continue
                 # complaints is a list of Complaint dataclasses
                 for c in getattr(bld, "complaints", []) or []:
-                    violations.append({
-                        "id": getattr(c, "complaint_id", None),
-                        "bbl": bbl,
-                        "message": getattr(c, "status_description", None) or getattr(c, "minor_category", None) or getattr(c, "major_category", None),
-                        "resolved": (getattr(c, "complaint_status", "") or "").lower() in ("closed", "close", "resolved"),
-                    })
+                    violations.append(
+                        {
+                            "id": getattr(c, "complaint_id", None),
+                            "bbl": bbl,
+                            "message": getattr(c, "status_description", None)
+                            or getattr(c, "minor_category", None)
+                            or getattr(c, "major_category", None),
+                            "resolved": (
+                                getattr(c, "complaint_status", "") or ""
+                            ).lower()
+                            in ("closed", "close", "resolved"),
+                        }
+                    )
                 # also include violations dataclass entries
                 for v in getattr(bld, "violations", []) or []:
-                    violations.append({
-                        "id": getattr(v, "violation_id", None),
-                        "bbl": bbl,
-                        "message": getattr(v, "nov_description", None) or getattr(v, "nov_type", None),
-                        "resolved": (getattr(v, "violation_status", "") or "").lower() in ("closed", "close", "resolved"),
-                    })
+                    violations.append(
+                        {
+                            "id": getattr(v, "violation_id", None),
+                            "bbl": bbl,
+                            "message": getattr(v, "nov_description", None)
+                            or getattr(v, "nov_type", None),
+                            "resolved": (
+                                getattr(v, "violation_status", "") or ""
+                            ).lower()
+                            in ("closed", "close", "resolved"),
+                        }
+                    )
 
             return Response(violations, status=status.HTTP_200_OK)
         except Exception as e:
@@ -317,8 +361,20 @@ class ReviewsView(APIView):
         # There is no reviews table in the schema. For development/testing (DEBUG=True)
         # return a small set of mock reviews so the frontend can display example content.
         mock_reviews = [
-            {"id": "r1", "author": "Jane D.", "content": "Quick to fix issues.", "date": "2025-09-01", "flagged": False},
-            {"id": "r2", "author": "John S.", "content": "Slow support.", "date": "2025-08-15", "flagged": False},
+            {
+                "id": "r1",
+                "author": "Jane D.",
+                "content": "Quick to fix issues.",
+                "date": "2025-09-01",
+                "flagged": False,
+            },
+            {
+                "id": "r2",
+                "author": "John S.",
+                "content": "Slow support.",
+                "date": "2025-08-15",
+                "flagged": False,
+            },
         ]
         # if getattr(settings, "DEBUG", False):
         if True:
@@ -331,7 +387,7 @@ class LandlordApplicationView(APIView):
 
     def post(self, request):
         """Handle landlord application submission."""
-        
+
         try:
             data = request.data
             bbl = data.get("bbl")
@@ -343,15 +399,20 @@ class LandlordApplicationView(APIView):
             phone = data.get("phone")
             experience_years = data.get("experience_years")
 
-            
             if not all([bbl, country, agree_terms]):
                 print("[LandlordApplyView] Missing required fields.")
-                return Response({"error": "BBL, country, and terms agreement are required."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "BBL, country, and terms agreement are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             # Validate BBL format
             if not bbl.isdigit() or len(bbl) != 10:
                 print("[LandlordApplyView] Invalid BBL format.")
-                return Response({"error": "Invalid BBL format. Must be 10 digits."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid BBL format. Must be 10 digits."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             user_id = request.user.id
 
@@ -362,13 +423,18 @@ class LandlordApplicationView(APIView):
                     SELECT id FROM landlord_owners 
                     WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
                     """,
-                    (bbl, user_id)
+                    (bbl, user_id),
                 )
-                
+
                 if existing:
-                    print("[LandlordApplyView] Application already exists for this user and BBL.")
-                    return Response({"error": "You already have an application for this BBL."}, status=status.HTTP_400_BAD_REQUEST)
-                
+                    print(
+                        "[LandlordApplyView] Application already exists for this user and BBL."
+                    )
+                    return Response(
+                        {"error": "You already have an application for this BBL."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
                 # Insert into landlord_owners
                 db.execute(
                     """
@@ -377,7 +443,7 @@ class LandlordApplicationView(APIView):
                     """,
                     (bbl, user_id),
                 )
-                
+
                 # Optional: If you still want to store the additional info in landlord_applications
                 # if all([full_name, email, phone, experience_years]):
                 #     db.execute(
@@ -388,15 +454,20 @@ class LandlordApplicationView(APIView):
                 #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
                 #     )
 
-            return Response({"message": "Application submitted successfully."}, status=status.HTTP_201_CREATED)
-        
+            return Response(
+                {"message": "Application submitted successfully."},
+                status=status.HTTP_201_CREATED,
+            )
+
         except Exception as e:
             print(f"[LandlordApplyView] DB error: {e}")
-            return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def landlord_apply_get(request):
     """Handle landlord application submission."""
@@ -413,15 +484,21 @@ def landlord_apply_get(request):
         experience_years = data.get("experience_years")
 
         print("landlord application data:", data)
-        
+
         if not all([bbl, country, agree_terms]):
             print("[LandlordApplyView] Missing required fields.")
-            return Response({"error": "BBL, country, and terms agreement are required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "BBL, country, and terms agreement are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Validate BBL format
         if not bbl.isdigit() or len(bbl) != 10:
             print("[LandlordApplyView] Invalid BBL format.")
-            return Response({"error": "Invalid BBL format. Must be 10 digits."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid BBL format. Must be 10 digits."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         user_id = request.user.id
         print(f"landlord application by user_id: {user_id}")
@@ -432,13 +509,18 @@ def landlord_apply_get(request):
                 SELECT id FROM landlord_owners 
                 WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
                 """,
-                (bbl, user_id)
+                (bbl, user_id),
             )
-            
+
             if existing:
-                print("[LandlordApplyView] Application already exists for this user and BBL.")
-                return Response({"error": "You already have an application for this BBL."}, status=status.HTTP_400_BAD_REQUEST)
-            
+                print(
+                    "[LandlordApplyView] Application already exists for this user and BBL."
+                )
+                return Response(
+                    {"error": "You already have an application for this BBL."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # Insert into landlord_owners
             db.execute(
                 """
@@ -447,7 +529,7 @@ def landlord_apply_get(request):
                 """,
                 (bbl, user_id),
             )
-            
+
             # Optional: If you still want to store the additional info in landlord_applications
             # if all([full_name, email, phone, experience_years]):
             #     db.execute(
@@ -458,8 +540,14 @@ def landlord_apply_get(request):
             #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
             #     )
 
-        return Response({"message": "Application submitted successfully."}, status=status.HTTP_201_CREATED)
-    
+        return Response(
+            {"message": "Application submitted successfully."},
+            status=status.HTTP_201_CREATED,
+        )
+
     except Exception as e:
         print(f"[LandlordApplyView] DB error: {e}")
-        return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {"error": "Internal server error."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
