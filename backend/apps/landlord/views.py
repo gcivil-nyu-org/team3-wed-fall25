@@ -445,7 +445,7 @@ class LandlordApplicationView(APIView):
                 # if all([full_name, email, phone, experience_years]):
                 #     db.execute(
                 #         """
-                #         INSERT INTO landlord_applications (full_name, email, phone, 
+                #         INSERT INTO landlord_applications (full_name, email, phone,
                 #           experience_years, country, agree_terms, user_id)
                 #         VALUES (%s, %s, %s, %s, %s, %s, %s)
                 #         """,
