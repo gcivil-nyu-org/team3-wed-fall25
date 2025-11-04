@@ -1,7 +1,6 @@
 from infrastructures.postgres.postgres_client import PostgresClient
 
 
-
 class LandlordRepository:
 
     def __init__(self):

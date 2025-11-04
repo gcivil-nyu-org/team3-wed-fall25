@@ -37,7 +37,7 @@ class PropertiesView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as _:
+        except Exception:
             user_id = None
 
         print(f"Fetching properties for user_id: {user_id}")
@@ -140,7 +140,7 @@ class ViolationsView(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as _:
+        except Exception:
             user_id = None
 
         print(f"Fetching violations for user_id: {user_id}")
@@ -222,7 +222,7 @@ class PropertiesView2(APIView):
                 if request.user and request.user.is_authenticated
                 else None
             )
-        except Exception as _:
+        except Exception:
             user_id = None
         try:
             if user_id != int(landlord_id):
