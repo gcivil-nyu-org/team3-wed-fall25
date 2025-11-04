@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     # Local apps
     "apps.user",
     "apps.dummy",
+    "apps.landlord",
     "apps.building",
     "apps.community",
     "apps.neighborhood",

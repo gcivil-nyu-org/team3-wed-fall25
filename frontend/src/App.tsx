@@ -6,6 +6,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 
 import AppAppBar from "./components/AppBar";
 import { SiteFooter } from "./components/SiteFooter";
+
+import LandlordDashboard from "./pages/LandlordDashboard";
+import LandlordApply from "./pages/LandlordApply";
 import { Home, Search, SignIn, SignUp, Building, Community } from "./pages";
 import SimplifiedMap from "./pages/SimplifiedMap";
 
@@ -37,6 +40,8 @@ function App() {
           <Route path="map" element={<SimplifiedMap />} />
           <Route path="community" element={<Community />} />
           <Route path="building/:bbl" element={<Building />} />
+          <Route path="landlord/dashboard" element={<LandlordDashboard />} />
+          <Route path="landlord/apply" element={<LandlordApply />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />
