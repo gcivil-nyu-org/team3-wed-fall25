@@ -148,11 +148,11 @@ DEFAULT_FROM_EMAIL = env(
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME"),  # Required: Database name
-        "USER": env("DB_USER"),  # Required: Database user
-        "PASSWORD": env("DB_PASSWORD"),  # Required: Database password
-        "HOST": env("DB_HOST"),  # Required: Database host
-        "PORT": env("DB_PORT"),  # Required: Database port
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
         "TEST": {
             "NAME": f"test_{env('DB_NAME')}",
         },
