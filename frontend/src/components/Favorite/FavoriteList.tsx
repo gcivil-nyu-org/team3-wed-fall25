@@ -7,9 +7,12 @@ import FavoriteItem from "./FavoriteItem";
 const FavoriteList = () => {
   const { favorites } = useFavorites();
 
+  // Safety check: ensure favorites is always an array
+  const safeFavorites = Array.isArray(favorites) ? favorites : [];
+
   return (
     <Box sx={{ p: 4 }}>
-      {favorites.length === 0 ? (
+      {safeFavorites.length === 0 ? (
         <Box sx={{ textAlign: "center" }}>
           <BookmarkBorder sx={{ fontSize: 48, color: "#bbb", mb: 1 }} />
           <Typography variant="h6" color="text.secondary">
@@ -17,7 +20,7 @@ const FavoriteList = () => {
           </Typography>
         </Box>
       ) : (
-        favorites.map((favorite, i) => (
+        safeFavorites.map((favorite, i) => (
           <FavoriteItem
             key={favorite.bbl}
             favorite={favorite}
