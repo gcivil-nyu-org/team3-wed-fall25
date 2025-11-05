@@ -478,7 +478,7 @@ export const fetchNeighborhoodTrends = async (params: {
 // COMMUNITY API TYPES AND FUNCTIONS
 // =========================================================
 
-export interface CommunityFavorite {
+export interface CommunityFavorite extends Pick<BuildingData, "registration"> {
   id: number;
   user_id: number;
   bbl: string;
@@ -586,6 +586,23 @@ export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
       result: boolean;
       data: CommunityReview[];
     }>(`/community/reviews/?bbl=${bbl}`);
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    throw error;
+  }
+};
+
+export const fetchMyReviews = async (): Promise<CommunityReview[]> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReview[];
+    }>(`/community/reviews/mine/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
     return response.data.data;
   } catch (error) {
     console.error("Error fetching reviews:", error);

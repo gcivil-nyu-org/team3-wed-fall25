@@ -9,10 +9,12 @@ import DateLabel from "../DateLabel";
 const Review = ({
   bbl,
   review,
+  readonly,
   onStateChangesCallback,
 }: {
   bbl: BuildingData["bbl"];
   review: CommunityReview;
+  readonly?: boolean;
   onStateChangesCallback(): void;
 }) => {
   return (
@@ -48,22 +50,26 @@ const Review = ({
           <DateLabel date={review.updated_at} />
         </Box>
 
-        <Box>
-          <ReviewUpdateButton
-            bbl={bbl}
-            review={review}
-            onSuccess={onStateChangesCallback}
-          />
-          <ReviewDeleteButton
-            reviewId={review.id}
-            onSuccess={onStateChangesCallback}
-          />
-        </Box>
+        {!readonly && (
+          <Box>
+            <ReviewUpdateButton
+              bbl={bbl}
+              review={review}
+              onSuccess={onStateChangesCallback}
+            />
+            <ReviewDeleteButton
+              reviewId={review.id}
+              onSuccess={onStateChangesCallback}
+            />
+          </Box>
+        )}
       </Box>
 
-      <Paper sx={{ p: 1, mt: 2 }}>
-        <ReviewComments reviewId={review.id} />
-      </Paper>
+      {!readonly && (
+        <Paper sx={{ p: 1, mt: 2 }}>
+          <ReviewComments reviewId={review.id} />
+        </Paper>
+      )}
     </Paper>
   );
 };

@@ -11,6 +11,7 @@ from .views import (  # Favorites; Reviews; Review Comments; Messages
     review_comments_delete,
     review_comments_list_create,
     reviews_list_create,
+    my_reviews,
     reviews_update_delete,
 )
 
@@ -23,6 +24,7 @@ urlpatterns = [
     path(
         "reviews/<int:review_id>/", reviews_update_delete, name="reviews_update_delete"
     ),
+    path("reviews/mine/", my_reviews, name="my_reviews"),
     # Review Comments endpoints
     path(
         "review-comments/",

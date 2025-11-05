@@ -5,7 +5,7 @@ A comprehensive housing data analysis platform providing insights into building 
 ## Test Coverage
 
 - **main**: [![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team3-wed-fall25/badge.svg?branch=main)](https://coveralls.io/github/gcivil-nyu-org/team3-wed-fall25?branch=main)
-- **devalop**: [![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team3-wed-fall25/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team3-wed-fall25?branch=develop)
+- **develop**: [![Coverage Status](https://coveralls.io/repos/github/gcivil-nyu-org/team3-wed-fall25/badge.svg?branch=develop)](https://coveralls.io/github/gcivil-nyu-org/team3-wed-fall25?branch=develop)
 
 ## Build Status
 
