@@ -25,8 +25,13 @@ cov.start()
 
 django.setup()
 
+# Reuse existing test database if it exists (don't create new one)
+# This is Django's default behavior - test database is created automatically
+# We just need to tell Django to reuse it if it exists instead of prompting
 TestRunner = get_runner(settings)
-test_runner = TestRunner()
+# keepdb=True: reuse existing test database, don't prompt
+# interactive=False: don't ask for user input
+test_runner = TestRunner(verbosity=1, keepdb=True, interactive=False)
 failures = test_runner.run_tests(["."])
 
 cov.stop()
