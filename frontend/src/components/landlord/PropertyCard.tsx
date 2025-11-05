@@ -11,7 +11,6 @@ import { Visibility } from "@mui/icons-material";
 import { useNavigate } from "react-router";
 
 export interface PropertyCardProps {
-  id: string;
   bbl: string;
   address: string;
   occupancy_status: string | null;
@@ -22,7 +21,6 @@ export interface PropertyCardProps {
 }
 
 export function PropertyCard({
-  id,
   bbl,
   address,
   occupancy_status,

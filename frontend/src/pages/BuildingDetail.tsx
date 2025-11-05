@@ -132,7 +132,6 @@ export default function BuildingDetail() {
   const [stats, setStats] = useState<any>(null);
   const [buildingInfo, setBuildingInfo] = useState<any>(null);
 
-  // In your BuildingDetail.tsx, replace the useEffect with this:
 
   useEffect(() => {
     let mounted = true;
@@ -197,7 +196,7 @@ export default function BuildingDetail() {
     };
   }, [bbl]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+  const handleTabChange = ( newValue: number) => {
     setTabValue(newValue);
   };
 
