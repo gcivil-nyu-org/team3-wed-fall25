@@ -5,6 +5,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from infrastructures.postgres.building_repository import BuildingRepository
+
 from .models import (
     CommunityFavorites,
     CommunityMessages,
@@ -34,8 +36,28 @@ def favorites_list_create(request):
         favorites = CommunityFavorites.objects.filter(
             user_id=request.user.id, deleted_at__isnull=True
         ).order_by("-created_at")
-        serializer = CommunityFavoritesSerializer(favorites, many=True)
-        return Response(serializer.data)
+        fav_data = CommunityFavoritesSerializer(favorites, many=True).data
+
+        repo = BuildingRepository()
+        bbls = [f["bbl"] for f in fav_data]
+        reg_map = {}
+
+        for b in bbls:
+            if b not in reg_map:
+                try:
+                    reg = repo.get_registration_by_bbl(b)
+                except Exception:
+                    reg = None
+                reg_map[b] = reg
+
+        # 3) 응답에 registration(또는 building) 필드로 합치기
+        enriched = []
+        for f in fav_data:
+            enriched.append(
+                {**f, "registration": _to_summary_dict(reg_map.get(f["bbl"]))}
+            )
+
+        return Response(enriched)
 
     elif request.method == "POST":
         data = request.data.copy()
@@ -57,6 +79,75 @@ def favorites_list_create(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _to_summary_dict(reg: dict | None) -> dict | None:
+    """
+    get_registration_by_bbl 반환 dict를 favorites 응답에 맞게 가볍게 요약.
+    필요 필드는 프로젝트 정책에 맞게 추가/삭제해도 된다.
+    """
+    if not reg:
+        return None
+
+    # 안전 접근
+    def g(k, default=None):
+        return reg.get(k, default)
+
+    # 보기 좋은 전체 주소 (비어있는 파트는 자동 제외)
+    parts = [g("house_number"), g("street_name")]
+    street = " ".join([p for p in parts if p]) or None
+    cityline = " ".join([p for p in [g("boro"), g("zip")] if p]) or None
+
+    full_address = None
+    if street and cityline:
+        full_address = f"{street}, {cityline}"
+    elif street:
+        full_address = street
+    elif cityline:
+        full_address = cityline
+
+    contacts = g("contacts", []) or []
+    # contact 일부만 노출(원하면 전체 contacts를 그대로 내려도 됨)
+    contacts_preview = [
+        {
+            "type": c.get("type"),
+            "name": (
+                f"{c.get('first_name', '')}".strip()
+                + " "
+                + f"{c.get('last_name', '')}".strip()
+            ).strip()
+            or c.get("corporation_name"),
+            "desc": c.get("contact_description"),
+            "business_zip": c.get("business_zip"),
+        }
+        for c in contacts[:3]  # 미리보기 3개
+    ]
+
+    return {
+        # 핵심 키
+        "bbl": g("bbl"),
+        "registration_id": g("registration_id"),
+        "building_id": g("building_id"),
+        "boro_id": g("boro_id"),
+        "boro": g("boro"),
+        "block": g("block"),
+        "lot": g("lot"),
+        "house_number": g("house_number"),
+        "street_name": g("street_name"),
+        "zip": g("zip"),
+        "community_board": g("community_board"),
+        "last_registration_date": g("last_registration_date"),
+        "registration_end_date": g("registration_end_date"),
+        # 편의 필드
+        "address": {
+            "street": street,
+            "zip": g("zip"),
+            "full": full_address,
+        },
+        # contacts 요약 (정책에 따라 전체 contacts를 그대로 내려도 됨)
+        "contacts_count": len(contacts),
+        "contacts_preview": contacts_preview,
+    }
 
 
 @api_view(["DELETE"])
@@ -119,6 +210,19 @@ def reviews_list_create(request):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_reviews(request):
+    """
+    Get all reviews written by the authenticated user
+    """
+    reviews = CommunityReviews.objects.filter(
+        user_id=request.user.id, deleted_at__isnull=True
+    ).order_by("-created_at")
+    serializer = CommunityReviewsSerializer(reviews, many=True)
+    return Response(serializer.data)
 
 
 @api_view(["PUT", "DELETE"])
