@@ -24,6 +24,13 @@ export type CommunityFavorite = {
   note?: string;
   created_at: string;
   updated_at: string;
+  registration?: {
+    house_number?: string;
+    street_name?: string;
+    boro?: string;
+    zip?: string;
+    [key: string]: any;
+  } | null;
 };
 
 export type CommunityReviewComment = {
@@ -58,12 +65,28 @@ export type CommunityMessage = {
 
 export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
   try {
-    const response = await axiosInstance.get<CommunityReview[]>(
+    const response = await axiosInstance.get<any>(
       `${API_ENDPOINTS.COMMUNITY.REVIEWS}?bbl=${bbl}`
     );
-    return response.data;
+    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
+    const data = response.data?.data || response.data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching reviews:', error);
+    throw error;
+  }
+};
+
+export const fetchMyReviews = async (): Promise<CommunityReview[]> => {
+  try {
+    const response = await axiosInstance.get<any>(
+      `${API_ENDPOINTS.COMMUNITY.REVIEWS}mine/`
+    );
+    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
+    const data = response.data?.data || response.data;
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching my reviews:', error);
     throw error;
   }
 };
@@ -174,10 +197,12 @@ export const deleteReviewComment = async (commentId: number | string): Promise<v
 
 export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
   try {
-    const response = await axiosInstance.get<CommunityFavorite[]>(
+    const response = await axiosInstance.get<any>(
       API_ENDPOINTS.COMMUNITY.FAVORITES
     );
-    return response.data;
+    // Handle OkJSONRenderer wrapper: { result: true, data: [...] }
+    const data = response.data?.data || response.data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching favorites:', error);
     throw error;

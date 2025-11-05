@@ -16,10 +16,17 @@ export const useReview = (bbl: BuildingData["bbl"]) => {
 
   useEffect(() => {
     fetchReviews(bbl)
-      .then((res) => setReviews(res))
-      .catch((err) => setError(err))
+      .then((res) => {
+        // Ensure res is an array
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        setReviews(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        setError(err);
+        setReviews([]);
+      })
       .finally(() => setLoading(false));
-  }, [timestamp]);
+  }, [timestamp, bbl]);
 
   return { reviews, loading, error, refresh };
 };
@@ -34,8 +41,15 @@ export const useMyReview = () => {
 
   useEffect(() => {
     fetchMyReviews()
-      .then((res) => setReviews(res))
-      .catch((err) => setError(err))
+      .then((res) => {
+        // Ensure res is an array
+        const data = Array.isArray(res) ? res : (res?.data || []);
+        setReviews(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        setError(err);
+        setReviews([]);
+      })
       .finally(() => setLoading(false));
   }, [timestamp]);
 

@@ -1,10 +1,13 @@
 import axios from "axios";
 
-// Prefer Vite env var VITE_API_BASE, fall back to relative /api so Vite proxy can handle dev
-// const baseURL = (import.meta as any).env?.VITE_API_BASE ?? "/api";
+// In development, use relative path so Vite proxy can handle it
+// In production, use the full URL or relative path based on deployment
+const baseURL = import.meta.env.DEV 
+  ? "/api"  // Use Vite proxy in development
+  : (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api");
 
 const axiosInstance = axios.create({
-  baseURL: "/api", // Use relative path for production compatibility
+  baseURL: baseURL,
   timeout: 30000, // Increased timeout for large datasets
   headers: {
     "Content-Type": "application/json",

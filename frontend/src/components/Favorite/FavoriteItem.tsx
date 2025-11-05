@@ -48,16 +48,29 @@ const FavoriteItem = ({
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <LocationOn color="action" />
             <Box>
-              <Box>
-                <Typography variant="subtitle2" component="div">
-                  {registration.house_number} {registration.street_name}
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  {registration.boro}, NY {registration.zip}
-                </Typography>
-              </Box>
+              {registration ? (
+                <>
+                  <Box>
+                    <Typography variant="subtitle2" component="div">
+                      {registration.house_number} {registration.street_name}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary">
+                      {registration.boro}, NY {registration.zip}
+                    </Typography>
+                  </Box>
+                </>
+              ) : (
+                <Box>
+                  <Typography variant="subtitle2" component="div">
+                    Building {bbl}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Registration details not available
+                  </Typography>
+                </Box>
+              )}
             </Box>
           </Box>
 
