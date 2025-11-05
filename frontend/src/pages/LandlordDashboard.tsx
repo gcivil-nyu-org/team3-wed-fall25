@@ -56,13 +56,15 @@ export default function LandlordDashboard() {
           landlordApi.fetchReviews(landlordId),
         ]);
         if (!mounted) return;
+        console.log("Fetched properties:", propsResp);
         setProperties(propsResp.map(p => ({
           address: p.address,
           occupancyStatus: p.occupancy_status,
           financialPerformance: p.financial_performance,
           tenantTurnover: p.tenant_turnover,
-          violationsCount: p.violations_count ?? 0,
-          evictionsCount: p.evictions_count ?? 0,
+          violations_count: p.violations_count ?? 0,
+          evictions_count: p.evictions_count ?? 0,
+          bbl: p.bbl,
         })));
         setViolations(violsResp.map(v => ({ message: v.message, resolved: v.resolved })));
         setReviews(revsResp.map(r => ({ id: r.id, author: r.author, content: r.content, date: r.date, flagged: r.flagged })));
