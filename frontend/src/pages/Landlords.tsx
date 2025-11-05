@@ -1,4 +1,4 @@
-import { Box, Container, Typography, Paper, Stack, TextField, MenuItem } from "@mui/material";
+import { Container, Typography, Paper, Stack, TextField, MenuItem } from "@mui/material";
 import { useState } from "react";
 import { useAuth } from "../hooks";
 
