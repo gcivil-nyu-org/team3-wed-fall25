@@ -4,7 +4,6 @@ import { useParams, useNavigate } from "react-router";
 import {
   Box,
   Typography,
-  Grid,
   Card,
   CardContent,
   Chip,
@@ -196,10 +195,9 @@ export default function BuildingDetail() {
     };
   }, [bbl]);
 
-  const handleTabChange = ( newValue: number) => {
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
-
   const getViolationSeverityColor = (violationClass: string) => {
     switch (violationClass) {
       case "C":
@@ -256,19 +254,18 @@ export default function BuildingDetail() {
       <Box sx={{ mb: 3 }}>
         // In BuildingDetail.tsx, update the breadcrumbs:
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-        <Link
+          <Link
             color="inherit"
-            onClick={() => navigate('/')}  // Or navigate('/landlord') if you have a landlord base route
-            sx={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-        >
+            onClick={() => navigate("/")} // Or navigate('/landlord') if you have a landlord base route
+            sx={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+          >
             <Home sx={{ mr: 0.5 }} fontSize="small" />
             Portfolio
-        </Link>
-        <Typography color="text.primary">
-            {buildingInfo?.address || 'Building Details'}
-        </Typography>
+          </Link>
+          <Typography color="text.primary">
+            {buildingInfo?.address || "Building Details"}
+          </Typography>
         </Breadcrumbs>
-
         <Box
           sx={{
             display: "flex",
@@ -301,8 +298,16 @@ export default function BuildingDetail() {
       )}
 
       {/* Quick Stats */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={2.4}>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 3 }}>
+        <Box
+          sx={{
+            width: {
+              xs: "100%",
+              sm: "calc(50% - 12px)",
+              md: "calc(20% - 12px)",
+            },
+          }}
+        >
           <Card>
             <CardContent sx={{ textAlign: "center" }}>
               <Typography color="textSecondary" gutterBottom>
@@ -313,8 +318,16 @@ export default function BuildingDetail() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        </Box>
+        <Box
+          sx={{
+            width: {
+              xs: "100%",
+              sm: "calc(50% - 12px)",
+              md: "calc(20% - 12px)",
+            },
+          }}
+        >
           <Card>
             <CardContent sx={{ textAlign: "center" }}>
               <Typography color="textSecondary" gutterBottom>
@@ -325,8 +338,16 @@ export default function BuildingDetail() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        </Box>
+        <Box
+          sx={{
+            width: {
+              xs: "100%",
+              sm: "calc(50% - 12px)",
+              md: "calc(20% - 12px)",
+            },
+          }}
+        >
           <Card>
             <CardContent sx={{ textAlign: "center" }}>
               <Typography color="textSecondary" gutterBottom>
@@ -337,8 +358,16 @@ export default function BuildingDetail() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        </Box>
+        <Box
+          sx={{
+            width: {
+              xs: "100%",
+              sm: "calc(50% - 12px)",
+              md: "calc(20% - 12px)",
+            },
+          }}
+        >
           <Card>
             <CardContent sx={{ textAlign: "center" }}>
               <Typography color="textSecondary" gutterBottom>
@@ -349,8 +378,16 @@ export default function BuildingDetail() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={2.4}>
+        </Box>
+        <Box
+          sx={{
+            width: {
+              xs: "100%",
+              sm: "calc(50% - 12px)",
+              md: "calc(20% - 12px)",
+            },
+          }}
+        >
           <Card>
             <CardContent sx={{ textAlign: "center" }}>
               <Typography color="textSecondary" gutterBottom>
@@ -361,8 +398,8 @@ export default function BuildingDetail() {
               </Typography>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
 
       {/* Tabs */}
       <Paper>
@@ -387,146 +424,148 @@ export default function BuildingDetail() {
                 Eviction & Violation Trends (Last 6 Months)
               </Typography>
 
-              {/* Simple bar chart */}
-              <Box sx={{ mt: 3 }}>
-                <Grid
-                  container
-                  spacing={1}
-                  alignItems="flex-end"
-                  sx={{ height: 200 }}
-                >
-                  {trendData.map((month, index) => (
-                    <Grid item xs={2} key={month.month}>
-                      <Box
+              {/* 👇 PUT THE CHART CODE RIGHT HERE - Replace the existing Grid chart */}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 1,
+                  alignItems: "flex-end",
+                  height: 200,
+                  mt: 3,
+                }}
+              >
+                {trendData.map((month) => (
+                  <Box
+                    key={month.month}
+                    sx={{
+                      flex: 1,
+                      textAlign: "center",
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        height: `${month.violations * 15}%`,
+                        bgcolor: "warning.main",
+                        borderRadius: "4px 4px 0 0",
+                        mb: 0.5,
+                        position: "relative",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
                         sx={{
-                          textAlign: "center",
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "flex-end",
+                          position: "absolute",
+                          top: -20,
+                          left: 0,
+                          right: 0,
                         }}
                       >
-                        <Box
-                          sx={{
-                            height: `${month.violations * 15}%`,
-                            bgcolor: "warning.main",
-                            borderRadius: "4px 4px 0 0",
-                            mb: 0.5,
-                            position: "relative",
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              position: "absolute",
-                              top: -20,
-                              left: 0,
-                              right: 0,
-                            }}
-                          >
-                            {month.violations}
-                          </Typography>
-                        </Box>
+                        {month.violations}
+                      </Typography>
+                    </Box>
 
-                        <Box
-                          sx={{
-                            height: `${month.evictions * 30}%`,
-                            bgcolor: "error.main",
-                            borderRadius: "4px 4px 0 0",
-                            mb: 0.5,
-                            position: "relative",
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              position: "absolute",
-                              top: -20,
-                              left: 0,
-                              right: 0,
-                            }}
-                          >
-                            {month.evictions}
-                          </Typography>
-                        </Box>
-
-                        <Box
-                          sx={{
-                            height: `${month.complaints * 10}%`,
-                            bgcolor: "info.main",
-                            borderRadius: "4px 4px 0 0",
-                            position: "relative",
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              position: "absolute",
-                              top: -20,
-                              left: 0,
-                              right: 0,
-                            }}
-                          >
-                            {month.complaints}
-                          </Typography>
-                        </Box>
-
-                        <Typography
-                          variant="caption"
-                          color="textSecondary"
-                          sx={{ mt: 1 }}
-                        >
-                          {month.month}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Legend */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: 3,
-                    mt: 3,
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Box
                       sx={{
-                        width: 16,
-                        height: 16,
-                        bgcolor: "warning.main",
-                        borderRadius: 1,
-                      }}
-                    />
-                    <Typography variant="caption">Violations</Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box
-                      sx={{
-                        width: 16,
-                        height: 16,
+                        height: `${month.evictions * 30}%`,
                         bgcolor: "error.main",
-                        borderRadius: 1,
+                        borderRadius: "4px 4px 0 0",
+                        mb: 0.5,
+                        position: "relative",
                       }}
-                    />
-                    <Typography variant="caption">Evictions</Typography>
-                  </Box>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          position: "absolute",
+                          top: -20,
+                          left: 0,
+                          right: 0,
+                        }}
+                      >
+                        {month.evictions}
+                      </Typography>
+                    </Box>
+
                     <Box
                       sx={{
-                        width: 16,
-                        height: 16,
+                        height: `${month.complaints * 10}%`,
                         bgcolor: "info.main",
-                        borderRadius: 1,
+                        borderRadius: "4px 4px 0 0",
+                        position: "relative",
                       }}
-                    />
-                    <Typography variant="caption">Complaints</Typography>
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          position: "absolute",
+                          top: -20,
+                          left: 0,
+                          right: 0,
+                        }}
+                      >
+                        {month.complaints}
+                      </Typography>
+                    </Box>
+
+                    <Typography
+                      variant="caption"
+                      color="textSecondary"
+                      sx={{ mt: 1 }}
+                    >
+                      {month.month}
+                    </Typography>
                   </Box>
+                ))}
+              </Box>
+
+              {/* Legend */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: 3,
+                  mt: 3,
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      bgcolor: "warning.main",
+                      borderRadius: 1,
+                    }}
+                  />
+                  <Typography variant="caption">Violations</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      bgcolor: "error.main",
+                      borderRadius: 1,
+                    }}
+                  />
+                  <Typography variant="caption">Evictions</Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 16,
+                      bgcolor: "info.main",
+                      borderRadius: 1,
+                    }}
+                  />
+                  <Typography variant="caption">Complaints</Typography>
                 </Box>
               </Box>
+              {/* 👆 KEEP THE LEGEND PART TOO */}
             </CardContent>
           </Card>
         </TabPanel>
@@ -551,7 +590,7 @@ export default function BuildingDetail() {
                 </Alert>
               ) : (
                 <List>
-                  {violations.map((violation, index) => (
+                  {violations.map((violation) => (
                     <React.Fragment key={violation.id}>
                       <ListItem alignItems="flex-start">
                         <ListItemIcon>
@@ -632,7 +671,7 @@ export default function BuildingDetail() {
                           }
                         />
                       </ListItem>
-                      {index < violations.length - 1 && <Divider />}
+                      {violations.length > 1 && <Divider />}
                     </React.Fragment>
                   ))}
                 </List>
@@ -661,7 +700,7 @@ export default function BuildingDetail() {
                 </Alert>
               ) : (
                 <Box sx={{ maxHeight: "60vh", overflow: "auto" }}>
-                  {complaints.map((complaint, index) => (
+                  {complaints.map((complaint) => (
                     <Card
                       key={complaint.id}
                       variant="outlined"
