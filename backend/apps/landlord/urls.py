@@ -4,6 +4,12 @@ from .views import (
     ViolationsView,
     ReviewsView,
     landlord_apply_get,
+    ViolationsByBBLView,
+    ComplaintsByBBLView,
+    BuildingStatsView,
+    LandlordStatsView,
+    ReviewResponseView,
+    FlagReviewView,
 )
 
 urlpatterns = [
@@ -23,4 +29,23 @@ urlpatterns = [
     path("reviews/", ReviewsView.as_view(), name="landlord_reviews"),
     # path('apply/', LandlordApplicationView.as_view(), name='landlord_application'),
     path("apply/", landlord_apply_get, name="landlord_application"),
+    # NEW endpoints for building detail page
+    path(
+        "violations/bbl/<str:bbl>/",
+        ViolationsByBBLView.as_view(),
+        name="violations_by_bbl",
+    ),
+    path(
+        "complaints/bbl/<str:bbl>/",
+        ComplaintsByBBLView.as_view(),
+        name="complaints_by_bbl",
+    ),
+    path(
+        "building-stats/bbl/<str:bbl>/",
+        BuildingStatsView.as_view(),
+        name="building_stats",
+    ),
+    path("stats/", LandlordStatsView.as_view(), name="landlord_stats"),
+    path("reviews/response/", ReviewResponseView.as_view(), name="review_response"),
+    path("reviews/flag/", FlagReviewView.as_view(), name="flag_review"),
 ]

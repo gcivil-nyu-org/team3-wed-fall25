@@ -9,7 +9,8 @@ import { SiteFooter } from "./components/SiteFooter";
 
 import LandlordDashboard from "./pages/LandlordDashboard";
 import LandlordApply from "./pages/LandlordApply";
-import { Home, Search, SignIn, SignUp, Building, Community } from "./pages";
+import BuildingDetail from "./pages/BuildingDetail";
+import { Home, Search, SignIn, SignUp, Building, Community,  } from "./pages";
 import SimplifiedMap from "./pages/SimplifiedMap";
 
 function App() {
@@ -26,7 +27,13 @@ function App() {
         <Route
           path="/"
           element={
-            <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                minHeight: "100vh",
+              }}
+            >
               <AppAppBar />
               <Box component="main" sx={{ flex: 1 }}>
                 <Outlet />
@@ -42,6 +49,7 @@ function App() {
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply" element={<LandlordApply />} />
+          <Route path="landlord/building/:bbl" element={<BuildingDetail />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />

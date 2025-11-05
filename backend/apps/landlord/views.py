@@ -63,16 +63,27 @@ class PropertiesView(APIView):
             properties = []
             for bbl, bld in buildings.items():
                 # Debug: print the building object structure
-                # print(f"Building {bbl} type: {type(bld)}")
-                # if bld:
-                #     print(f"Building {bbl} attributes: {dir(bld)}")
+                print(f"Building {bbl} type: {type(bld)}")
+                if bld:
+                    print(f"Building {bbl} attributes: {dir(bld)}")
 
                 address = self._get_address_from_building(bld, bbl)
                 print(f"Property {bbl} address: {address}")
-                violations_count = len(getattr(bld, "complaints", []) or []) + len(
-                    getattr(bld, "violations", []) or []
-                )
-                evictions_count = len(getattr(bld, "evictions", []) or [])
+                # print((len(getattr(bld, "complaints", []))))
+                print(getattr(bld, "complaints", []))
+
+                complaints = getattr(bld, "complaints", []) or []
+                violations = getattr(bld, "violations", []) or []
+                evictions = getattr(bld, "evictions", []) or []
+
+                print(f"Found {len(complaints)} complaints for BBL {bbl}")
+                print(f"Found {len(violations)} violations for BBL {bbl}")
+                print(f"Found {len(evictions)} evictions for BBL {bbl}")
+
+                # Count them separately
+                # complaints_count = len(complaints)
+                violations_count = len(violations)
+                evictions_count = len(evictions)
 
                 properties.append(
                     {
@@ -167,20 +178,20 @@ class ViolationsView(APIView):
                 if not bld:
                     continue
                 # complaints is a list of Complaint dataclasses
-                for c in getattr(bld, "complaints", []) or []:
-                    violations.append(
-                        {
-                            "id": getattr(c, "complaint_id", None),
-                            "bbl": bbl,
-                            "message": getattr(c, "status_description", None)
-                            or getattr(c, "minor_category", None)
-                            or getattr(c, "major_category", None),
-                            "resolved": (
-                                getattr(c, "complaint_status", "") or ""
-                            ).lower()
-                            in ("closed", "close", "resolved"),
-                        }
-                    )
+                # for c in getattr(bld, "complaints", []) or []:
+                #     violations.append(
+                #         {
+                #             "id": getattr(c, "complaint_id", None),
+                #             "bbl": bbl,
+                #             "message": getattr(c, "status_description", None)
+                #             or getattr(c, "minor_category", None)
+                #             or getattr(c, "major_category", None),
+                #             "resolved": (
+                #                 getattr(c, "complaint_status", "") or ""
+                #             ).lower()
+                #             in ("closed", "close", "resolved"),
+                #         }
+                #     )
                 # also include violations dataclass entries
                 for v in getattr(bld, "violations", []) or []:
                     violations.append(
@@ -549,3 +560,460 @@ def landlord_apply_get(request):
             {"error": "Internal server error."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+class ViolationsByBBLView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, bbl):
+        """Return violations/complaints for a specific BBL owned by landlord."""
+        try:
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
+        except Exception:
+            user_id = None
+
+        print(f"Fetching violations for BBL: {bbl}, user_id: {user_id}")
+
+        try:
+            # Verify that the user owns this BBL
+            with PostgresClient() as db:
+                ownership = db.query_one(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND bbl = %s AND deleted_at IS NULL
+                    """,
+                    (user_id, bbl),
+                )
+
+            if not ownership:
+                return Response(
+                    {"error": "You don't have access to this property."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Get violations for this specific BBL
+            repo = BuildingRepository()
+            bld = repo.get_by_bbl(bbl)
+
+            violations = []
+            if bld:
+
+                # Process violations
+                for v in getattr(bld, "violations", []) or []:
+                    violations.append(
+                        {
+                            "id": f"v_{getattr(v, 'violation_id', 'unknown')}",
+                            "bbl": bbl,
+                            "message": getattr(v, "nov_description", None)
+                            or getattr(v, "nov_type", None),
+                            "resolved": (
+                                getattr(v, "violation_status", "") or ""
+                            ).lower()
+                            in ("closed", "close", "resolved"),
+                            "type": "violation",
+                            "violation_id": getattr(v, "violation_id", None),
+                            "nov_description": getattr(v, "nov_description", None),
+                            "nov_type": getattr(v, "nov_type", None),
+                            "class": getattr(v, "class", None),
+                            "rent_impairing": getattr(v, "rent_impairing", False),
+                            "violation_status": getattr(v, "violation_status", None),
+                            "inspection_date": getattr(v, "inspection_date", None),
+                            "nov_issued_date": getattr(v, "nov_issued_date", None),
+                            "apartment": getattr(v, "apartment", None),
+                        }
+                    )
+
+            return Response(violations, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[ViolationsByBBLView] DB error: {e}")
+            # Fallback mock data for this specific BBL
+            mock_data = [
+                {
+                    "id": "v1",
+                    "bbl": bbl,
+                    "message": "Broken fire escape on 3rd floor",
+                    "resolved": False,
+                    "type": "violation",
+                    "nov_description": "Broken fire escape on 3rd floor",
+                    "class": "C",
+                    "rent_impairing": True,
+                },
+                {
+                    "id": "c1",
+                    "bbl": bbl,
+                    "message": "No heat in apartment",
+                    "resolved": False,
+                    "type": "complaint",
+                    "major_category": "HVAC",
+                    "minor_category": "Heat",
+                },
+            ]
+            return Response(mock_data, status=status.HTTP_200_OK)
+
+
+# NEW: Get complaints for a specific BBL
+class ComplaintsByBBLView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, bbl):
+        """Return complaints for a specific BBL owned by landlord."""
+        try:
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
+        except Exception:
+            user_id = None
+
+        print(f"Fetching complaints for BBL: {bbl}, user_id: {user_id}")
+
+        try:
+            # Verify that the user owns this BBL
+            with PostgresClient() as db:
+                ownership = db.query_one(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND bbl = %s AND deleted_at IS NULL
+                    """,
+                    (user_id, bbl),
+                )
+
+            if not ownership:
+                return Response(
+                    {"error": "You don't have access to this property."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Get complaints for this specific BBL
+            repo = BuildingRepository()
+            bld = repo.get_by_bbl(bbl)
+
+            complaints = []
+            if bld:
+                for c in getattr(bld, "complaints", []) or []:
+                    complaints.append(
+                        {
+                            "id": getattr(c, "complaint_id", None),
+                            "bbl": bbl,
+                            "type": getattr(c, "type", None),
+                            "major_category": getattr(c, "major_category", None),
+                            "minor_category": getattr(c, "minor_category", None),
+                            "complaint_status": getattr(c, "complaint_status", None),
+                            "status_description": getattr(
+                                c, "status_description", None
+                            ),
+                            "house_number": getattr(c, "house_number", None),
+                            "street_name": getattr(c, "street_name", None),
+                            "apartment": getattr(c, "apartment", None),
+                            "complaint_status_date": getattr(
+                                c, "complaint_status_date", None
+                            ),
+                        }
+                    )
+
+            return Response(complaints, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[ComplaintsByBBLView] DB error: {e}")
+            # Fallback mock data
+            mock_data = [
+                {
+                    "id": 1,
+                    "bbl": bbl,
+                    "type": "HEAT/HOT WATER",
+                    "major_category": "HVAC",
+                    "minor_category": "Heat",
+                    "complaint_status": "Open",
+                    "status_description": "No heat in apartment",
+                    "house_number": "123",
+                    "street_name": "Main St",
+                    "apartment": "4B",
+                    "complaint_status_date": "2024-01-18",
+                },
+                {
+                    "id": 2,
+                    "bbl": bbl,
+                    "type": "PLUMBING",
+                    "major_category": "Plumbing",
+                    "minor_category": "Leak",
+                    "complaint_status": "In Progress",
+                    "status_description": "Leaking faucet in bathroom",
+                    "house_number": "123",
+                    "street_name": "Main St",
+                    "apartment": "2A",
+                    "complaint_status_date": "2024-01-16",
+                },
+            ]
+            return Response(mock_data, status=status.HTTP_200_OK)
+
+
+# NEW: Get building stats for a specific BBL
+class BuildingStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, bbl):
+        """Return statistics for a specific building."""
+        try:
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
+        except Exception:
+            user_id = None
+
+        print(f"Fetching stats for BBL: {bbl}, user_id: {user_id}")
+
+        try:
+            # Verify that the user owns this BBL
+            with PostgresClient() as db:
+                ownership = db.query_one(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND bbl = %s AND deleted_at IS NULL
+                    """,
+                    (user_id, bbl),
+                )
+
+            if not ownership:
+                return Response(
+                    {"error": "You don't have access to this property."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            # Get building data and calculate stats
+            repo = BuildingRepository()
+            bld = repo.get_by_bbl(bbl)
+
+            if not bld:
+                return Response(
+                    {
+                        "total_violations": 0,
+                        "open_violations": 0,
+                        "total_complaints": 0,
+                        "open_complaints": 0,
+                        "eviction_filings": 0,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            # Calculate statistics
+            violations = getattr(bld, "violations", []) or []
+            complaints = getattr(bld, "complaints", []) or []
+            evictions = getattr(bld, "evictions", []) or []
+
+            total_violations = len(violations)
+            open_violations = len(
+                [
+                    v
+                    for v in violations
+                    if getattr(v, "violation_status", "").lower()
+                    not in ("closed", "resolved")
+                ]
+            )
+            total_complaints = len(complaints)
+            open_complaints = len(
+                [
+                    c
+                    for c in complaints
+                    if getattr(c, "complaint_status", "").lower()
+                    not in ("closed", "resolved")
+                ]
+            )
+            eviction_filings = len(evictions)
+
+            stats = {
+                "total_violations": total_violations,
+                "open_violations": open_violations,
+                "total_complaints": total_complaints,
+                "open_complaints": open_complaints,
+                "eviction_filings": eviction_filings,
+            }
+
+            return Response(stats, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[BuildingStatsView] DB error: {e}")
+            # Fallback mock stats
+            mock_stats = {
+                "total_violations": 2,
+                "open_violations": 2,
+                "total_complaints": 5,
+                "open_complaints": 2,
+                "eviction_filings": 1,
+            }
+            return Response(mock_stats, status=status.HTTP_200_OK)
+
+
+# NEW: Get overall landlord stats
+class LandlordStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """Return overall statistics for the landlord across all properties."""
+        try:
+            user_id = (
+                request.user.id
+                if request.user and request.user.is_authenticated
+                else None
+            )
+        except Exception:
+            user_id = None
+
+        print(f"Fetching landlord stats for user_id: {user_id}")
+
+        try:
+            # Get all BBLs for this landlord
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (user_id,),
+                )
+
+            bbls = [r["bbl"] for r in rows]
+
+            if not bbls:
+                return Response(
+                    {
+                        "total_violations": 0,
+                        "open_violations": 0,
+                        "total_complaints": 0,
+                        "open_complaints": 0,
+                        "total_properties": 0,
+                        "occupied_properties": 0,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+            # Calculate aggregate stats across all properties
+            repo = BuildingRepository()
+            total_violations = 0
+            open_violations = 0
+            total_complaints = 0
+            open_complaints = 0
+
+            for bbl in bbls:
+                bld = repo.get_by_bbl(bbl)
+                if bld:
+                    violations = getattr(bld, "violations", []) or []
+                    complaints = getattr(bld, "complaints", []) or []
+
+                    total_violations += len(violations)
+                    open_violations += len(
+                        [
+                            v
+                            for v in violations
+                            if getattr(v, "violation_status", "").lower()
+                            not in ("closed", "resolved")
+                        ]
+                    )
+                    total_complaints += len(complaints)
+                    open_complaints += len(
+                        [
+                            c
+                            for c in complaints
+                            if getattr(c, "complaint_status", "").lower()
+                            not in ("closed", "resolved")
+                        ]
+                    )
+
+            stats = {
+                "total_violations": total_violations,
+                "open_violations": open_violations,
+                "total_complaints": total_complaints,
+                "open_complaints": open_complaints,
+                "total_properties": len(bbls),
+                "occupied_properties": len(
+                    bbls
+                ),  # Simplified - you might want to calculate actual occupancy
+            }
+
+            return Response(stats, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[LandlordStatsView] DB error: {e}")
+            # Fallback mock stats
+            mock_stats = {
+                "total_violations": 3,
+                "open_violations": 2,
+                "total_complaints": 6,
+                "open_complaints": 2,
+                "total_properties": 2,
+                "occupied_properties": 1,
+            }
+            return Response(mock_stats, status=status.HTTP_200_OK)
+
+
+# NEW: Submit review response
+class ReviewResponseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Submit a response to a tenant review."""
+        try:
+            data = request.data
+            review_id = data.get("review_id")
+            response = data.get("response")
+
+            if not review_id or not response:
+                return Response(
+                    {"error": "Review ID and response are required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # In a real implementation, you would save this to your database
+            # For now, we'll just return success
+            print(f"Review response submitted for review {review_id}: {response}")
+
+            return Response(
+                {"message": "Response submitted successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            print(f"[ReviewResponseView] Error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# NEW: Flag a review
+class FlagReviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Flag a review for admin review."""
+        try:
+            data = request.data
+            review_id = data.get("review_id")
+            reason = data.get("reason")
+
+            if not review_id:
+                return Response(
+                    {"error": "Review ID is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # In a real implementation, you would save this to your database
+            # For now, we'll just return success
+            print(f"Review {review_id} flagged for reason: {reason}")
+
+            return Response(
+                {"message": "Review flagged successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            print(f"[FlagReviewView] Error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
