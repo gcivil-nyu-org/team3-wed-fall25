@@ -53,10 +53,9 @@ def favorites_list_create(request):
         # 3) 응답에 registration(또는 building) 필드로 합치기
         enriched = []
         for f in fav_data:
-            enriched.append({
-                **f,
-                "registration": _to_summary_dict(reg_map.get(f["bbl"]))
-            })
+            enriched.append(
+                {**f, "registration": _to_summary_dict(reg_map.get(f["bbl"]))}
+            )
 
         return Response(enriched)
 
@@ -81,7 +80,7 @@ def favorites_list_create(request):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# views.py (같은 파일 하단 헬퍼로 두면 됨)
+
 def _to_summary_dict(reg: dict | None) -> dict | None:
     """
     get_registration_by_bbl 반환 dict를 favorites 응답에 맞게 가볍게 요약.
@@ -112,7 +111,12 @@ def _to_summary_dict(reg: dict | None) -> dict | None:
     contacts_preview = [
         {
             "type": c.get("type"),
-            "name": (f"{c.get('first_name','')}".strip() + " " + f"{c.get('last_name','')}".strip()).strip() or c.get("corporation_name"),
+            "name": (
+                f"{c.get('first_name', '')}".strip()
+                + " "
+                + f"{c.get('last_name', '')}".strip()
+            ).strip()
+            or c.get("corporation_name"),
             "desc": c.get("contact_description"),
             "business_zip": c.get("business_zip"),
         }
@@ -134,19 +138,16 @@ def _to_summary_dict(reg: dict | None) -> dict | None:
         "community_board": g("community_board"),
         "last_registration_date": g("last_registration_date"),
         "registration_end_date": g("registration_end_date"),
-
         # 편의 필드
         "address": {
             "street": street,
             "zip": g("zip"),
             "full": full_address,
         },
-
         # contacts 요약 (정책에 따라 전체 contacts를 그대로 내려도 됨)
         "contacts_count": len(contacts),
         "contacts_preview": contacts_preview,
     }
-
 
 
 @api_view(["DELETE"])
