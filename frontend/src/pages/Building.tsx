@@ -150,7 +150,8 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
   const { favorites, refresh: refreshFavorites } = useFavorites();
 
   const favorite = favorites.find((favorite) => favorite.bbl === building.bbl);
-
+  
+  const navigate = useNavigate();
   return (
     <Paper
       elevation={0}
@@ -206,6 +207,20 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="contained"
+            onClick={() => navigate("/landlord/apply")}
+            sx={{
+              backgroundColor: "#FF6B35",
+              color: "white",
+              fontWeight: 600,
+              "&:hover": {
+                backgroundColor: "#E55A2B",
+              },
+            }}
+          >
+            Apply as Landlord
+          </Button>
           {favorite ? (
             <RemoveFavoritesButton
               id={favorite.id}
