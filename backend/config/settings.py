@@ -142,16 +142,19 @@ DEFAULT_FROM_EMAIL = env(
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# All database credentials must be set via environment variables
+# For local development: Create a .env file in project root with DB_* variables
+# For production: Set environment variables in deployment platform (AWS Elastic Beanstalk)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("DB_NAME", default="housing_transparency"),
-        "USER": env("DB_USER", default="postgres"),
-        "PASSWORD": env("DB_PASSWORD", default="password"),
-        "HOST": env("DB_HOST", default="localhost"),
-        "PORT": env("DB_PORT", default="5432"),
+        "NAME": env("DB_NAME"),  # Required: Database name
+        "USER": env("DB_USER"),  # Required: Database user
+        "PASSWORD": env("DB_PASSWORD"),  # Required: Database password
+        "HOST": env("DB_HOST"),  # Required: Database host
+        "PORT": env("DB_PORT"),  # Required: Database port
         "TEST": {
-            "NAME": f"test_{env('DB_NAME', default='housing_transparency')}",
+            "NAME": f"test_{env('DB_NAME')}",
         },
     }
 }
