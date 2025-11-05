@@ -16,7 +16,7 @@ export const useReview = (bbl: BuildingData["bbl"]) => {
 
   useEffect(() => {
     fetchReviews(bbl)
-      .then((res) => {
+      .then((res: any) => {
         // Ensure res is an array
         const data = Array.isArray(res) ? res : (res?.data || []);
         setReviews(Array.isArray(data) ? data : []);
@@ -41,7 +41,7 @@ export const useMyReview = () => {
 
   useEffect(() => {
     fetchMyReviews()
-      .then((res) => {
+      .then((res: any) => {
         // Ensure res is an array
         const data = Array.isArray(res) ? res : (res?.data || []);
         setReviews(Array.isArray(data) ? data : []);

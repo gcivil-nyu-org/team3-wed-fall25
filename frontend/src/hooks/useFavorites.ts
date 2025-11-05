@@ -9,7 +9,7 @@ export const useFavorites = () => {
 
   useEffect(() => {
     fetchFavorites()
-      .then((res) => {
+      .then((res: any) => {
         // Ensure res is an array - handle wrapped responses
         const data = Array.isArray(res) ? res : (res?.data || []);
         setFavorites(Array.isArray(data) ? data : []);
