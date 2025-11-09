@@ -128,9 +128,16 @@ AUTHENTICATION_BACKENDS = [
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 
 # Email Configuration
-EMAIL_BACKEND = env(
-    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
-)
+# Use console backend in development, SMTP in production
+if RUN_ENV == "development" or DEBUG:
+    EMAIL_BACKEND = env(
+        "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+    )
+else:
+    EMAIL_BACKEND = env(
+        "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
+    )
+
 EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
 EMAIL_PORT = env("EMAIL_PORT", default=587)
 EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
