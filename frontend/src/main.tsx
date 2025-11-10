@@ -4,10 +4,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import App from "./App.tsx";
 
-// Use basename based on environment - match Vite's base path
-// In dev: Vite base is '/', so basename is ''
-// In production: Vite base is '/static/_app/', so basename is '/static/_app/'
-const basename = import.meta.env.DEV ? "" : "/static/_app/";
+// Force basename to empty so app routes match '/' when served at site root
+const basename = "";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
