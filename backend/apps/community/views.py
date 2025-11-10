@@ -481,7 +481,6 @@ def messages_thread(request):
             ).update(read_at=timezone.now())
 
         # 페이징 힌트
-        # next_since_id = messages[-1].id if messages else int(since_id) if since_id else None
         prev_before_id = (
             messages[0].id if messages else int(before_id) if before_id else None
         )
