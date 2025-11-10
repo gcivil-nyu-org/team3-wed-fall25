@@ -68,7 +68,7 @@ export default function AppAppBar() {
 
           {/* Navigation Links */}
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
-              <NavLink to="/">
+            <NavLink to="/">
               <Button
                 variant="text"
                 size="small"
@@ -83,10 +83,10 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Home
-                </Button>
-              </NavLink>
-              <NavLink to="/search">
+                Home
+              </Button>
+            </NavLink>
+            <NavLink to="/search">
               <Button
                 variant="text"
                 size="small"
@@ -101,9 +101,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Search
-                </Button>
-              </NavLink>
+                Search
+              </Button>
+            </NavLink>
             <NavLink to="/map">
               <Button
                 variant="text"
@@ -119,9 +119,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Map
-                </Button>
-              </NavLink>
+                Map
+              </Button>
+            </NavLink>
             <NavLink to="/community">
               <Button
                 variant="text"
@@ -137,30 +137,48 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Community
-                </Button>
-              </NavLink>
-              <NavLink to="/landlord/dashboard">
+                Community
+              </Button>
+            </NavLink>
+            <NavLink to="/landlord/dashboard">
               <Button
                 variant="text"
                 size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
               >
                 Landlords
               </Button>
-              </NavLink>
+            </NavLink>
+            <NavLink to="/message">
               <Button
                 variant="text"
                 size="small"
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
+              >
+                Message
+              </Button>
+            </NavLink>
+            <Button
+              variant="text"
+              size="small"
               sx={{
                 color: "#4A5568",
                 fontWeight: 500,
@@ -171,10 +189,10 @@ export default function AppAppBar() {
                   backgroundColor: "rgba(255, 107, 53, 0.05)",
                 },
               }}
-              >
-                Admin
-              </Button>
-            </Box>
+            >
+              Admin
+            </Button>
+          </Box>
 
           {/* Auth Buttons */}
           <Box
@@ -227,8 +245,8 @@ export default function AppAppBar() {
           </Box>
           {/* Mobile Menu */}
           <Box sx={{ display: { xs: "flex", md: "none" } }}>
-            <IconButton 
-              aria-label="Menu button" 
+            <IconButton
+              aria-label="Menu button"
               onClick={toggleDrawer(true)}
               sx={{ color: "#4A5568" }}
             >
@@ -269,12 +287,22 @@ export default function AppAppBar() {
                       Housing Transparency
                     </Typography>
                   </Box>
-                  <IconButton onClick={toggleDrawer(false)} sx={{ color: "#4A5568" }}>
+                  <IconButton
+                    onClick={toggleDrawer(false)}
+                    sx={{ color: "#4A5568" }}
+                  >
                     <CloseIcon />
                   </IconButton>
                 </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    mb: 3,
+                  }}
+                >
                   <NavLink to="/" style={{ textDecoration: "none" }}>
                     <Button
                       fullWidth
@@ -351,7 +379,10 @@ export default function AppAppBar() {
                       Community
                     </Button>
                   </NavLink>
-                  <NavLink to="/landlord/dashboard" style={{ textDecoration: "none" }}>
+                  <NavLink
+                    to="/landlord/dashboard"
+                    style={{ textDecoration: "none" }}
+                  >
                     <Button
                       fullWidth
                       variant="text"
@@ -368,6 +399,25 @@ export default function AppAppBar() {
                       }}
                     >
                       Landlords
+                    </Button>
+                  </NavLink>
+                  <NavLink to="/message" style={{ textDecoration: "none" }}>
+                    <Button
+                      fullWidth
+                      variant="text"
+                      sx={{
+                        justifyContent: "flex-start",
+                        color: "#4A5568",
+                        fontWeight: 500,
+                        textTransform: "uppercase",
+                        fontSize: "0.9rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                          backgroundColor: "rgba(255, 107, 53, 0.05)",
+                        },
+                      }}
+                    >
+                      Message
                     </Button>
                   </NavLink>
                   <Button
@@ -389,7 +439,9 @@ export default function AppAppBar() {
                   </Button>
                 </Box>
 
-                <Divider sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }} />
+                <Divider
+                  sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }}
+                />
 
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <NavLink to="/signin" style={{ textDecoration: "none" }}>
@@ -440,7 +492,5 @@ export default function AppAppBar() {
         </StyledToolbar>
       </Container>
     </AppBar>
-  
-);
+  );
 }
-

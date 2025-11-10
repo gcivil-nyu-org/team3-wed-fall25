@@ -511,15 +511,49 @@ export interface CommunityReviewComment {
   username: string;
 }
 
-export interface CommunityMessage {
+export interface CommunityInbox {
+  peer: {
+    id: number;
+    username: string;
+    email: string;
+  };
+  last_message: {
+    id: number;
+    body: string;
+    sender_id: number;
+    receiver_id: number;
+    bbl: string | null;
+    created_at: string;
+    read_at: string;
+  };
+  is_unread: boolean;
+}
+
+export interface CommunityMessageItem {
   id: number;
   sender_id: number;
+  sender_username: string;
+  sender_email: string;
   receiver_id: number;
-  bbl?: string;
+  receiver_username: string;
+  receiver_email: string;
+  bbl: string;
   body: string;
-  read_at?: string;
+  read_at: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CommunityMessage {
+  peer_id: number;
+  bbl: string | null;
+  messages: Array<CommunityMessageItem>;
+  paging: {
+    next_since_id: number;
+    prev_before_id: number;
+    has_more_before: boolean;
+    has_more_after: boolean;
+  };
 }
 
 // Community API Functions
@@ -746,12 +780,35 @@ export const deleteReviewComment = async (commentId: number): Promise<void> => {
   }
 };
 
-export const fetchInboxMessages = async (): Promise<CommunityMessage[]> => {
+export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
   try {
     const response = await axiosInstance.get<{
       result: boolean;
-      data: CommunityMessage[];
-    }>("/community/messages/inbox/");
+      data: CommunityInbox[];
+    }>("/community/messages/threads/", {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching inbox messages:", error);
+    throw error;
+  }
+};
+
+export const fetchInboxMessages = async (
+  peer_id: CommunityInbox["peer"]["id"]
+): Promise<CommunityMessage> => {
+  try {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityMessage;
+    }>(`/community/messages/thread/?peer_id=${peer_id}&limit=50&order=asc`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+      },
+    });
     return response.data.data;
   } catch (error) {
     console.error("Error fetching inbox messages:", error);
@@ -773,19 +830,27 @@ export const fetchOutboxMessages = async (): Promise<CommunityMessage[]> => {
 };
 
 export const sendMessage = async (
-  receiverId: number,
+  peer_id: number,
   body: string,
   bbl?: string
-): Promise<CommunityMessage> => {
+): Promise<CommunityMessageItem> => {
   try {
     const response = await axiosInstance.post<{
       result: boolean;
-      data: CommunityMessage;
-    }>("/community/messages/send/", {
-      receiver_id: receiverId,
-      body,
-      bbl,
-    });
+      data: CommunityMessageItem;
+    }>(
+      "/community/messages/thread/",
+      {
+        peer_id,
+        body,
+        bbl,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
     return response.data.data;
   } catch (error) {
     console.error("Error sending message:", error);
