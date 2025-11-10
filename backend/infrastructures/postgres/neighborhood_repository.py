@@ -278,11 +278,11 @@ class NeighborhoodRepository:
                 date_threshold = datetime.now() - timedelta(days=3 * 365)
             else:
                 date_threshold = None
-            
+
             if date_threshold:
                 date_filter = " AND v.inspection_date >= %s"
                 date_params = [date_threshold]
-        
+
         # Build query with optional borough filter and time range
         query = f"""
             SELECT 
@@ -321,7 +321,9 @@ class NeighborhoodRepository:
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
             query += " ORDER BY RANDOM() LIMIT %s"
-            params = tuple(date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit])
+            params = tuple(
+                date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit]
+            )
             rows = db.query_all(query, params)
         else:
             query += " ORDER BY RANDOM() LIMIT %s"
@@ -350,7 +352,9 @@ class NeighborhoodRepository:
         min_class_c: Optional[int] = None,
         max_class_c: Optional[int] = None,
         # Response time filter (days between inspection and approval)
-        max_response_days: Optional[int] = None,  # Show buildings that fix issues within X days
+        max_response_days: Optional[
+            int
+        ] = None,  # Show buildings that fix issues within X days
     ) -> List[HeatmapPoint]:
         """
         Get violation points with advanced filtering options.
@@ -426,17 +430,17 @@ class NeighborhoodRepository:
                         AND e.latitude BETWEEN %s AND %s
                         AND e.longitude BETWEEN %s AND %s
             """
-            
+
             params = [min_lat, max_lat, min_lng, max_lng]
-            
+
             # Add borough filter
             if borough and borough != "All Boroughs":
                 query += " AND e.borough = %s"
                 params.append(borough)
-            
+
             # Build WHERE conditions for the outer query
             where_clauses = []
-            
+
             # Add status filters
             if min_open_violations is not None:
                 where_clauses.append("result.open_violations >= %s")
@@ -450,7 +454,7 @@ class NeighborhoodRepository:
             if max_closed_violations is not None:
                 where_clauses.append("result.closed_violations <= %s")
                 params.append(max_closed_violations)
-            
+
             # Add class filters
             if min_class_a is not None:
                 where_clauses.append("result.class_a_count >= %s")
@@ -470,23 +474,27 @@ class NeighborhoodRepository:
             if max_class_c is not None:
                 where_clauses.append("result.class_c_count <= %s")
                 params.append(max_class_c)
-            
+
             # Add response time filter (buildings that fix issues fast)
             if max_response_days is not None:
-                where_clauses.append("(COALESCE(result.avg_response_days, 999999) <= %s OR result.avg_response_days IS NULL)")
+                where_clauses.append(
+                    "(COALESCE(result.avg_response_days, 999999) <= %s OR result.avg_response_days IS NULL)"
+                )
                 params.append(max_response_days)
-            
+
             query += ") as result"
-            
+
             # Add WHERE clause if we have filters
             if where_clauses:
                 query += " WHERE " + " AND ".join(where_clauses)
-            
+
             query += " ORDER BY RANDOM() LIMIT %s"
             params.append(limit)
-            
+
             rows = db.query_all(query, tuple(params))
-            return [as_heatmap_point({**row, "data_type": "violations"}) for row in rows]
+            return [
+                as_heatmap_point({**row, "data_type": "violations"}) for row in rows
+            ]
 
     def _get_evictions_heatmap(
         self,
@@ -512,7 +520,11 @@ class NeighborhoodRepository:
                 date_threshold = datetime.now() - timedelta(days=3 * 365)
         else:
             # Default to 3 years for evictions (or all time if "all" is explicitly selected)
-            date_threshold = None if time_range == "all" else datetime.now() - timedelta(days=3 * 365)
+            date_threshold = (
+                None
+                if time_range == "all"
+                else datetime.now() - timedelta(days=3 * 365)
+            )
 
         # Build query with optional borough filter and time range
         date_filter = " AND e.executed_date >= %s" if date_threshold else ""
@@ -545,7 +557,7 @@ class NeighborhoodRepository:
         base_params = [min_lat, max_lat, min_lng, max_lng]
         if date_threshold:
             base_params.insert(0, date_threshold)
-        
+
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
             query += " GROUP BY e.bbl, e.latitude, e.longitude, e.eviction_address, e.borough ORDER BY RANDOM() LIMIT %s"
@@ -581,11 +593,11 @@ class NeighborhoodRepository:
                 date_threshold = datetime.now() - timedelta(days=3 * 365)
             else:
                 date_threshold = None
-            
+
             if date_threshold:
                 date_filter = " AND c.complaint_status_date >= %s"
                 date_params = [date_threshold]
-        
+
         # Build query with optional borough filter and time range
         query = f"""
             SELECT 
@@ -624,7 +636,9 @@ class NeighborhoodRepository:
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
             query += " ORDER BY RANDOM() LIMIT %s"
-            params = tuple(date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit])
+            params = tuple(
+                date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit]
+            )
             rows = db.query_all(query, params)
         else:
             query += " ORDER BY RANDOM() LIMIT %s"
