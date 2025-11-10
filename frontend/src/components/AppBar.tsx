@@ -109,7 +109,7 @@ export default function AppAppBar() {
 
           {/* Navigation Links */}
           <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
-              <NavLink to="/">
+            <NavLink to="/">
               <Button
                 variant="text"
                 size="small"
@@ -124,10 +124,10 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Home
-                </Button>
-              </NavLink>
-              <NavLink to="/search">
+                Home
+              </Button>
+            </NavLink>
+            <NavLink to="/search">
               <Button
                 variant="text"
                 size="small"
@@ -142,9 +142,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Search
-                </Button>
-              </NavLink>
+                Search
+              </Button>
+            </NavLink>
             <NavLink to="/map">
               <Button
                 variant="text"
@@ -160,9 +160,9 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Map
-                </Button>
-              </NavLink>
+                Map
+              </Button>
+            </NavLink>
             <NavLink to="/community">
               <Button
                 variant="text"
@@ -362,8 +362,8 @@ export default function AppAppBar() {
           </Box>
           {/* Mobile Menu */}
           <Box sx={{ display: { xs: "flex", md: "none" } }}>
-            <IconButton 
-              aria-label="Menu button" 
+            <IconButton
+              aria-label="Menu button"
               onClick={toggleDrawer(true)}
               sx={{ color: "#4A5568" }}
             >
@@ -404,12 +404,22 @@ export default function AppAppBar() {
                       Housing Transparency
                     </Typography>
                   </Box>
-                  <IconButton onClick={toggleDrawer(false)} sx={{ color: "#4A5568" }}>
+                  <IconButton
+                    onClick={toggleDrawer(false)}
+                    sx={{ color: "#4A5568" }}
+                  >
                     <CloseIcon />
                   </IconButton>
                 </Box>
 
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    mb: 3,
+                  }}
+                >
                   <NavLink to="/" style={{ textDecoration: "none" }}>
                     <Button
                       fullWidth
@@ -566,7 +576,9 @@ export default function AppAppBar() {
                   </Button>
                 </Box>
 
-                <Divider sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }} />
+                <Divider
+                  sx={{ my: 2, borderColor: "rgba(255, 107, 53, 0.1)" }}
+                />
 
                 {user ? (
                   <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
