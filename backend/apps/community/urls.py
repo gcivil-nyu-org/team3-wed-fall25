@@ -13,6 +13,8 @@ from .views import (  # Favorites; Reviews; Review Comments; Messages
     reviews_list_create,
     my_reviews,
     reviews_update_delete,
+    messages_thread,
+    message_threads_simple,
 )
 
 urlpatterns = [
@@ -44,4 +46,6 @@ urlpatterns = [
         "messages/<int:message_id>/read/", messages_mark_read, name="messages_mark_read"
     ),
     path("messages/<int:message_id>/", messages_delete, name="messages_delete"),
+    path("messages/thread/", messages_thread, name="messages_thread"),
+    path("messages/threads/", message_threads_simple, name="message_threads_simple"),
 ]
