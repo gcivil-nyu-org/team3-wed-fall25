@@ -57,11 +57,9 @@ function App() {
           }
         >
           <Route path="/" element={<Home />} />
-          <Route path="dashboard" element={<TenantDashboard />} />
           <Route path="search" element={<Search />} />
           <Route path="map" element={<SimplifiedMap />} />
           <Route path="community" element={<Community />} />
-          <Route path="landlords" element={<Landlords />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply/:bbl" element={<LandlordApply />} />
