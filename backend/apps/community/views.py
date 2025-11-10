@@ -406,7 +406,9 @@ def messages_delete(request, message_id):
 
 
 def _thread_q(user_id: int, peer_id: int, bbl: str | None):
-    q_pair = Q(sender_id=user_id, receiver_id=peer_id) | Q(sender_id=peer_id, receiver_id=user_id)
+    q_pair = Q(sender_id=user_id, receiver_id=peer_id) | Q(
+        sender_id=peer_id, receiver_id=user_id
+    )
     if bbl:
         return Q(deleted_at__isnull=True) & q_pair & Q(bbl=bbl)
     return Q(deleted_at__isnull=True) & q_pair
@@ -441,7 +443,9 @@ def messages_thread(request):
         limit = max(1, min(limit, 100))
 
         if since_id and before_id:
-            return Response({"detail": "Use either since_id or before_id, not both."}, status=400)
+            return Response(
+                {"detail": "Use either since_id or before_id, not both."}, status=400
+            )
 
         base = CommunityMessages.objects.filter(_thread_q(user_id, peer_id, bbl))
 
@@ -475,24 +479,29 @@ def messages_thread(request):
             ).update(read_at=timezone.now())
 
         # 페이징 힌트
-        next_since_id = messages[-1].id if messages else int(since_id) if since_id else None
-        prev_before_id = messages[0].id if messages else int(before_id) if before_id else None
+        prev_before_id = (
+            messages[0].id if messages else int(before_id) if before_id else None
+        )
 
         data = CommunityMessagesSerializer(messages, many=True).data
         if order == "desc":
             data = data[::-1]  # 요청시 desc로 받고 싶으면 뒤집어서 주기
 
-        return Response({
-            "peer_id": peer_id,
-            "bbl": bbl,
-            "messages": data,
-            "paging": {
-                "next_since_id": messages[-1].id if messages else None,  # 폴링용
-                "prev_before_id": messages[0].id if messages else None,  # 백필용
-                "has_more_before": bool(prev_before_id),  # 클라에서 추가 호출로 판별 권장
-                "has_more_after": False  # since는 폴링 반복으로 충족
+        return Response(
+            {
+                "peer_id": peer_id,
+                "bbl": bbl,
+                "messages": data,
+                "paging": {
+                    "next_since_id": messages[-1].id if messages else None,  # 폴링용
+                    "prev_before_id": messages[0].id if messages else None,  # 백필용
+                    "has_more_before": bool(
+                        prev_before_id
+                    ),  # 클라에서 추가 호출로 판별 권장
+                    "has_more_after": False,  # since는 폴링 반복으로 충족
+                },
             }
-        })
+        )
 
     # POST: 전송
     data = request.data.copy()
@@ -508,16 +517,20 @@ def messages_thread(request):
     cm = CommunityMessages(
         sender_id=user_id,
         receiver_id=peer_id,
-        bbl=data.get("bbl"),      # nullable OK
+        bbl=data.get("bbl"),  # nullable OK
         body=(data.get("body") or "").strip(),
     )
     if not cm.body:
         return Response({"detail": "body is required."}, status=400)
 
     cm.save()
-    return Response(CommunityMessagesSerializer(cm).data, status=status.HTTP_201_CREATED)
+    return Response(
+        CommunityMessagesSerializer(cm).data, status=status.HTTP_201_CREATED
+    )
+
 
 User = get_user_model()
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -539,8 +552,7 @@ def message_threads_simple(request):
 
     # 나와 관련된 메시지 (deleted 제외)
     base = CommunityMessages.objects.filter(
-        Q(deleted_at__isnull=True) &
-        (Q(sender_id=user_id) | Q(receiver_id=user_id))
+        Q(deleted_at__isnull=True) & (Q(sender_id=user_id) | Q(receiver_id=user_id))
     )
 
     # peer_id 계산 (내가 보낸 건 receiver, 내가 받은 건 sender)
@@ -552,8 +564,7 @@ def message_threads_simple(request):
 
     # peer_id로 그룹 → 마지막 메시지 id만 추출
     grouped = (
-        base
-        .annotate(peer_id=peer_id_expr)
+        base.annotate(peer_id=peer_id_expr)
         .values("peer_id")
         .annotate(last_id=Max("id"))
         .order_by("-last_id")
@@ -564,14 +575,6 @@ def message_threads_simple(request):
     last_map = {m.id: m for m in CommunityMessages.objects.filter(id__in=last_ids)}
     peer_ids = [g["peer_id"] for g in grouped if g.get("peer_id")]
     peers = User.objects.in_bulk(peer_ids)
-
-    # 각 peer별 미읽음 존재 여부
-    unread_subq = CommunityMessages.objects.filter(
-        sender_id=OuterRef("peer_id"),
-        receiver_id=user_id,
-        read_at__isnull=True,
-        deleted_at__isnull=True,
-    )
 
     # 결과 조합
     results = []
@@ -584,22 +587,28 @@ def message_threads_simple(request):
             sender_id=pid, receiver_id=user_id, read_at__isnull=True
         ).exists()
 
-        results.append({
-            "peer": {
-                "id": pid,
-                "username": getattr(peer, "username", None) if peer else None,
-                "email": getattr(peer, "email", None) if peer else None,
-            },
-            "last_message": {
-                "id": lm.id,
-                "body": lm.body,
-                "sender_id": lm.sender_id,
-                "receiver_id": lm.receiver_id,
-                "bbl": getattr(lm, "bbl", None),
-                "created_at": getattr(lm, "created_at", None),
-                "read_at": getattr(lm, "read_at", None),
-            } if lm else None,
-            "is_unread": is_unread,
-        })
+        results.append(
+            {
+                "peer": {
+                    "id": pid,
+                    "username": getattr(peer, "username", None) if peer else None,
+                    "email": getattr(peer, "email", None) if peer else None,
+                },
+                "last_message": (
+                    {
+                        "id": lm.id,
+                        "body": lm.body,
+                        "sender_id": lm.sender_id,
+                        "receiver_id": lm.receiver_id,
+                        "bbl": getattr(lm, "bbl", None),
+                        "created_at": getattr(lm, "created_at", None),
+                        "read_at": getattr(lm, "read_at", None),
+                    }
+                    if lm
+                    else None
+                ),
+                "is_unread": is_unread,
+            }
+        )
 
     return Response(results, status=status.HTTP_200_OK)
