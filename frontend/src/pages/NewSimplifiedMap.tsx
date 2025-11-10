@@ -286,7 +286,6 @@ const NewSimplifiedMap: React.FC = () => {
         if (state.filters.evictions) dataType = "evictions";
         if (state.filters.complaints) dataType = "complaints";
 
-        console.log("Loading data for:", dataType, "borough:", state.filters.borough);
 
         // Always use full NYC bounds - simple and works
         const bounds = {
@@ -329,14 +328,11 @@ const NewSimplifiedMap: React.FC = () => {
         // leaflet.heat uses canvas rendering which handles large datasets efficiently
         const finalData = validatedData;
         
-        console.log(`Using ALL ${finalData.length} data points for static heatmap`);
 
         setHeatmapData(finalData);
         setBoroughSummary(boroughData);
 
-        console.log(`Loaded ${finalData.length} data points for heatmap visualization`);
       } catch (err) {
-        console.error("Failed to load data:", err);
         setError(err instanceof Error ? err.message : 'Unknown error');
         setHeatmapData([]);
         setBoroughSummary([]);

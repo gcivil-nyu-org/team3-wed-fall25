@@ -58,11 +58,6 @@ const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType: _dataType, on
     const p80 = sortedCounts[Math.floor(sortedCounts.length * 0.8)] || 0;
     const p100 = sortedCounts[sortedCounts.length - 1] || 1;
     
-    console.log(`=== HEATMAP DATA ANALYSIS ===`);
-    console.log(`Total points: ${validPoints.length}`);
-    console.log(`Count range: ${sortedCounts[0]} to ${p100}`);
-    console.log(`Percentiles: p20=${p20}, p40=${p40}, p60=${p60}, p80=${p80}, max=${p100}`);
-    
     // Map by rank - PRESERVE original order for heatmap
     const calculatedData: [number, number, number][] = validPoints.map((point, originalIndex) => {
       const lat = point.latitude;
@@ -89,24 +84,6 @@ const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType: _dataType, on
       return [lat, lng, Math.min(1, Math.max(0, normalizedIntensity))];
     });
     
-    // Debug: Verify distribution (should be ~20% each)
-    const distribution = {
-      blue: calculatedData.filter(([,,i]) => i < 0.2).length,
-      teal: calculatedData.filter(([,,i]) => i >= 0.2 && i < 0.4).length,
-      green: calculatedData.filter(([,,i]) => i >= 0.4 && i < 0.6).length,
-      yellow: calculatedData.filter(([,,i]) => i >= 0.6 && i < 0.8).length,
-      orange: calculatedData.filter(([,,i]) => i >= 0.8).length,
-    };
-    const total = distribution.blue + distribution.teal + distribution.green + distribution.yellow + distribution.orange;
-    console.log('Color distribution (should be ~20% each):', {
-      blue: `${distribution.blue} (${(distribution.blue/total*100).toFixed(1)}%)`,
-      teal: `${distribution.teal} (${(distribution.teal/total*100).toFixed(1)}%)`,
-      green: `${distribution.green} (${(distribution.green/total*100).toFixed(1)}%)`,
-      yellow: `${distribution.yellow} (${(distribution.yellow/total*100).toFixed(1)}%)`,
-      orange: `${distribution.orange} (${(distribution.orange/total*100).toFixed(1)}%)`,
-    });
-
-    console.log(`Pre-calculated ${calculatedData.length} heatmap points`);
     return calculatedData;
   }, [data]); // Only recalculate when data changes
 
@@ -151,8 +128,6 @@ const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType: _dataType, on
     // ZOOM-AWARE opacity: Make lower colors more visible when zoomed out
     // When zoomed out, reduce opacity of high-intensity colors to prevent dominance
     const zoomOpacityFactor = currentZoom < 12 ? 0.7 : 1.0; // Reduce opacity when zoomed out
-
-    console.log(`Rendering at zoom ${currentZoom}: radius=${radius}, blur=${blur}, opacityFactor=${zoomOpacityFactor}`);
 
     // Gradient with zoom-aware opacity adjustments
     const heatLayer = (L as any).heatLayer(displayData, {

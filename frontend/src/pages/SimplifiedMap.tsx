@@ -936,8 +936,6 @@ const SimplifiedMap: React.FC = () => {
         // Use selected data type
         const dataType = state.filters.dataType;
         
-        console.log("Loading data for:", dataType, "borough:", state.filters.borough);
-        
         // Always use full NYC bounds - same logic as new map
         // Static heatmap works best with all data
         const bounds = {
@@ -1032,7 +1030,6 @@ const SimplifiedMap: React.FC = () => {
         // POINTS FILTERS: Apply min/max ranges and rent stabilized
         if (state.mode === "points") {
           const beforeFilterCount = validatedData.length;
-          console.log(`[Points Filter] Starting with ${beforeFilterCount} data points`);
           
           // If we used filtered violations endpoint, the backend already applied violation-specific filters
           // We still need to apply the general violations range filter if it's not at default
@@ -1047,11 +1044,9 @@ const SimplifiedMap: React.FC = () => {
                 const matches = count >= state.advanced.minViolations && count <= effectiveMax;
                 return matches;
               });
-              console.log(`[Points Filter] Violations range [${state.advanced.minViolations}-${effectiveMax}]: ${validatedData.length} -> ${filteredData.length} points (after backend filtering)`);
             } else {
               // Data already filtered by backend, just use as-is
               filteredData = validatedData;
-              console.log(`[Points Filter] Using backend-filtered violations data: ${filteredData.length} points`);
             }
           } else if (state.filters.dataType === "violations") {
             // Not using filtered violations endpoint, apply general range filter
@@ -1062,7 +1057,6 @@ const SimplifiedMap: React.FC = () => {
               const matches = count >= state.advanced.minViolations && count <= effectiveMax;
               return matches;
             });
-            console.log(`[Points Filter] Violations range [${state.advanced.minViolations}-${effectiveMax}]: ${validatedData.length} -> ${filteredData.length} points`);
           } else if (state.filters.dataType === "complaints") {
             const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
             const effectiveMax = Math.max(state.advanced.maxComplaints, maxCountInData);
@@ -1071,7 +1065,6 @@ const SimplifiedMap: React.FC = () => {
               const matches = count >= state.advanced.minComplaints && count <= effectiveMax;
               return matches;
             });
-            console.log(`[Points Filter] Complaints range [${state.advanced.minComplaints}-${effectiveMax}]: ${validatedData.length} -> ${filteredData.length} points`);
           } else if (state.filters.dataType === "evictions") {
             const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
             const effectiveMax = Math.max(state.advanced.maxEvictions, maxCountInData);
@@ -1080,7 +1073,6 @@ const SimplifiedMap: React.FC = () => {
               const matches = count >= state.advanced.minEvictions && count <= effectiveMax;
               return matches;
             });
-            console.log(`[Points Filter] Evictions range [${state.advanced.minEvictions}-${effectiveMax}]: ${validatedData.length} -> ${filteredData.length} points`);
           }
           
           // Apply building type filters (rent stabilized and/or affordable housing)
@@ -1096,9 +1088,7 @@ const SimplifiedMap: React.FC = () => {
                   const pointBbl = String(point.bbl || '');
                   return rentStabilizedBBLs.has(pointBbl) && affordableHousingBBLs.has(pointBbl);
                 });
-                console.log(`[Points Filter] Both filters (rent stabilized AND affordable housing): ${beforeBuildingTypeFilter} -> ${filteredData.length} points`);
               } else {
-                console.warn("[Points Filter] Both filters enabled but BBLs not loaded yet");
                 filteredData = [];
               }
             } else if (state.advanced.rentStabilizedOnly) {
@@ -1108,9 +1098,7 @@ const SimplifiedMap: React.FC = () => {
                   const pointBbl = String(point.bbl || '');
                   return rentStabilizedBBLs.has(pointBbl);
                 });
-                console.log(`[Points Filter] Rent stabilized only: ${beforeBuildingTypeFilter} -> ${filteredData.length} points`);
               } else {
-                console.warn("[Points Filter] Rent stabilized filter enabled but no BBLs loaded yet");
                 filteredData = [];
               }
             } else if (state.advanced.affordableHousingOnly) {
@@ -1120,29 +1108,16 @@ const SimplifiedMap: React.FC = () => {
                   const pointBbl = String(point.bbl || '');
                   return affordableHousingBBLs.has(pointBbl);
                 });
-                console.log(`[Points Filter] Affordable housing only: ${beforeBuildingTypeFilter} -> ${filteredData.length} points`);
               } else {
-                console.warn("[Points Filter] Affordable housing filter enabled but no BBLs loaded yet");
                 filteredData = [];
               }
             }
-          }
-          
-          // Log final result
-          console.log(`[Points Filter] Final result: ${filteredData.length} points shown (from ${beforeFilterCount} total)`);
-          if (filteredData.length > 0) {
-            // Log sample BBLs to verify filtering
-            const sampleBBLs = filteredData.slice(0, 5).map(p => p.bbl);
-            console.log(`[Points Filter] Sample BBLs: ${sampleBBLs.join(', ')}`);
           }
         }
         
         setHeatmapData(filteredData);
         setBoroughSummary(boroughData);
-        
-        console.log(`Loaded ${filteredData.length} data points (from ${validatedData.length} total) after filtering`);
       } catch (err) {
-        console.error("Failed to load data:", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(`Failed to load data: ${errorMessage}`);
         setHeatmapData([]);
@@ -1171,28 +1146,23 @@ const SimplifiedMap: React.FC = () => {
           // Fetch rent stabilized buildings
           const rentStabilizedResponse = await fetch('/api/neighborhood/rent-stabilized-bbls/');
           const rentStabilizedData = await rentStabilizedResponse.json();
-          if (rentStabilizedData.result && Array.isArray(rentStabilizedData.data)) {
-            const bbls = new Set<string>(rentStabilizedData.data.map((bbl: any) => String(bbl)));
-            setRentStabilizedBBLs(bbls);
-            console.log(`Loaded ${bbls.size} rent stabilized buildings for filtering`);
-          } else {
-            console.warn("Rent stabilized API returned unexpected format:", rentStabilizedData);
-            setRentStabilizedBBLs(new Set());
-          }
-          
-          // Fetch affordable housing buildings
-          const affordableResponse = await fetch('/api/neighborhood/affordable-housing-bbls/');
-          const affordableData = await affordableResponse.json();
-          if (affordableData.result && Array.isArray(affordableData.data)) {
-            const bbls = new Set<string>(affordableData.data.map((bbl: any) => String(bbl)));
-            setAffordableHousingBBLs(bbls);
-            console.log(`Loaded ${bbls.size} affordable housing buildings for filtering`);
-          } else {
-            console.warn("Affordable housing API returned unexpected format:", affordableData);
-            setAffordableHousingBBLs(new Set());
-          }
-        } catch (err) {
-          console.error("Failed to load filter BBLs:", err);
+                if (rentStabilizedData.result && Array.isArray(rentStabilizedData.data)) {
+                  const bbls = new Set<string>(rentStabilizedData.data.map((bbl: any) => String(bbl)));
+                  setRentStabilizedBBLs(bbls);
+                } else {
+                  setRentStabilizedBBLs(new Set());
+                }
+                
+                // Fetch affordable housing buildings
+                const affordableResponse = await fetch('/api/neighborhood/affordable-housing-bbls/');
+                const affordableData = await affordableResponse.json();
+                if (affordableData.result && Array.isArray(affordableData.data)) {
+                  const bbls = new Set<string>(affordableData.data.map((bbl: any) => String(bbl)));
+                  setAffordableHousingBBLs(bbls);
+                } else {
+                  setAffordableHousingBBLs(new Set());
+                }
+              } catch (err) {
           setRentStabilizedBBLs(new Set());
           setAffordableHousingBBLs(new Set());
         }

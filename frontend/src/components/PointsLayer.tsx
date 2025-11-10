@@ -115,8 +115,6 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
         .sort((a, b) => (b.count || 0) - (a.count || 0))
         .slice(0, maxPoints);
     }
-
-    console.log(`Points rendering: ${finalPoints.length} of ${viewportPoints.length} viewport points (zoom: ${zoom}, sample rate: 1/${sampleRate})`);
     
     return finalPoints;
   }, [data, bounds, zoom]);
