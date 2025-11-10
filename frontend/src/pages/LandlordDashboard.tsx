@@ -41,6 +41,7 @@ export default function LandlordDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
+  const [responseLoading, setResponseLoading] = useState(false); // Add loading state for responses
 
   useEffect(() => {
     let mounted = true;
@@ -49,25 +50,40 @@ export default function LandlordDashboard() {
       setError(null);
       try {
         // Replace with actual landlordId - for now use demo id
-        const landlordId = "101";
+        // const landlordId = "101";
         const [propsResp, violsResp, revsResp] = await Promise.all([
           landlordApi.fetchProperties(),
           landlordApi.fetchViolations(),
-          landlordApi.fetchReviews(landlordId),
+          landlordApi.fetchReviews(),
         ]);
         if (!mounted) return;
         console.log("Fetched properties:", propsResp);
-        setProperties(propsResp.map(p => ({
-          address: p.address,
-          occupancyStatus: p.occupancy_status,
-          financialPerformance: p.financial_performance,
-          tenantTurnover: p.tenant_turnover,
-          violations_count: p.violations_count ?? 0,
-          evictions_count: p.evictions_count ?? 0,
-          bbl: p.bbl,
-        })));
-        setViolations(violsResp.map(v => ({ message: v.message, resolved: v.resolved })));
-        setReviews(revsResp.map(r => ({ id: r.id, author: r.author, content: r.content, date: r.date, flagged: r.flagged })));
+        setProperties(
+          propsResp.map((p) => ({
+            address: p.address,
+            occupancyStatus: p.occupancy_status,
+            financialPerformance: p.financial_performance,
+            tenantTurnover: p.tenant_turnover,
+            violations_count: p.violations_count ?? 0,
+            evictions_count: p.evictions_count ?? 0,
+            bbl: p.bbl,
+          }))
+        );
+        setViolations(
+          violsResp.map((v) => ({ message: v.message, resolved: v.resolved }))
+        );
+        setReviews(
+          revsResp.map((r) => ({
+            id: r.id,
+            author: r.author,
+            content: r.content,
+            title: r.title,
+            rating: r.rating,
+            date: r.date,
+            bbl: r.bbl,
+            flagged: r.flagged,
+          }))
+        );
       } catch (e) {
         console.warn("Landlord API unavailable, falling back to mock data", e);
         if (!mounted) return;
@@ -80,23 +96,51 @@ export default function LandlordDashboard() {
       }
     }
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleRespond = (id: string) => setRespondingTo(id);
-  const handleFlag = (id: string) => setReviews(r => r ? r.map(rv => rv.id === id ? { ...rv, flagged: true } : rv) : r);
-  const handleSubmitResponse = (response: string) => {
-    setRespondingTo(null);
-    // Should send to Postgres API here
-    // TODO: implement API call
-    alert("Response sent: " + response);
+  const handleFlag = (id: string) =>
+    setReviews((r) =>
+      r ? r.map((rv) => (rv.id === id ? { ...rv, flagged: true } : rv)) : r
+    );
+  const handleSubmitResponse = async (response: string, reviewId: string) => {
+    setResponseLoading(true);
+    try {
+      // Call API with the correct parameters
+      await landlordApi.submitReviewResponse(reviewId, response);
+      setRespondingTo(null);
+      alert("Response sent: " + response);
+
+      // Optional: Refresh reviews to show the response
+      // const updatedReviews = await landlordApi.fetchReviews();
+      // setReviews(updatedReviews);
+    } catch (error) {
+      console.error("Failed to submit response:", error);
+      alert("Failed to send response. Please try again.");
+    } finally {
+      setResponseLoading(false);
+    }
   };
 
-  if (loading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>;
+  if (loading)
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
   return (
     <Box sx={{ p: { xs: 2, md: 4 } }}>
-      {error && <Alert severity="warning" sx={{ mb: 2 }}>{error}</Alert>}
-      <Typography variant="h4" fontWeight={700} mb={3}>My Properties</Typography>
+      {error && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      <Typography variant="h4" fontWeight={700} mb={3}>
+        My Properties
+      </Typography>
       <Grid container spacing={2}>
         {(properties || []).map((prop, idx) => (
           // cast props to any to avoid stringent Grid typing in this project setup
@@ -108,18 +152,30 @@ export default function LandlordDashboard() {
 
       <Divider sx={{ my: 4 }} />
 
-      <Typography variant="h5" fontWeight={600} mb={2}>Compliance & Violations</Typography>
+      <Typography variant="h5" fontWeight={600} mb={2}>
+        Compliance & Violations
+      </Typography>
       {(violations || []).map((v, idx) => (
         <ComplianceAlert key={idx} message={v.message} resolved={v.resolved} />
       ))}
 
       <Divider sx={{ my: 4 }} />
 
-      <Typography variant="h5" fontWeight={600} mb={2}>Tenant Reviews</Typography>
+      <Typography variant="h5" fontWeight={600} mb={2}>
+        Tenant Reviews
+      </Typography>
       <Paper sx={{ p: 2, mb: 2 }}>
-        <ReviewList reviews={reviews || []} onRespond={handleRespond} onFlag={handleFlag} />
+        <ReviewList
+          reviews={reviews || []}
+          onRespond={handleRespond}
+          onFlag={handleFlag}
+        />
         {respondingTo && (
-          <ReviewResponseForm onSubmit={handleSubmitResponse} />
+          <ReviewResponseForm
+            onSubmit={handleSubmitResponse}
+            reviewId={respondingTo} // Add this prop
+            loading={responseLoading} // Pass loading state
+          />
         )}
       </Paper>
     </Box>

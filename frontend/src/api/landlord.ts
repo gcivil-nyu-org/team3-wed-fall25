@@ -22,7 +22,10 @@ export interface ReviewDTO {
   id: string;
   author: string;
   content: string;
+  title: string;
+  rating: number | null;
   date: string;
+  bbl: string;
   flagged?: boolean;
 }
 
@@ -140,7 +143,7 @@ export async function fetchViolations() {
   }
 }
 
-export async function fetchReviews(landlordId: string) {
+export async function fetchReviews() {
   try {
     const token = localStorage.getItem("access_token");
 
@@ -149,7 +152,8 @@ export async function fetchReviews(landlordId: string) {
     }
 
     const resp = await axios.get<ReviewDTO[]>(
-      `/landlord/${landlordId}/reviews/`,
+      // `/landlord/${landlordId}/reviews/`,
+      `/landlord/reviews/`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -434,3 +438,4 @@ export async function submitApplication(applicationData: {
     throw error;
   }
 }
+
