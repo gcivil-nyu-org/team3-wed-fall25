@@ -10,7 +10,15 @@ import { SiteFooter } from "./components/SiteFooter";
 import LandlordDashboard from "./pages/LandlordDashboard";
 import LandlordApply from "./pages/LandlordApply";
 import BuildingDetail from "./pages/BuildingDetail";
-import { Home, Search, SignIn, SignUp, Building, Community,  } from "./pages";
+import {
+  Home,
+  Search,
+  SignIn,
+  SignUp,
+  Building,
+  Community,
+  Message,
+} from "./pages";
 import SimplifiedMap from "./pages/SimplifiedMap";
 
 function App() {
@@ -50,6 +58,7 @@ function App() {
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply" element={<LandlordApply />} />
           <Route path="landlord/building/:bbl" element={<BuildingDetail />} />
+          <Route path="message" element={<Message />} />
         </Route>
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />
