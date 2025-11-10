@@ -5,6 +5,7 @@ import ReviewDeleteButton from "./ReviewDeleteButton";
 import ReviewUpdateButton from "./ReviewUpdateButton";
 import UserLabel from "../UserLabel";
 import DateLabel from "../DateLabel";
+import { useProfile } from "../../hooks/useProfile";
 
 const Review = ({
   bbl,
@@ -17,6 +18,8 @@ const Review = ({
   readonly?: boolean;
   onStateChangesCallback(): void;
 }) => {
+  const { user } = useProfile();
+
   return (
     <Paper key={review.id} sx={{ p: 2, mb: 2 }}>
       <Typography variant="subtitle1">{review.title}</Typography>
@@ -46,7 +49,11 @@ const Review = ({
             gap: 1,
           }}
         >
-          <UserLabel username={review.username} />
+          <UserLabel
+            username={review.username}
+            userId={review.user_id}
+            enableActions={user?.id !== review.user_id}
+          />
           <DateLabel date={review.updated_at} />
         </Box>
 
