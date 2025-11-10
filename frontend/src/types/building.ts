@@ -160,7 +160,7 @@ export interface SearchParams {
   evictionsMin?: number;
   evictionsMax?: number;
   violationsMin?: number;
-  violationsMax?: string;
+  violationsMax?: number;
   zipCode?: string;
   page?: number;
   limit?: number;
