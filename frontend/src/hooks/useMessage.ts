@@ -3,7 +3,7 @@ import {
   fetchInboxs,
   fetchInboxMessages,
   type CommunityInbox,
-  type CommunityMessage,
+  type CommunityMessageThread,
 } from "../api";
 
 export const useInboxs = () => {

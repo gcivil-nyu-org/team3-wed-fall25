@@ -1,5 +1,4 @@
-import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
+import { Box, Typography } from "@mui/material";
 import { useMessages } from "../../hooks/useMessage";
 import { type CommunityInbox } from "../../api";
 import MessageItem from "./MessageItem";
