@@ -546,11 +546,11 @@ def landlord_apply_get(request):
             # if all([full_name, email, phone, experience_years]):
             #     db.execute(
             #         """
-                #         INSERT INTO landlord_applications (
-                #           full_name, email, phone, experience_years,
-                #           country, agree_terms, user_id
-                #         )
-                #         VALUES (%s, %s, %s, %s, %s, %s, %s)
+            #         INSERT INTO landlord_applications (
+            #           full_name, email, phone, experience_years,
+            #           country, agree_terms, user_id
+            #         )
+            #         VALUES (%s, %s, %s, %s, %s, %s, %s)
             #         """,
             #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
             #     )
