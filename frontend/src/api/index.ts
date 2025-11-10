@@ -1,5 +1,4 @@
 import { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification } from "./auth";
-import { fetchInboxs, fetchInboxMessages } from "./community";
 import type { CommunityInbox, CommunityMessageThread } from "./community";
 import axiosInstance from "./axiosInstance";
 
@@ -576,7 +575,7 @@ export interface CommunityMessage {
   receiver_id: number;
   bbl?: string;
   body: string;
-  read_at?: string;
+  read_at?: string | null;
   created_at: string;
   updated_at: string;
 }

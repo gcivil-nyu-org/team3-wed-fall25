@@ -50,14 +50,6 @@ const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType: _dataType, on
       rankMap.set(item.originalIndex, rank);
     });
     
-    // Calculate percentiles for debugging
-    const sortedCounts = sorted.map(s => s.count);
-    const p20 = sortedCounts[Math.floor(sortedCounts.length * 0.2)] || 0;
-    const p40 = sortedCounts[Math.floor(sortedCounts.length * 0.4)] || 0;
-    const p60 = sortedCounts[Math.floor(sortedCounts.length * 0.6)] || 0;
-    const p80 = sortedCounts[Math.floor(sortedCounts.length * 0.8)] || 0;
-    const p100 = sortedCounts[sortedCounts.length - 1] || 1;
-    
     // Map by rank - PRESERVE original order for heatmap
     const calculatedData: [number, number, number][] = validPoints.map((point, originalIndex) => {
       const lat = point.latitude;

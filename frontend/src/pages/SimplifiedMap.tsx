@@ -1029,8 +1029,6 @@ const SimplifiedMap: React.FC = () => {
         
         // POINTS FILTERS: Apply min/max ranges and rent stabilized
         if (state.mode === "points") {
-          const beforeFilterCount = validatedData.length;
-          
           // If we used filtered violations endpoint, the backend already applied violation-specific filters
           // We still need to apply the general violations range filter if it's not at default
           if (state.filters.dataType === "violations" && useFilteredViolations) {
@@ -1079,8 +1077,6 @@ const SimplifiedMap: React.FC = () => {
           // If both are enabled, show buildings that match BOTH (intersection)
           // If only one is enabled, show buildings that match that one
           if (state.advanced.rentStabilizedOnly || state.advanced.affordableHousingOnly) {
-            const beforeBuildingTypeFilter = filteredData.length;
-            
             if (state.advanced.rentStabilizedOnly && state.advanced.affordableHousingOnly) {
               // Both enabled: show buildings that are BOTH rent stabilized AND affordable housing
               if (rentStabilizedBBLs.size > 0 && affordableHousingBBLs.size > 0) {

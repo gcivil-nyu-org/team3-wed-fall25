@@ -4,7 +4,6 @@ import {
   Typography,
   Paper,
   Button,
-  IconButton,
   Stack,
   Card,
   CardContent,
@@ -17,10 +16,6 @@ import {
   MenuItem,
 } from "@mui/material";
 import {
-  Map as MapIcon,
-  BubbleChart,
-  FilterList,
-  Close,
   Info,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router";
@@ -28,7 +23,7 @@ import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import TrueHeatmap from "../components/TrueHeatmap";
-import { fetchHeatmapData, fetchBoroughSummary, type HeatmapPoint, type BoroughSummary } from "../api/index.js";
+import { fetchHeatmapData, type HeatmapPoint } from "../api/index.js";
 
 // Fix for default markers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -266,7 +261,6 @@ const NewSimplifiedMap: React.FC = () => {
 
   const [state, setState] = useState<MapState>(DEFAULT_STATE);
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
-  const [boroughSummary, setBoroughSummary] = useState<BoroughSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -295,18 +289,14 @@ const NewSimplifiedMap: React.FC = () => {
           max_lng: -73.5,
         };
 
-        const [heatmapResponse, boroughResponse] = await Promise.all([
-          fetchHeatmapData({
-            ...bounds,
-            data_type: dataType as "violations" | "evictions" | "complaints",
-            borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
-            limit: 100000, // Get ALL data - no limit, heatmap handles it efficiently with canvas
-          }),
-          fetchBoroughSummary()
-        ]);
+        const heatmapResponse = await fetchHeatmapData({
+          ...bounds,
+          data_type: dataType as "violations" | "evictions" | "complaints",
+          borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
+          limit: 100000, // Get ALL data - no limit, heatmap handles it efficiently with canvas
+        });
 
         const heatmapData = Array.isArray(heatmapResponse?.data) ? heatmapResponse.data : [];
-        const boroughData = Array.isArray(boroughResponse?.data) ? boroughResponse.data : [];
 
         // Simple validation
         const validatedData = heatmapData
@@ -330,12 +320,10 @@ const NewSimplifiedMap: React.FC = () => {
         
 
         setHeatmapData(finalData);
-        setBoroughSummary(boroughData);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
         setHeatmapData([]);
-        setBoroughSummary([]);
       } finally {
         setLoading(false);
       }
