@@ -59,6 +59,27 @@ export type CommunityMessage = {
   updated_at: string;
 };
 
+export type CommunityInbox = {
+  peer: {
+    id: number;
+    username?: string;
+    email?: string;
+  };
+  last_message?: CommunityMessage;
+  unread_count?: number;
+};
+
+export type CommunityMessageThread = {
+  peer: CommunityInbox['peer'];
+  messages: CommunityMessage[];
+};
+
+// Small helper to unwrap OkJSONRenderer { result, data } payloads
+const unwrap = <T,>(response: any): T => {
+  const data = response?.data?.data ?? response?.data ?? response;
+  return data as T;
+};
+
 // =========================================================
 // REVIEWS API FUNCTIONS
 // =========================================================
@@ -198,7 +219,7 @@ export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
     const response = await axiosInstance.get<any>(
       API_ENDPOINTS.COMMUNITY.FAVORITES
     );
-    const data = response.data?.data || response.data;
+    const data = unwrap<any>(response);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Error fetching favorites:', error);
@@ -238,12 +259,43 @@ export const removeFavorite = async (favoriteId: number | string): Promise<void>
 // MESSAGES API FUNCTIONS
 // =========================================================
 
-export const fetchInboxMessages = async (): Promise<CommunityMessage[]> => {
+export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
   try {
-    const response = await axiosInstance.get<CommunityMessage[]>(
+    const response = await axiosInstance.get<any>(
       API_ENDPOINTS.COMMUNITY.MESSAGES_INBOX
     );
-    return response.data;
+    const data = unwrap<any>(response);
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching inbox threads:', error);
+    throw error;
+  }
+};
+
+export const fetchInboxMessages = async (
+  peerId: number | string
+): Promise<CommunityMessageThread> => {
+  try {
+    const response = await axiosInstance.get<any>(
+      `${API_ENDPOINTS.COMMUNITY.MESSAGES_INBOX}?peer_id=${peerId}`
+    );
+    const data = unwrap<any>(response);
+
+    if (data && Array.isArray(data.messages)) {
+      return data as CommunityMessageThread;
+    }
+
+    if (Array.isArray(data)) {
+      return {
+        peer: { id: Number(peerId) },
+        messages: data as CommunityMessage[],
+      };
+    }
+
+    return {
+      peer: { id: Number(peerId) },
+      messages: [],
+    };
   } catch (error) {
     console.error('Error fetching inbox messages:', error);
     throw error;
@@ -264,16 +316,16 @@ export const fetchOutboxMessages = async (): Promise<CommunityMessage[]> => {
 
 export const sendMessage = async (
   receiverId: number | string,
-  bbl: string,
-  body: string
+  body: string,
+  bbl?: string
 ): Promise<CommunityMessage> => {
   try {
     const response = await axiosInstance.post<CommunityMessage>(
       API_ENDPOINTS.COMMUNITY.MESSAGES_SEND,
       {
         receiver_id: receiverId,
-        bbl: bbl || null, // Optional building context
         body,
+        bbl: bbl || null,
       }
     );
     return response.data;
