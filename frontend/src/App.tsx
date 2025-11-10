@@ -10,6 +10,7 @@ import { SiteFooter } from "./components/SiteFooter";
 import LandlordApply from "./pages/LandlordApply";
 import LandlordDashboard from "./pages/LandlordDashboard";
 import BuildingDetail from "./pages/BuildingDetail";
+import Profile from "./pages/Profile";
 import {
   Home,
   Search,
