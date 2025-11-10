@@ -10,7 +10,6 @@ import { SiteFooter } from "./components/SiteFooter";
 import LandlordApply from "./pages/LandlordApply";
 import LandlordDashboard from "./pages/LandlordDashboard";
 import BuildingDetail from "./pages/BuildingDetail";
-import Profile from "./pages/Profile";
 import {
   Home,
   Search,
@@ -58,9 +57,11 @@ function App() {
           }
         >
           <Route path="/" element={<Home />} />
+          <Route path="dashboard" element={<TenantDashboard />} />
           <Route path="search" element={<Search />} />
           <Route path="map" element={<SimplifiedMap />} />
           <Route path="community" element={<Community />} />
+          <Route path="landlords" element={<Landlords />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply" element={<LandlordApply />} />
