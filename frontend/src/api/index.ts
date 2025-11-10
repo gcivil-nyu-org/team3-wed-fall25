@@ -1,4 +1,6 @@
-import { fetchProfile } from "./auth";
+import { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification } from "./auth";
+import { fetchInboxs, fetchInboxMessages } from "./community";
+import type { CommunityInbox, CommunityMessageThread } from "./community";
 import axiosInstance from "./axiosInstance";
 
 // Building data interfaces and API functions
@@ -803,18 +805,7 @@ export const deleteReviewComment = async (commentId: number): Promise<void> => {
   }
 };
 
-export const fetchInboxMessages = async (): Promise<CommunityMessage[]> => {
-  try {
-    const response = await axiosInstance.get<{
-      result: boolean;
-      data: CommunityMessage[];
-    }>("/community/messages/inbox/");
-    return response.data.data;
-  } catch (error) {
-    console.error("Error fetching inbox messages:", error);
-    throw error;
-  }
-};
+// fetchInboxMessages is now exported from ./community
 
 export const fetchOutboxMessages = async (): Promise<CommunityMessage[]> => {
   try {
@@ -872,4 +863,9 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 // END OF COMMUNITY API TYPES AND FUNCTIONS
 // =========================================================
 
-export { fetchProfile };
+// Re-export auth functions
+export { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification };
+
+// Re-export community types and functions
+export type { CommunityInbox, CommunityMessageThread };
+export { fetchInboxs, fetchInboxMessages } from "./community";

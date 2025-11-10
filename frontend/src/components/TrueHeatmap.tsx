@@ -11,9 +11,10 @@ interface TrueHeatmapProps {
   onBuildingClick?: (bbl: string) => void;
 }
 
-const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType, onBuildingClick }) => {
+const TrueHeatmap: React.FC<TrueHeatmapProps> = ({ data, dataType: _dataType, onBuildingClick: _onBuildingClick }) => {
   const map = useMap();
-  const heatLayerRef = useRef<L.HeatLayer | null>(null);
+  // @ts-ignore - leaflet.heat doesn't have proper types
+  const heatLayerRef = useRef<any>(null);
   const [zoom, setZoom] = useState(map.getZoom());
 
   // STATIC HEATMAP: Pre-calculate everything ONCE when data changes

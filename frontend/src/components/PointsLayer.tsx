@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useMap } from 'react-leaflet';
 import { CircleMarker, Popup } from 'react-leaflet';
 import { useNavigate } from 'react-router';
-import L from 'leaflet';
 import { type HeatmapPoint } from '../api/index.js';
 
 interface PointsLayerProps {
@@ -24,12 +23,12 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
   data, 
   dataType, 
   onBuildingClick,
-  minViolations = 0,
-  maxViolations = 10000,
-  minComplaints = 0,
-  maxComplaints = 10000,
-  minEvictions = 0,
-  maxEvictions = 10000,
+  minViolations: _minViolations = 0,
+  maxViolations: _maxViolations = 10000,
+  minComplaints: _minComplaints = 0,
+  maxComplaints: _maxComplaints = 10000,
+  minEvictions: _minEvictions = 0,
+  maxEvictions: _maxEvictions = 10000,
   rentStabilizedOnly = false,
   rentStabilizedBBLs = new Set()
 }) => {
@@ -135,7 +134,6 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
     <>
       {displayData.map((point, index) => {
         const count = point.count || 0;
-        const intensity = point.intensity || 0;
         
         // Size based on count
         const radius = Math.max(3, Math.min(8, Math.sqrt(count) * 0.3));

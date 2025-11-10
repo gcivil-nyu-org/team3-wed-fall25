@@ -125,7 +125,7 @@ const MapBoundsUpdater: React.FC<{
   onBoundsChange?: (bounds: { min_lat: number; max_lat: number; min_lng: number; max_lng: number }) => void;
 }> = ({ data, onBoundsChange }) => {
   const map = useMap();
-  const boundsUpdateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const boundsUpdateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitializedRef = useRef(false);
 
   useEffect(() => {

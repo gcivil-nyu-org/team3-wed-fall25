@@ -262,7 +262,7 @@ const NewSimplifiedMap: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const navigate = useNavigate();
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [state, setState] = useState<MapState>(DEFAULT_STATE);
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
