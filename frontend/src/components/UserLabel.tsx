@@ -8,7 +8,7 @@ const UserLabel = ({
   userId,
   enableActions,
 }: {
-  username: string;
+  username?: string;
   userId: number;
   enableActions?: boolean;
 }) => {

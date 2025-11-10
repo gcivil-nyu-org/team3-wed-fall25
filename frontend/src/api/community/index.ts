@@ -8,5 +8,7 @@ export type {
   CommunityFavorite,
   CommunityReviewComment,
   CommunityMessage,
+  CommunityInbox,
+  CommunityMessageThread,
 } from './communityApi';
 
