@@ -57,11 +57,9 @@ function App() {
           }
         >
           <Route path="/" element={<Home />} />
-          <Route path="dashboard" element={<TenantDashboard />} />
           <Route path="search" element={<Search />} />
           <Route path="map" element={<SimplifiedMap />} />
           <Route path="community" element={<Community />} />
-          <Route path="landlords" element={<Landlords />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply" element={<LandlordApply />} />
@@ -69,20 +67,6 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="message" element={<Message />} />
         </Route>
-        <Route path="admin" element={<Navigate to="/admin/login" replace />} />
-        <Route path="admin/login" element={<AdminLogin />} />
-        <Route
-          path="admin/dashboard"
-          element={
-            <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-              <AppAppBar />
-              <Box component="main" sx={{ flex: 1 }}>
-                <AdminDashboard />
-              </Box>
-              <SiteFooter />
-            </Box>
-          }
-        />
         <Route path="signin" element={<SignIn />} />
         <Route path="signup" element={<SignUp />} />
         <Route path="verify-email" element={<VerifyEmail />} />
