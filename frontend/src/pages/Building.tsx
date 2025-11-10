@@ -35,7 +35,7 @@ interface BuildingData {
     registration_end_date: string;
     registration_id: number;
     building_id: number;
-  };
+  } | null;
   rent_stabilized: {
     bbl: string;
     borough: string;
@@ -45,7 +45,7 @@ interface BuildingData {
     city: string;
     status: string;
     source_year: number;
-  };
+  } | null;
   contacts: Array<{
     registration_contact_id: number;
     registration_id: number;
@@ -184,7 +184,9 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontFamily: '"Montserrat", "Roboto", sans-serif',
             }}
           >
-            {registration.house_number} {registration.street_name}
+            {registration 
+              ? `${registration.house_number || ''} ${registration.street_name || ''}`.trim() || 'Building Address'
+              : 'Building Address'}
           </Typography>
           <Typography
             variant="h6"
@@ -194,7 +196,9 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontWeight: 500,
             }}
           >
-            {registration.boro}, NY {registration.zip}
+            {registration 
+              ? `${registration.boro || 'NYC'}, NY ${registration.zip || ''}`.trim()
+              : 'New York, NY'}
           </Typography>
           <Typography
             variant="body2"
@@ -203,7 +207,7 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontSize: "0.9rem",
             }}
           >
-            BBL: {registration.bbl} | BIN: {registration.bin}
+            BBL: {building.bbl}{registration ? ` | BIN: ${registration.bin}` : ''}
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
@@ -228,7 +232,7 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
             />
           ) : (
             <AddFavoritesButton
-              bbl={registration.bbl}
+              bbl={building.bbl}
               onSuccess={refreshFavorites}
             />
           )}
@@ -431,34 +435,42 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
                 >
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Registration ID:
-                    </strong>{" "}
-                    {building.registration.registration_id}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Last Registration:
-                    </strong>{" "}
-                    {new Date(
-                      building.registration.last_registration_date
-                    ).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Registration End:
-                    </strong>{" "}
-                    {new Date(
-                      building.registration.registration_end_date
-                    ).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Community Board:
-                    </strong>{" "}
-                    {building.registration.community_board}
-                  </Typography>
+                  {building.registration ? (
+                    <>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Registration ID:
+                        </strong>{" "}
+                        {building.registration.registration_id}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Last Registration:
+                        </strong>{" "}
+                        {new Date(
+                          building.registration.last_registration_date
+                        ).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Registration End:
+                        </strong>{" "}
+                        {new Date(
+                          building.registration.registration_end_date
+                        ).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Community Board:
+                        </strong>{" "}
+                        {building.registration.community_board}
+                      </Typography>
+                    </>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: "#6B7280", fontStyle: "italic" }}>
+                      No registration information available
+                    </Typography>
+                  )}
                 </Box>
               </Paper>
               <Paper

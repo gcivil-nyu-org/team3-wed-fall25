@@ -55,6 +55,13 @@ class HeatmapPoint:
     count: int
     address: str
     borough: str
+    # Optional fields for advanced filtering (violations only)
+    open_violations: Optional[int] = None
+    closed_violations: Optional[int] = None
+    class_a_count: Optional[int] = None
+    class_b_count: Optional[int] = None
+    class_c_count: Optional[int] = None
+    avg_response_days: Optional[float] = None
 
 
 @dataclass
@@ -127,7 +134,31 @@ def as_neighborhood_stats(row: dict) -> NeighborhoodStats:
 
 def as_heatmap_point(row: dict) -> HeatmapPoint:
     """Convert database row to HeatmapPoint object"""
-    return HeatmapPoint(**row)
+    # Only include fields that exist in the row
+    point_data = {
+        "bbl": row.get("bbl", ""),
+        "latitude": row.get("latitude", 0.0),
+        "longitude": row.get("longitude", 0.0),
+        "intensity": row.get("intensity", 0.0),
+        "data_type": row.get("data_type", ""),
+        "count": row.get("count", 0),
+        "address": row.get("address", ""),
+        "borough": row.get("borough", ""),
+    }
+    # Add optional fields if they exist
+    if "open_violations" in row:
+        point_data["open_violations"] = row.get("open_violations")
+    if "closed_violations" in row:
+        point_data["closed_violations"] = row.get("closed_violations")
+    if "class_a_count" in row:
+        point_data["class_a_count"] = row.get("class_a_count")
+    if "class_b_count" in row:
+        point_data["class_b_count"] = row.get("class_b_count")
+    if "class_c_count" in row:
+        point_data["class_c_count"] = row.get("class_c_count")
+    if "avg_response_days" in row:
+        point_data["avg_response_days"] = row.get("avg_response_days")
+    return HeatmapPoint(**point_data)
 
 
 def as_neighborhood_summary(row: dict) -> NeighborhoodSummary:

@@ -41,7 +41,24 @@ def _to_primitive(value):
 
 
 def _is_empty_building(b) -> bool:
-    """등록/태그/컨텐츠가 전혀 없으면 비어있다고 간주 (취향껏 조정)"""
+    """등록/태그/컨텐츠가 전혀 없으면 비어있다고 간주 (취향껏 조정)
+    
+    Note: A building is NOT considered empty if it has:
+    - Registration data
+    - Rent stabilized status
+    - Contacts
+    - Affordable housing
+    - Complaints
+    - Violations
+    - Evictions
+    - ACRIS data
+    
+    If a building appears on the map (has location data), it should be viewable
+    even if it has minimal data. This function allows buildings with any data
+    to be viewed.
+    """
+    # A building is empty only if it has absolutely no data at all
+    # If it appears on the map, it has at least location data, so allow it
     return all(
         [
             b.registration is None,
@@ -98,7 +115,30 @@ class BuildingByBblView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if building is None or _is_empty_building(building):
+        if building is None:
+            return Response(
+                {"detail": "Building not found for given bbl."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # Check if building has location data (appears on map)
+        # If it has location data, allow it to be viewed even if it's otherwise "empty"
+        has_location_data = False
+        if building.evictions:
+            # Check if any eviction has location data
+            has_location_data = any(
+                e.latitude is not None and e.longitude is not None 
+                for e in building.evictions
+            )
+        if not has_location_data and building.registration:
+            # Registration might have address data (indicates building exists)
+            has_location_data = bool(
+                building.registration.house_number or building.registration.street_name
+            )
+        
+        # Only reject if building is empty AND has no location data
+        # If it appears on the map (has location), allow it to be viewed
+        if _is_empty_building(building) and not has_location_data:
             return Response(
                 {"detail": "Building not found for given bbl."},
                 status=status.HTTP_404_NOT_FOUND,
