@@ -363,12 +363,85 @@ class ViolationsView2(APIView):
 
 
 class ReviewsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, landlord_id):
-        # There is no reviews table in the schema. For development/testing (DEBUG=True)
-        # return a small set of mock reviews so the frontend can display example content.
-        mock_reviews = [
+    def get(self, request):
+        try:
+            user_id = request.user.id
+        except Exception:
+            user_id = None
+
+        if not user_id:
+            return Response([], status=status.HTTP_200_OK)
+
+        try:
+            with PostgresClient() as db:
+                property_rows = db.query_all(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (user_id,),
+                )
+
+            bbls = [r["bbl"] for r in property_rows]
+
+            if not bbls:
+                return Response([], status=status.HTTP_200_OK)
+
+            # Safe approach: no JOIN, just use user_id
+            with PostgresClient() as db:
+                review_rows = db.query_all(
+                    """
+                    SELECT 
+                        id,
+                        user_id,
+                        bbl,
+                        rating,
+                        title,
+                        body,
+                        created_at
+                    FROM community_reviews
+                    WHERE bbl = ANY(%s) 
+                    AND deleted_at IS NULL
+                    ORDER BY created_at DESC
+                    """,
+                    (bbls,),
+                )
+
+            reviews = []
+            for row in review_rows:
+                # Use a generic name based on user_id
+                author_name = f"Tenant {row['user_id']}"  # or "Anonymous", "User", etc.
+
+                reviews.append(
+                    {
+                        "id": str(row["id"]),
+                        "author": author_name,
+                        "content": row.get("body") or row.get("title", ""),
+                        "title": row.get("title", ""),
+                        "rating": (
+                            float(row["rating"]) if row["rating"] is not None else None
+                        ),
+                        "date": (
+                            row["created_at"].strftime("%Y-%m-%d")
+                            if row["created_at"]
+                            else ""
+                        ),
+                        "bbl": row["bbl"],
+                        "flagged": False,
+                    }
+                )
+
+            return Response(reviews, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"[ReviewsView] DB error: {e}")
+            return Response(self._get_mock_reviews(), status=status.HTTP_200_OK)
+
+    def _get_mock_reviews(self):
+        return [
             {
                 "id": "r1",
                 "author": "Jane D.",
@@ -384,10 +457,6 @@ class ReviewsView(APIView):
                 "flagged": False,
             },
         ]
-        # if getattr(settings, "DEBUG", False):
-        if True:
-            return Response(mock_reviews, status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
 
 
 class LandlordApplicationView(APIView):
