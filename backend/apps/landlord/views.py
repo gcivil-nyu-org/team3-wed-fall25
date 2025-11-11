@@ -40,7 +40,7 @@ class PropertiesView(APIView):
         except Exception:
             user_id = None
 
-        print(f"Fetching properties for user_id: {user_id}")
+        # print(f"Fetching properties for user_id: {user_id}")
         try:
             with PostgresClient() as db:
                 rows = db.query_all(
@@ -53,7 +53,7 @@ class PropertiesView(APIView):
                 )
 
             bbls = [r["bbl"] for r in rows]
-            print("Found BBLs for landlord:", bbls)
+            # print("Found BBLs for landlord:", bbls)
             if not bbls:
                 return Response([], status=status.HTTP_200_OK)
 
@@ -64,13 +64,13 @@ class PropertiesView(APIView):
             for bbl, bld in buildings.items():
                 # Debug: print the building object structure
                 print(f"Building {bbl} type: {type(bld)}")
-                if bld:
-                    print(f"Building {bbl} attributes: {dir(bld)}")
+                # if bld:
+                #     print(f"Building {bbl} attributes: {dir(bld)}")
 
                 address = self._get_address_from_building(bld, bbl)
                 print(f"Property {bbl} address: {address}")
                 # print((len(getattr(bld, "complaints", []))))
-                print(getattr(bld, "complaints", []))
+                # print(getattr(bld, "complaints", []))
 
                 complaints = getattr(bld, "complaints", []) or []
                 violations = getattr(bld, "violations", []) or []
