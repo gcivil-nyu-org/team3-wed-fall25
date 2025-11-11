@@ -30,8 +30,8 @@ const mockViolations = [
 ];
 
 const mockReviews: Review[] = [
-  { id: "1", author: "Jane D.", content: "Great landlord, quick to fix issues!", date: "2025-09-01" },
-  { id: "2", author: "John S.", content: "Had some problems with heating last winter.", date: "2025-08-15" }
+  { id: "1", author: "Jane D.", content: "Great landlord, quick to fix issues!", date: "2025-09-01" , flagged: false, comments: []},
+  { id: "2", author: "John S.", content: "Had some problems with heating last winter.", date: "2025-08-15" , flagged: false, comments: []},
 ];
 
 export default function LandlordDashboard() {
@@ -78,10 +78,11 @@ export default function LandlordDashboard() {
             author: r.author,
             content: r.content,
             title: r.title,
-            rating: r.rating,
+            rating: r.rating !== null ? r.rating : undefined,
             date: r.date,
             bbl: r.bbl,
             flagged: r.flagged,
+            comments: r.comments || [],
           }))
         );
       } catch (e) {
@@ -115,8 +116,20 @@ export default function LandlordDashboard() {
       alert("Response sent: " + response);
 
       // Optional: Refresh reviews to show the response
-      // const updatedReviews = await landlordApi.fetchReviews();
-      // setReviews(updatedReviews);
+      const updatedReviews = await landlordApi.fetchReviews();
+      setReviews(
+        updatedReviews.map((r) => ({
+          id: r.id,
+          author: r.author,
+          content: r.content,
+          title: r.title,
+          rating: r.rating !== null ? r.rating : undefined,
+          date: r.date,
+          bbl: r.bbl,
+          flagged: r.flagged,
+          comments: r.comments ?? [],
+        }))
+      );
     } catch (error) {
       console.error("Failed to submit response:", error);
       alert("Failed to send response. Please try again.");

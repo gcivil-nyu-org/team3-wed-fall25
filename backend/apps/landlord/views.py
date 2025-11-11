@@ -412,6 +412,34 @@ class ReviewsView(APIView):
 
             reviews = []
             for row in review_rows:
+                # Fetch comments for each review
+                with PostgresClient() as db:
+                    comment_rows = db.query_all(
+                        """
+                        SELECT 
+                            id,
+                            user_id,
+                            body,
+                            created_at
+                        FROM community_review_comments
+                        WHERE review_id = %s 
+                        AND deleted_at IS NULL
+                        ORDER BY created_at ASC
+                        """,
+                        (row["id"],),
+                    )
+
+                # Format comments
+                comments = []
+                for comment in comment_rows:
+                    comments.append({
+                        "id": str(comment["id"]),
+                        "user_id": comment["user_id"],
+                        "body": comment["body"],
+                        "created_at": comment["created_at"].strftime("%Y-%m-%d") if comment["created_at"] else "",
+                    })
+                    
+                # Reviews
                 # Use a generic name based on user_id
                 author_name = f"Tenant {row['user_id']}"  # or "Anonymous", "User", etc.
 
@@ -431,6 +459,7 @@ class ReviewsView(APIView):
                         ),
                         "bbl": row["bbl"],
                         "flagged": False,
+                        "comments": comments,
                     }
                 )
 
@@ -448,6 +477,14 @@ class ReviewsView(APIView):
                 "content": "Quick to fix issues.",
                 "date": "2025-09-01",
                 "flagged": False,
+                "comments": [
+                    {
+                        "id": "c1",
+                        "user_id": 1,
+                        "body": "Thank you for your feedback!",
+                        "created_at": "2025-09-02"
+                    }
+                ]
             },
             {
                 "id": "r2",
@@ -455,6 +492,7 @@ class ReviewsView(APIView):
                 "content": "Slow support.",
                 "date": "2025-08-15",
                 "flagged": False,
+                "comments": []
             },
         ]
 
@@ -1039,13 +1077,40 @@ class ReviewResponseView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # In a real implementation, you would save this to your database
-            # For now, we'll just return success
-            print(f"Review response submitted for review {review_id}: {response}")
+            # Get the authenticated user's ID
+            user_id = request.user.id
+
+            # Save the response to the database
+            with PostgresClient() as db:
+                # First, verify the review exists and belongs to a property the user owns
+                review_exists = db.query_one(
+                    """
+                    SELECT cr.id 
+                    FROM community_reviews cr
+                    JOIN landlord_owners lo ON cr.bbl = lo.bbl
+                    WHERE cr.id = %s AND lo.owner_user_id = %s AND lo.deleted_at IS NULL
+                    """,
+                    (review_id, user_id),
+                )
+
+                if not review_exists:
+                    return Response(
+                        {"error": "Review not found or you don't have permission to respond."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+
+                # Insert the response into community_review_comments
+                db.execute(
+                    """
+                    INSERT INTO community_review_comments (review_id, user_id, body, created_at, updated_at)
+                    VALUES (%s, %s, %s, NOW(), NOW())
+                    """,
+                    (review_id, user_id, response),
+                )
 
             return Response(
                 {"message": "Response submitted successfully."},
-                status=status.HTTP_200_OK,
+                status=status.HTTP_201_CREATED,
             )
         except Exception as e:
             print(f"[ReviewResponseView] Error: {e}")
