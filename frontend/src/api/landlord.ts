@@ -18,6 +18,13 @@ export interface ViolationDTO {
   resolved: boolean;
 }
 
+export interface CommentDTO {
+  id: string;
+  user_id: number;
+  body: string;
+  created_at: string;
+}
+
 export interface ReviewDTO {
   id: string;
   author: string;
@@ -27,6 +34,7 @@ export interface ReviewDTO {
   date: string;
   bbl: string;
   flagged?: boolean;
+  comments?: CommentDTO[];
 }
 
 // Extended interfaces for building detail page
