@@ -432,13 +432,19 @@ class ReviewsView(APIView):
                 # Format comments
                 comments = []
                 for comment in comment_rows:
-                    comments.append({
-                        "id": str(comment["id"]),
-                        "user_id": comment["user_id"],
-                        "body": comment["body"],
-                        "created_at": comment["created_at"].strftime("%Y-%m-%d") if comment["created_at"] else "",
-                    })
-                    
+                    comments.append(
+                        {
+                            "id": str(comment["id"]),
+                            "user_id": comment["user_id"],
+                            "body": comment["body"],
+                            "created_at": (
+                                comment["created_at"].strftime("%Y-%m-%d")
+                                if comment["created_at"]
+                                else ""
+                            ),
+                        }
+                    )
+
                 # Reviews
                 # Use a generic name based on user_id
                 author_name = f"Tenant {row['user_id']}"  # or "Anonymous", "User", etc.
@@ -482,9 +488,9 @@ class ReviewsView(APIView):
                         "id": "c1",
                         "user_id": 1,
                         "body": "Thank you for your feedback!",
-                        "created_at": "2025-09-02"
+                        "created_at": "2025-09-02",
                     }
-                ]
+                ],
             },
             {
                 "id": "r2",
@@ -492,7 +498,7 @@ class ReviewsView(APIView):
                 "content": "Slow support.",
                 "date": "2025-08-15",
                 "flagged": False,
-                "comments": []
+                "comments": [],
             },
         ]
 
@@ -1095,7 +1101,9 @@ class ReviewResponseView(APIView):
 
                 if not review_exists:
                     return Response(
-                        {"error": "Review not found or you don't have permission to respond."},
+                        {
+                            "error": "Review not found or you don't have permission to respond."
+                        },
                         status=status.HTTP_404_NOT_FOUND,
                     )
 
