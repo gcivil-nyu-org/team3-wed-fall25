@@ -54,12 +54,15 @@ const Search: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [totalResults, setTotalResults] = useState(0);
   
-  // Filter states - only include filters that are actually available in the API
+  // Filter states
   const [selectedBorough, setSelectedBorough] = useState("All Boroughs");
   const [rentStabilized, setRentStabilized] = useState(false);
-  const [evictionsFilter, setEvictionsFilter] = useState("Any");
-  const [violationsFilter, setViolationsFilter] = useState("Any");
-  const [zipCode, setZipCode] = useState("");
+  const [affordableHousing, setAffordableHousing] = useState(false);
+  const [riskLevel, setRiskLevel] = useState("Any");
+  const [violationClass, setViolationClass] = useState("Any");
+  const [rentImpairing, setRentImpairing] = useState("Any");
+  const [complaintCategory, setComplaintCategory] = useState("Any");
+  const [recentActivity, setRecentActivity] = useState("Any");
 
   const boroughs = ["All Boroughs", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
 
@@ -68,75 +71,75 @@ const Search: React.FC = () => {
     setError(null);
     
     try {
-      // Convert filter values to API parameters
-      const searchParams: any = {};
+      // Use the main search query (address or zip code)
+      const query = searchQuery.trim();
       
-      if (searchQuery.trim()) {
-        searchParams.query = searchQuery.trim();
+      if (!query) {
+        setError("Please enter an address or zip code to search.");
+        setLoading(false);
+        return;
       }
       
+      // Build search parameters for the new endpoint
+      const searchParams: any = {
+        query: query,
+        limit: 10, // Always return 10 results
+      };
+      
+      // Add borough filter if selected
       if (selectedBorough !== "All Boroughs") {
         searchParams.borough = selectedBorough;
       }
       
+      // Add rent stabilized filter
       if (rentStabilized) {
-        searchParams.rentStabilized = true;
+        searchParams.rent_stabilized = "true";
       }
       
-      if (zipCode.trim()) {
-        searchParams.zipCode = zipCode.trim();
+      // Add affordable housing filter
+      if (affordableHousing) {
+        searchParams.affordable_housing = "true";
       }
       
-      // Convert evictions filter to min/max values
-      if (evictionsFilter !== "Any") {
-        switch (evictionsFilter) {
-          case "0":
-            searchParams.evictionsMin = 0;
-            searchParams.evictionsMax = 0;
-            break;
-          case "1-2":
-            searchParams.evictionsMin = 1;
-            searchParams.evictionsMax = 2;
-            break;
-          case "3-5":
-            searchParams.evictionsMin = 3;
-            searchParams.evictionsMax = 5;
-            break;
-          case "6+":
-            searchParams.evictionsMin = 6;
-            break;
+      // Add risk level filter
+      if (riskLevel !== "Any") {
+        searchParams.risk_level = riskLevel;
+      }
+      
+      // Add violation class filter
+      if (violationClass !== "Any") {
+        searchParams.violation_class = violationClass;
+      }
+      
+      // Add rent impairing filter
+      if (rentImpairing === "Yes") {
+        searchParams.rent_impairing = "true";
+      } else if (rentImpairing === "No") {
+        searchParams.rent_impairing = "false";
+      }
+      
+      // Add complaint category filter
+      if (complaintCategory !== "Any") {
+        searchParams.complaint_category = complaintCategory;
+      }
+      
+      // Add recent activity filter
+      if (recentActivity !== "Any") {
+        const daysMap: Record<string, number> = {
+          "30": 30,
+          "90": 90,
+          "180": 180,
+        };
+        if (daysMap[recentActivity]) {
+          searchParams.recent_activity_days = daysMap[recentActivity].toString();
         }
       }
       
-      // Convert violations filter to min/max values
-      if (violationsFilter !== "Any") {
-        switch (violationsFilter) {
-          case "0":
-            searchParams.violationsMin = 0;
-            searchParams.violationsMax = 0;
-            break;
-          case "1-5":
-            searchParams.violationsMin = 1;
-            searchParams.violationsMax = 5;
-            break;
-          case "6-10":
-            searchParams.violationsMin = 6;
-            searchParams.violationsMax = 10;
-            break;
-          case "11+":
-            searchParams.violationsMin = 11;
-            break;
-        }
-      }
-      
-      console.log("Searching with params:", searchParams);
       const response = await searchBuildings(searchParams);
-      console.log("Search response:", response);
-      setSearchResults(response.data);
-      setTotalResults(response.total);
+      setSearchResults(response.data || []);
+      setTotalResults(response.total || 0);
     } catch (err) {
       setError("Failed to search buildings. Please try again.");
-      console.error("Search error:", err);
     } finally {
       setLoading(false);
     }
@@ -145,9 +148,12 @@ const Search: React.FC = () => {
   const handleClearFilters = () => {
     setSelectedBorough("All Boroughs");
     setRentStabilized(false);
-    setEvictionsFilter("Any");
-    setViolationsFilter("Any");
-    setZipCode("");
+    setAffordableHousing(false);
+    setRiskLevel("Any");
+    setViolationClass("Any");
+    setRentImpairing("Any");
+    setComplaintCategory("Any");
+    setRecentActivity("Any");
   };
 
   const getRiskColor = (risk: string) => {
@@ -313,9 +319,9 @@ const Search: React.FC = () => {
               </Select>
             </FormControl>
 
-            {/* Affordability Filter */}
+            {/* Affordability Filters */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
                 Affordability
               </Typography>
               <FormControlLabel
@@ -327,49 +333,95 @@ const Search: React.FC = () => {
                 }
                 label="Rent Stabilized"
               />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={affordableHousing}
+                    onChange={(e) => setAffordableHousing(e.target.checked)}
+                  />
+                }
+                label="Affordable Housing"
+              />
             </Box>
 
-            {/* Evictions Filter */}
+            {/* Risk Level Filter */}
             <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Evictions (Last 3 Years)</InputLabel>
+              <InputLabel>Risk Level</InputLabel>
               <Select
-                value={evictionsFilter}
-                onChange={(e) => setEvictionsFilter(e.target.value)}
-                label="Evictions (Last 3 Years)"
+                value={riskLevel}
+                onChange={(e) => setRiskLevel(e.target.value)}
+                label="Risk Level"
               >
-                <MenuItem value="Any">Any</MenuItem>
-                <MenuItem value="0">0</MenuItem>
-                <MenuItem value="1-2">1-2</MenuItem>
-                <MenuItem value="3-5">3-5</MenuItem>
-                <MenuItem value="6+">6+</MenuItem>
+                <MenuItem value="Any">Any Risk Level</MenuItem>
+                <MenuItem value="High">High Risk</MenuItem>
+                <MenuItem value="Moderate">Moderate Risk</MenuItem>
+                <MenuItem value="Low">Low Risk</MenuItem>
               </Select>
             </FormControl>
 
-            {/* Violations Filter */}
+            {/* Violation Filters */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
+                Violation Filters
+              </Typography>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Violation Class</InputLabel>
+                <Select
+                  value={violationClass}
+                  onChange={(e) => setViolationClass(e.target.value)}
+                  label="Violation Class"
+                >
+                  <MenuItem value="Any">Any Class</MenuItem>
+                  <MenuItem value="A">Class A (Most Serious)</MenuItem>
+                  <MenuItem value="B">Class B</MenuItem>
+                  <MenuItem value="C">Class C</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Rent Impairing</InputLabel>
+                <Select
+                  value={rentImpairing}
+                  onChange={(e) => setRentImpairing(e.target.value)}
+                  label="Rent Impairing"
+                >
+                  <MenuItem value="Any">Any</MenuItem>
+                  <MenuItem value="Yes">Has Rent Impairing Violations</MenuItem>
+                  <MenuItem value="No">No Rent Impairing Violations</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Complaint Category Filter */}
             <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Open Violations</InputLabel>
+              <InputLabel>Complaint Category</InputLabel>
               <Select
-                value={violationsFilter}
-                onChange={(e) => setViolationsFilter(e.target.value)}
-                label="Open Violations"
+                value={complaintCategory}
+                onChange={(e) => setComplaintCategory(e.target.value)}
+                label="Complaint Category"
               >
-                <MenuItem value="Any">Any</MenuItem>
-                <MenuItem value="0">0</MenuItem>
-                <MenuItem value="1-5">1-5</MenuItem>
-                <MenuItem value="6-10">6-10</MenuItem>
-                <MenuItem value="11+">11+</MenuItem>
+                <MenuItem value="Any">Any Category</MenuItem>
+                <MenuItem value="HEAT/HOT WATER">Heat/Hot Water</MenuItem>
+                <MenuItem value="PLUMBING">Plumbing</MenuItem>
+                <MenuItem value="ELECTRIC">Electric</MenuItem>
+                <MenuItem value="GENERAL CONSTRUCTION">General Construction</MenuItem>
+                <MenuItem value="PAINT/PLASTER">Paint/Plaster</MenuItem>
               </Select>
             </FormControl>
 
-            {/* ZIP Code Filter */}
-            <TextField
-              fullWidth
-              label="ZIP Code"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              placeholder="e.g., 10022"
-              sx={{ mb: 3 }}
-            />
+            {/* Recent Activity Filter */}
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel>Recent Activity</InputLabel>
+              <Select
+                value={recentActivity}
+                onChange={(e) => setRecentActivity(e.target.value)}
+                label="Recent Activity"
+              >
+                <MenuItem value="Any">Any Time</MenuItem>
+                <MenuItem value="30">Last 30 Days</MenuItem>
+                <MenuItem value="90">Last 90 Days</MenuItem>
+                <MenuItem value="180">Last 6 Months</MenuItem>
+              </Select>
+            </FormControl>
 
             <Button
               variant="outlined"
