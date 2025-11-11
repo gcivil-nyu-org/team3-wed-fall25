@@ -1,7 +1,9 @@
-import { fetchProfile } from "./auth";
-import axiosInstance from "./axiosInstance";
+// Main API exports - clean imports for all API functions
 
-// Building data interfaces and API functions
+export * from './auth';
+export * from './building';
+export * from './neighborhood';
+export * from './community';
 
 export interface BuildingData {
   bbl: string;
