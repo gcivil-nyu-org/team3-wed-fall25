@@ -22,7 +22,7 @@ const MessageList = ({
   return (
     !!user && (
       <Box>
-        {(messages?.messages ?? []).map((message) => (
+        {messages?.messages.map((message) => (
           <MessageItem
             key={message.id}
             message={message}

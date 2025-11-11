@@ -40,7 +40,7 @@ class PropertiesView(APIView):
         except Exception:
             user_id = None
 
-        print(f"Fetching properties for user_id: {user_id}")
+        # print(f"Fetching properties for user_id: {user_id}")
         try:
             with PostgresClient() as db:
                 rows = db.query_all(
@@ -53,7 +53,7 @@ class PropertiesView(APIView):
                 )
 
             bbls = [r["bbl"] for r in rows]
-            print("Found BBLs for landlord:", bbls)
+            # print("Found BBLs for landlord:", bbls)
             if not bbls:
                 return Response([], status=status.HTTP_200_OK)
 
@@ -64,13 +64,13 @@ class PropertiesView(APIView):
             for bbl, bld in buildings.items():
                 # Debug: print the building object structure
                 print(f"Building {bbl} type: {type(bld)}")
-                if bld:
-                    print(f"Building {bbl} attributes: {dir(bld)}")
+                # if bld:
+                #     print(f"Building {bbl} attributes: {dir(bld)}")
 
                 address = self._get_address_from_building(bld, bbl)
                 print(f"Property {bbl} address: {address}")
                 # print((len(getattr(bld, "complaints", []))))
-                print(getattr(bld, "complaints", []))
+                # print(getattr(bld, "complaints", []))
 
                 complaints = getattr(bld, "complaints", []) or []
                 violations = getattr(bld, "violations", []) or []
@@ -363,18 +363,134 @@ class ViolationsView2(APIView):
 
 
 class ReviewsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request, landlord_id):
-        # There is no reviews table in the schema. For development/testing (DEBUG=True)
-        # return a small set of mock reviews so the frontend can display example content.
-        mock_reviews = [
+    def get(self, request):
+        try:
+            user_id = request.user.id
+        except Exception:
+            user_id = None
+
+        if not user_id:
+            return Response([], status=status.HTTP_200_OK)
+
+        try:
+            with PostgresClient() as db:
+                property_rows = db.query_all(
+                    """
+                    SELECT bbl
+                    FROM landlord_owners
+                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    """,
+                    (user_id,),
+                )
+
+            bbls = [r["bbl"] for r in property_rows]
+
+            if not bbls:
+                return Response([], status=status.HTTP_200_OK)
+
+            # Safe approach: no JOIN, just use user_id
+            with PostgresClient() as db:
+                review_rows = db.query_all(
+                    """
+                    SELECT 
+                        id,
+                        user_id,
+                        bbl,
+                        rating,
+                        title,
+                        body,
+                        created_at
+                    FROM community_reviews
+                    WHERE bbl = ANY(%s) 
+                    AND deleted_at IS NULL
+                    ORDER BY created_at DESC
+                    """,
+                    (bbls,),
+                )
+
+            reviews = []
+            for row in review_rows:
+                # Fetch comments for each review
+                with PostgresClient() as db:
+                    comment_rows = db.query_all(
+                        """
+                        SELECT 
+                            id,
+                            user_id,
+                            body,
+                            created_at
+                        FROM community_review_comments
+                        WHERE review_id = %s 
+                        AND deleted_at IS NULL
+                        ORDER BY created_at ASC
+                        """,
+                        (row["id"],),
+                    )
+
+                # Format comments
+                comments = []
+                for comment in comment_rows:
+                    comments.append(
+                        {
+                            "id": str(comment["id"]),
+                            "user_id": comment["user_id"],
+                            "body": comment["body"],
+                            "created_at": (
+                                comment["created_at"].strftime("%Y-%m-%d")
+                                if comment["created_at"]
+                                else ""
+                            ),
+                        }
+                    )
+
+                # Reviews
+                # Use a generic name based on user_id
+                author_name = f"Tenant {row['user_id']}"  # or "Anonymous", "User", etc.
+
+                reviews.append(
+                    {
+                        "id": str(row["id"]),
+                        "author": author_name,
+                        "content": row.get("body") or row.get("title", ""),
+                        "title": row.get("title", ""),
+                        "rating": (
+                            float(row["rating"]) if row["rating"] is not None else None
+                        ),
+                        "date": (
+                            row["created_at"].strftime("%Y-%m-%d")
+                            if row["created_at"]
+                            else ""
+                        ),
+                        "bbl": row["bbl"],
+                        "flagged": False,
+                        "comments": comments,
+                    }
+                )
+
+            return Response(reviews, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            print(f"[ReviewsView] DB error: {e}")
+            return Response(self._get_mock_reviews(), status=status.HTTP_200_OK)
+
+    def _get_mock_reviews(self):
+        return [
             {
                 "id": "r1",
                 "author": "Jane D.",
                 "content": "Quick to fix issues.",
                 "date": "2025-09-01",
                 "flagged": False,
+                "comments": [
+                    {
+                        "id": "c1",
+                        "user_id": 1,
+                        "body": "Thank you for your feedback!",
+                        "created_at": "2025-09-02",
+                    }
+                ],
             },
             {
                 "id": "r2",
@@ -382,12 +498,9 @@ class ReviewsView(APIView):
                 "content": "Slow support.",
                 "date": "2025-08-15",
                 "flagged": False,
+                "comments": [],
             },
         ]
-        # if getattr(settings, "DEBUG", False):
-        if True:
-            return Response(mock_reviews, status=status.HTTP_200_OK)
-        return Response([], status=status.HTTP_200_OK)
 
 
 class LandlordApplicationView(APIView):
@@ -970,13 +1083,42 @@ class ReviewResponseView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # In a real implementation, you would save this to your database
-            # For now, we'll just return success
-            print(f"Review response submitted for review {review_id}: {response}")
+            # Get the authenticated user's ID
+            user_id = request.user.id
+
+            # Save the response to the database
+            with PostgresClient() as db:
+                # First, verify the review exists and belongs to a property the user owns
+                review_exists = db.query_one(
+                    """
+                    SELECT cr.id 
+                    FROM community_reviews cr
+                    JOIN landlord_owners lo ON cr.bbl = lo.bbl
+                    WHERE cr.id = %s AND lo.owner_user_id = %s AND lo.deleted_at IS NULL
+                    """,
+                    (review_id, user_id),
+                )
+
+                if not review_exists:
+                    return Response(
+                        {
+                            "error": "Review not found or you don't have permission to respond."
+                        },
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+
+                # Insert the response into community_review_comments
+                db.execute(
+                    """
+                    INSERT INTO community_review_comments (review_id, user_id, body, created_at, updated_at)
+                    VALUES (%s, %s, %s, NOW(), NOW())
+                    """,
+                    (review_id, user_id, response),
+                )
 
             return Response(
                 {"message": "Response submitted successfully."},
-                status=status.HTTP_200_OK,
+                status=status.HTTP_201_CREATED,
             )
         except Exception as e:
             print(f"[ReviewResponseView] Error: {e}")

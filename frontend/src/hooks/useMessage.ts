@@ -3,7 +3,7 @@ import {
   fetchInboxs,
   fetchInboxMessages,
   type CommunityInbox,
-  type CommunityMessageThread,
+  type CommunityMessage,
 } from "../api";
 
 export const useInboxs = () => {
@@ -20,14 +20,14 @@ export const useInboxs = () => {
 };
 
 export const useMessages = (peer_id: CommunityInbox["peer"]["id"]) => {
-  const [messages, setMessages] = useState<CommunityMessageThread>();
+  const [messages, setMessages] = useState<CommunityMessage>();
   const [timestamp, setTimestamp] = useState<number>(Date.now());
 
   const refresh = () => setTimestamp(Date.now());
 
   useEffect(() => {
     fetchInboxMessages(peer_id).then((res) => setMessages(res));
-  }, [peer_id, timestamp]);
+  }, [timestamp]);
 
   return { messages, refresh };
 };
