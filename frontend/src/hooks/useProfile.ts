@@ -1,3 +1,5 @@
+// Legacy profile hook - consider using useAuth instead
+
 import { useEffect, useState } from "react";
 import { fetchProfile } from "../api";
 import type { Profile } from "../api/auth";
@@ -5,21 +7,21 @@ import type { Profile } from "../api/auth";
 export const useProfile = () => {
   const [user, setUser] = useState<Profile | null>();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem("access_token");
+        const token = sessionStorage.getItem("access_token");
         if (!token) {
           setLoading(false);
           return;
         }
 
-        const profile = await fetchProfile();
-        setUser(profile);
+        const response = await fetchProfile();
+        const data = (response as any)?.data?.data ?? (response as any)?.data ?? null;
+        setUser(data);
       } catch (err) {
-        // If profile fetch fails, clear the token and user state
         sessionStorage.removeItem("access_token");
         sessionStorage.removeItem("refresh_token");
         setUser(null);

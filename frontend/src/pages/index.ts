@@ -5,5 +5,7 @@ import SignUp from "./SignUp";
 import Building from "./Building";
 import Community from "./Community";
 import Message from "./Message";
+import Profile from "./Profile";
+import Landlords from "./Landlords";
 
-export { Home, Search, SignIn, SignUp, Building, Community, Message };
+export { Home, Search, SignIn, SignUp, Building, Community, Message, Profile, Landlords };
