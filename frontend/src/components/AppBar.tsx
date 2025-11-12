@@ -300,10 +300,10 @@ export default function AppAppBar() {
                   }}
                 >
                   {user && (
-                    <MenuItem onClick={handleProfileClick}>
-                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
-                      My Profile
-                    </MenuItem>
+                  <MenuItem onClick={handleProfileClick}>
+                    <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                    My Profile
+                  </MenuItem>
                   )}
                   {isAdmin && (
                     <MenuItem onClick={() => { navigate('/admin/dashboard'); handleProfileMenuClose(); }}>

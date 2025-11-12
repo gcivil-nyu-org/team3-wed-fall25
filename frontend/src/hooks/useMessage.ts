@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import {
   fetchInboxs,
-  fetchInboxMessages,
   type CommunityInbox,
-  type CommunityMessageThread,
 } from "../api";
+import {
+  fetchInboxMessages,
+  type CommunityMessageThread,
+} from "../api/community";
 
 export const useInboxs = () => {
   const [messages, setMessages] = useState<Array<CommunityInbox>>([]);

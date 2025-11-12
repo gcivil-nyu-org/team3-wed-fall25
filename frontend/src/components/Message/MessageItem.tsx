@@ -1,11 +1,11 @@
 import { Box, Chip, Typography } from "@mui/material";
-import { type CommunityMessage } from "../../api";
+import { type CommunityMessage } from "../../api/community";
 
 const MessageItem = ({
   message,
   direction,
 }: {
-  message: CommunityMessage["messages"][0];
+  message: CommunityMessage;
   direction: "in" | "out";
 }) => {
   const isIn = direction === "in";
