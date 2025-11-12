@@ -191,7 +191,7 @@ export async function fetchViolationsByBBL(
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.get<BuildingViolationDTO[]>(
+    const resp = await axios.get<any>(
       `/landlord/violations/bbl/${bbl}/`,
       {
         headers: {
@@ -200,18 +200,17 @@ export async function fetchViolationsByBBL(
       }
     );
 
-    let data = resp.data as any;
-    if (data && typeof data === "object" && Array.isArray(data.data)) {
-      return data.data as BuildingViolationDTO[];
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    let data = resp.data?.data ?? resp.data;
+
+    if (Array.isArray(data)) {
+      return data as BuildingViolationDTO[];
     }
-    if (!Array.isArray(data)) {
-      console.warn(
-        "fetchViolationsByBBL: unexpected response, expected array",
-        data
-      );
-      return [];
-    }
-    return data as BuildingViolationDTO[];
+    console.warn(
+      "fetchViolationsByBBL: unexpected response, expected array",
+      resp.data
+    );
+    return [];
   } catch (error) {
     console.error("fetchViolationsByBBL: error", error);
     // Return empty array instead of throwing to allow fallback to mock data
@@ -229,7 +228,7 @@ export async function fetchComplaintsByBBL(
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.get<BuildingComplaintDTO[]>(
+    const resp = await axios.get<any>(
       `/landlord/complaints/bbl/${bbl}/`,
       {
         headers: {
@@ -238,18 +237,17 @@ export async function fetchComplaintsByBBL(
       }
     );
 
-    let data = resp.data as any;
-    if (data && typeof data === "object" && Array.isArray(data.data)) {
-      return data.data as BuildingComplaintDTO[];
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    let data = resp.data?.data ?? resp.data;
+
+    if (Array.isArray(data)) {
+      return data as BuildingComplaintDTO[];
     }
-    if (!Array.isArray(data)) {
-      console.warn(
-        "fetchComplaintsByBBL: unexpected response, expected array",
-        data
-      );
-      return [];
-    }
-    return data as BuildingComplaintDTO[];
+    console.warn(
+      "fetchComplaintsByBBL: unexpected response, expected array",
+      resp.data
+    );
+    return [];
   } catch (error) {
     console.error("fetchComplaintsByBBL: error", error);
     return [];
@@ -266,7 +264,7 @@ export async function fetchBuildingStats(
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.get<BuildingStatsDTO>(
+    const resp = await axios.get<any>(
       `/landlord/building-stats/bbl/${bbl}/`,
       {
         headers: {
@@ -275,10 +273,8 @@ export async function fetchBuildingStats(
       }
     );
 
-    let data = resp.data as any;
-    if (data && typeof data === "object" && data.data) {
-      return data.data as BuildingStatsDTO;
-    }
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    let data = resp.data?.data ?? resp.data;
     return data as BuildingStatsDTO;
   } catch (error) {
     console.error("fetchBuildingStats: error", error);
@@ -301,16 +297,14 @@ export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.get<LandlordStatsDTO>(`/landlord/stats/`, {
+    const resp = await axios.get<any>(`/landlord/stats/`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
-    let data = resp.data as any;
-    if (data && typeof data === "object" && data.data) {
-      return data.data as LandlordStatsDTO;
-    }
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    let data = resp.data?.data ?? resp.data;
     return data as LandlordStatsDTO;
   } catch (error) {
     console.error("fetchLandlordStats: error", error);

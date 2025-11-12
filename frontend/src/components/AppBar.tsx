@@ -78,13 +78,12 @@ export default function AppAppBar() {
 
   return (
     <MuiAppBar
-      position="fixed"
+      position="static"
       enableColorOnDark
       sx={{
         boxShadow: 0,
         bgcolor: "transparent",
         backgroundImage: "none",
-        zIndex: 1000,
       }}
     >
       <Container maxWidth="lg">
@@ -183,6 +182,24 @@ export default function AppAppBar() {
                 Community
               </Button>
             </NavLink>
+            <NavLink to="/landlords">
+              <Button
+                variant="text"
+                size="small"
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
+              >
+                Landlords
+              </Button>
+            </NavLink>
             {user && (
               <>
                 <NavLink to="/landlord/dashboard">
@@ -223,22 +240,26 @@ export default function AppAppBar() {
                 </NavLink>
               </>
             )}
-            <Button
-              variant="text"
-              size="small"
-              sx={{
-                color: "#4A5568",
-                fontWeight: 500,
-                textTransform: "uppercase",
-                fontSize: "0.85rem",
-                "&:hover": {
-                  color: "#FF6B35",
-                  backgroundColor: "rgba(255, 107, 53, 0.05)",
-                },
-              }}
-            >
-              Admin
-            </Button>
+            {isAdmin && (
+              <NavLink to="/admin/dashboard">
+                <Button
+                  variant="text"
+                  size="small"
+                  sx={{
+                    color: "#4A5568",
+                    fontWeight: 500,
+                    textTransform: "uppercase",
+                    fontSize: "0.85rem",
+                    "&:hover": {
+                      color: "#FF6B35",
+                      backgroundColor: "rgba(255, 107, 53, 0.05)",
+                    },
+                  }}
+                >
+                  Admin
+                </Button>
+              </NavLink>
+            )}
           </Box>
 
           {/* Auth Buttons / User Profile */}
@@ -559,23 +580,27 @@ export default function AppAppBar() {
                       </NavLink>
                     </>
                   )}
-                  <Button
-                    fullWidth
-                    variant="text"
-                    sx={{
-                      justifyContent: "flex-start",
-                      color: "#4A5568",
-                      fontWeight: 500,
-                      textTransform: "uppercase",
-                      fontSize: "0.9rem",
-                      "&:hover": {
-                        color: "#FF6B35",
-                        backgroundColor: "rgba(255, 107, 53, 0.05)",
-                      },
-                    }}
-                  >
-                    Admin
-                  </Button>
+                  {isAdmin && (
+                    <NavLink to="/admin/dashboard" style={{ textDecoration: "none" }}>
+                      <Button
+                        fullWidth
+                        variant="text"
+                        sx={{
+                          justifyContent: "flex-start",
+                          color: "#4A5568",
+                          fontWeight: 500,
+                          textTransform: "uppercase",
+                          fontSize: "0.9rem",
+                          "&:hover": {
+                            color: "#FF6B35",
+                            backgroundColor: "rgba(255, 107, 53, 0.05)",
+                          },
+                        }}
+                      >
+                        Admin
+                      </Button>
+                    </NavLink>
+                  )}
                 </Box>
 
                 <Divider

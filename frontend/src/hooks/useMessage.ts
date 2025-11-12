@@ -3,8 +3,8 @@ import {
   fetchInboxs,
   fetchInboxMessages,
   type CommunityInbox,
-  type CommunityMessageThread,
-} from "../api/community";
+  type CommunityMessage,
+} from "../api";
 
 export const useInboxs = () => {
   const [messages, setMessages] = useState<Array<CommunityInbox>>([]);
@@ -15,11 +15,7 @@ export const useInboxs = () => {
   useEffect(() => {
     fetchInboxs()
       .then((res) => {
-        // Filter out any invalid entries
-        const validMessages = Array.isArray(res)
-          ? res.filter((inbox) => inbox && inbox.peer && inbox.peer.id)
-          : [];
-        setMessages(validMessages);
+        setMessages(Array.isArray(res) ? res : []);
       })
       .catch((error) => {
         console.error("Error fetching inboxs:", error);
@@ -31,7 +27,7 @@ export const useInboxs = () => {
 };
 
 export const useMessages = (peer_id: CommunityInbox["peer"]["id"]) => {
-  const [messages, setMessages] = useState<CommunityMessageThread | null>(null);
+  const [messages, setMessages] = useState<CommunityMessage>();
   const [timestamp, setTimestamp] = useState<number>(Date.now());
 
   const refresh = () => setTimestamp(Date.now());
@@ -42,7 +38,7 @@ export const useMessages = (peer_id: CommunityInbox["peer"]["id"]) => {
         .then((res) => setMessages(res))
         .catch((error) => {
           console.error("Error fetching messages:", error);
-          setMessages(null);
+          setMessages(undefined);
         });
     }
   }, [peer_id, timestamp]);
