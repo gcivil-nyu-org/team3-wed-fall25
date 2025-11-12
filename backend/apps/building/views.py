@@ -166,7 +166,6 @@ class BuildingSearchView(APIView):
     """
     GET /api/buildings/search/?q=10001&limit=10&borough=Manhattan
     Search buildings by address or zip code.
-    Returns up to 10 relevant results.
     """
 
     permission_classes = [AllowAny]
@@ -176,33 +175,19 @@ class BuildingSearchView(APIView):
         limit = int(request.query_params.get("limit", 10))
         borough = request.query_params.get("borough")
 
-        # Parse filter parameters
-        min_evictions = request.query_params.get("min_evictions")
-        max_evictions = request.query_params.get("max_evictions")
-        min_violations = request.query_params.get("min_violations")
-        max_violations = request.query_params.get("max_violations")
-        rent_stabilized = request.query_params.get("rent_stabilized")
-        affordable_housing = request.query_params.get("affordable_housing")
-        violation_class = request.query_params.get("violation_class")
-        rent_impairing = request.query_params.get("rent_impairing")
-        complaint_category = request.query_params.get("complaint_category")
-        recent_activity_days = request.query_params.get("recent_activity_days")
-        risk_level = request.query_params.get("risk_level")
-
         if not query:
             return Response(
                 {
-                    "result": True,
+                    "result": False,
+                    "detail": "Query parameter 'q' (address or zip code) is required.",
                     "data": [],
                     "total": 0,
-                    "page": 1,
-                    "limit": limit,
                 },
-                status=status.HTTP_200_OK,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         # Validate limit
-        if limit < 1 or limit > 50:
+        if limit < 1 or limit > 100:
             limit = 10
 
         try:
@@ -211,29 +196,7 @@ class BuildingSearchView(APIView):
                 query=query,
                 limit=limit,
                 borough=borough,
-                min_evictions=int(min_evictions) if min_evictions else None,
-                max_evictions=int(max_evictions) if max_evictions else None,
-                min_violations=int(min_violations) if min_violations else None,
-                max_violations=int(max_violations) if max_violations else None,
-                rent_stabilized=rent_stabilized.lower() == "true" if rent_stabilized else None,
-                affordable_housing=affordable_housing.lower() == "true" if affordable_housing else None,
-                violation_class=violation_class.upper() if violation_class else None,
-                rent_impairing=rent_impairing.lower() == "true" if rent_impairing else None,
-                complaint_category=complaint_category if complaint_category else None,
-                recent_activity_days=int(recent_activity_days) if recent_activity_days else None,
-                risk_level=risk_level if risk_level else None,
             )
-
-            # Calculate risk level for each result
-            for result in results:
-                evictions = result.get("evictions3yr", 0)
-                violations = result.get("openViolations", 0)
-                if evictions > 5 or violations > 10:
-                    result["riskLevel"] = "High Risk"
-                elif evictions > 2 or violations > 5:
-                    result["riskLevel"] = "Moderate Risk"
-                else:
-                    result["riskLevel"] = "Low Risk"
 
             return Response(
                 {
@@ -249,7 +212,7 @@ class BuildingSearchView(APIView):
             return Response(
                 {
                     "result": False,
-                    "detail": f"Error searching buildings: {str(e)}",
+                    "detail": f"Error searching buildings: {e}",
                     "data": [],
                     "total": 0,
                 },

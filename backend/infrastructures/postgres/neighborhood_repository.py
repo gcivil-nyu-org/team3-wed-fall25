@@ -598,7 +598,8 @@ class NeighborhoodRepository:
                 date_filter = " AND c.complaint_status_date >= %s"
                 date_params = [date_threshold]
 
-        # Build query with optional borough filter and time range
+        # Build query: Start from evictions (has location), then count ALL complaints for those buildings
+        # This ensures we show all buildings with complaints that have location data
         query = f"""
             SELECT 
                 e.bbl,
@@ -622,28 +623,29 @@ class NeighborhoodRepository:
                     bbl,
                     COUNT(*) as complaint_count
                 FROM building_complaints
-                WHERE complaint_status = 'Open'{date_filter}
+                WHERE 1=1{date_filter}
                 GROUP BY bbl
             ) c ON e.bbl = c.bbl
             WHERE e.latitude IS NOT NULL 
                 AND e.longitude IS NOT NULL
                 AND e.latitude BETWEEN %s AND %s
                 AND e.longitude BETWEEN %s AND %s
+                AND c.complaint_count > 0
         """
 
         # Add borough filter if specified
-        # Use RANDOM() to get truly representative sample across all count ranges
         if borough and borough != "All Boroughs":
             query += " AND e.borough = %s"
-            query += " ORDER BY RANDOM() LIMIT %s"
-            params = tuple(
-                date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit]
-            )
-            rows = db.query_all(query, params)
-        else:
-            query += " ORDER BY RANDOM() LIMIT %s"
-            params = tuple(date_params + [min_lat, max_lat, min_lng, max_lng, limit])
-            rows = db.query_all(query, params)
+
+        query += " ORDER BY RANDOM() LIMIT %s"
+
+        # Build params: date_params first, then bounds, then borough (if any), then limit
+        params_list = date_params + [min_lat, max_lat, min_lng, max_lng]
+        if borough and borough != "All Boroughs":
+            params_list.append(borough)
+        params_list.append(limit)
+
+        rows = db.query_all(query, tuple(params_list))
         return [as_heatmap_point({**row, "data_type": "complaints"}) for row in rows]
 
     def get_borough_summary(self, borough: str = None) -> List[NeighborhoodSummary]:

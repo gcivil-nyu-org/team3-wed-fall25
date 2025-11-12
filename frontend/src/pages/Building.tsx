@@ -437,34 +437,34 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 >
                   {building.registration ? (
                     <>
-                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                        <strong style={{ color: "#2D3748" }}>
-                          Registration ID:
-                        </strong>{" "}
-                        {building.registration.registration_id}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                        <strong style={{ color: "#2D3748" }}>
-                          Last Registration:
-                        </strong>{" "}
-                        {new Date(
-                          building.registration.last_registration_date
-                        ).toLocaleDateString()}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                        <strong style={{ color: "#2D3748" }}>
-                          Registration End:
-                        </strong>{" "}
-                        {new Date(
-                          building.registration.registration_end_date
-                        ).toLocaleDateString()}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                        <strong style={{ color: "#2D3748" }}>
-                          Community Board:
-                        </strong>{" "}
-                        {building.registration.community_board}
-                      </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                    <strong style={{ color: "#2D3748" }}>
+                      Registration ID:
+                    </strong>{" "}
+                    {building.registration.registration_id}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                    <strong style={{ color: "#2D3748" }}>
+                      Last Registration:
+                    </strong>{" "}
+                    {new Date(
+                      building.registration.last_registration_date
+                    ).toLocaleDateString()}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                    <strong style={{ color: "#2D3748" }}>
+                      Registration End:
+                    </strong>{" "}
+                    {new Date(
+                      building.registration.registration_end_date
+                    ).toLocaleDateString()}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                    <strong style={{ color: "#2D3748" }}>
+                      Community Board:
+                    </strong>{" "}
+                    {building.registration.community_board}
+                  </Typography>
                     </>
                   ) : (
                     <Typography variant="body2" sx={{ color: "#6B7280", fontStyle: "italic" }}>

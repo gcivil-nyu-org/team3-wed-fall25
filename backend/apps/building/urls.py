@@ -8,5 +8,5 @@ urlpatterns = [
     ),  # GET /api/building?bbl=1000010001
     path(
         "search/", BuildingSearchView.as_view(), name="building_search"
-    ),  # GET /api/buildings/search/?q=10001&limit=10
+    ),  # GET /api/building/search/?q=10001&limit=10&borough=Manhattan
 ]

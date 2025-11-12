@@ -72,22 +72,22 @@ const PointsLayer: React.FC<{
               click: () => {
                 // Simple popup on click with link to building profile
                 const popupContent = `
-                  <div style="text-align: center; padding: 8px; min-width: 150px; font-family: Arial, sans-serif;">
-                    <h4 style="margin: 0 0 4px 0; color: #2C3E50; font-size: 14px;">${point.address}</h4>
-                    <p style="margin: 0 0 4px 0; color: #7F8C8D; font-size: 10px;">BBL: ${point.bbl}</p>
-                    <div style="display: flex; gap: 8px; margin-bottom: 4px;">
-                      <div style="background: #F8F9FA; padding: 4px; border-radius: 3px; flex: 1;">
-                        <div style="color: #7F8C8D; font-size: 9px;">COUNT</div>
-                        <div style="color: #2C3E50; font-size: 12px; font-weight: 700;">${count}</div>
+                    <div style="text-align: center; padding: 8px; min-width: 150px; font-family: Arial, sans-serif;">
+                      <h4 style="margin: 0 0 4px 0; color: #2C3E50; font-size: 14px;">${point.address}</h4>
+                      <p style="margin: 0 0 4px 0; color: #7F8C8D; font-size: 10px;">BBL: ${point.bbl}</p>
+                      <div style="display: flex; gap: 8px; margin-bottom: 4px;">
+                        <div style="background: #F8F9FA; padding: 4px; border-radius: 3px; flex: 1;">
+                          <div style="color: #7F8C8D; font-size: 9px;">COUNT</div>
+                          <div style="color: #2C3E50; font-size: 12px; font-weight: 700;">${count}</div>
+                        </div>
+                        <div style="background: #F8F9FA; padding: 4px; border-radius: 3px; flex: 1;">
+                          <div style="color: #7F8C8D; font-size: 9px;">RISK</div>
+                          <div style="color: #2C3E50; font-size: 12px; font-weight: 700;">${(intensity * 100).toFixed(0)}%</div>
+                        </div>
                       </div>
-                      <div style="background: #F8F9FA; padding: 4px; border-radius: 3px; flex: 1;">
-                        <div style="color: #7F8C8D; font-size: 9px;">RISK</div>
-                        <div style="color: #2C3E50; font-size: 12px; font-weight: 700;">${(intensity * 100).toFixed(0)}%</div>
-                      </div>
-                    </div>
                     <div style="background: #E3F2FD; padding: 4px; border-radius: 3px; border-left: 2px solid ${color}; margin-bottom: 4px;">
-                      <div style="color: #1976D2; font-size: 10px; font-weight: 600;">${dataType.toUpperCase()}</div>
-                      <div style="color: #2C3E50; font-size: 10px;">${point.borough}</div>
+                        <div style="color: #1976D2; font-size: 10px; font-weight: 600;">${dataType.toUpperCase()}</div>
+                        <div style="color: #2C3E50; font-size: 10px;">${point.borough}</div>
                     </div>
                     <button id="view-building-${point.bbl}" style="background: #FF6B35; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; width: 100%;">
                       View Building Details
@@ -269,7 +269,7 @@ const OptimizedHeatmap: React.FC<OptimizedHeatmapProps> = ({
           <PointsLayer 
             data={data} 
             dataType={dataType} 
-            riskThreshold={riskThreshold}
+            riskThreshold={riskThreshold} 
             onBuildingClick={onBuildingClick}
           />
         )}

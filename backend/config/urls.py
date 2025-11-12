@@ -38,7 +38,9 @@ urlpatterns = [
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/", include("apps.user.urls")),
     path("api/building/", include("apps.building.urls")),
-    path("api/buildings/", include("apps.building.urls")),  # Alias for frontend compatibility
+    path(
+        "api/buildings/", include("apps.building.urls")
+    ),  # Alias for frontend compatibility
     path("api/community/", include("apps.community.urls")),
     path("api/landlord/", include("apps.landlord.urls")),
     path("api/neighborhood/", include("apps.neighborhood.urls")),

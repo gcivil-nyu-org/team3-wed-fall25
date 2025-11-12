@@ -332,20 +332,20 @@ const AdvancedFiltersDrawer: React.FC<{
           {state.mode === "heat" ? (
             <>
               {/* HEATMAP FILTERS */}
-              <Box>
+          <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
                   Count Threshold
-                </Typography>
+            </Typography>
                 <Typography variant="body2" sx={{ mb: 2, color: "#6B7280", fontSize: "12px" }}>
                   Show buildings with ≥ {state.advanced.countThreshold} {state.filters.dataType}
                 </Typography>
                 <Box sx={{ px: 1 }}>
                   <input
-                    type="range"
+              type="range"
                     min="1"
                     max="50"
                     value={state.advanced.countThreshold}
-                    onChange={(e) => onUpdate({
+              onChange={(e) => onUpdate({ 
                       advanced: { ...state.advanced, countThreshold: parseInt(e.target.value) }
                     })}
                     style={{
@@ -397,7 +397,7 @@ const AdvancedFiltersDrawer: React.FC<{
                       variant={state.advanced.affordableHousingOnly ? "contained" : "outlined"}
                       onClick={() => onUpdate({
                         advanced: { ...state.advanced, affordableHousingOnly: !state.advanced.affordableHousingOnly }
-                      })}
+              })}
                       size="small"
                       sx={{
                         minWidth: 80,
@@ -413,7 +413,7 @@ const AdvancedFiltersDrawer: React.FC<{
                     </Button>
                   </Box>
                 </Stack>
-              </Box>
+          </Box>
 
               {/* Range Sliders */}
               <Box sx={{ mb: 3 }}>
@@ -972,7 +972,7 @@ const SimplifiedMap: React.FC = () => {
                 max_lat: bounds.max_lat,
                 min_lng: bounds.min_lng,
                 max_lng: bounds.max_lng,
-                borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
+            borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
                 limit: limit,
                 // Only send filters if they're not at default values
                 min_open_violations: state.advanced.minOpenViolations > 0 ? state.advanced.minOpenViolations : undefined,
@@ -995,7 +995,7 @@ const SimplifiedMap: React.FC = () => {
                 borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
                 limit: limit,
                 time_range: undefined,  // Time range removed from heatmap for now
-              }),
+          }),
           fetchBoroughSummary()
         ]);
         
@@ -1346,7 +1346,7 @@ const SimplifiedMap: React.FC = () => {
                   maxEvictions={state.advanced.maxEvictions}
                   rentStabilizedOnly={state.advanced.rentStabilizedOnly}
                   rentStabilizedBBLs={rentStabilizedBBLs}
-                />
+            />
               )}
             </MapContainer>
             
