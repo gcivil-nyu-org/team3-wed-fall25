@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { fetchProfile } from "../api";
-import type { Profile } from "../api/auth";
+// Profile type is returned from API, using any for now
+type Profile = any;
 
 export const useProfile = () => {
   const [user, setUser] = useState<Profile | null>();

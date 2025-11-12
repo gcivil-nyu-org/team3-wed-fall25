@@ -95,15 +95,16 @@ def calculate_risk_score(
     Returns:
         Tuple of (risk_score, risk_level)
     """
-    # Base scoring weights
-    violation_weight = 0.4
+    # Base scoring weights - adjusted for better balance
+    violation_weight = 0.5  # Increased from 0.4
     eviction_weight = 0.4
-    complaint_weight = 0.2
+    complaint_weight = 0.1  # Decreased from 0.2
 
-    # Normalize scores (these thresholds can be adjusted based on data analysis)
-    violation_score = min(violations / 10.0, 1.0)  # Cap at 10 violations
-    eviction_score = min(evictions / 5.0, 1.0)  # Cap at 5 evictions
-    complaint_score = min(complaints / 5.0, 1.0)  # Cap at 5 complaints
+    # Normalize scores - adjusted for NYC to get ~45% High Risk
+    # More lenient normalization so more buildings score higher
+    violation_score = min(violations / 2.0, 1.0)  # Cap at 2 violations
+    eviction_score = min(evictions / 1.0, 1.0)  # Cap at 1 eviction (very impactful)
+    complaint_score = min(complaints / 3.0, 1.0)  # Cap at 3 complaints
 
     # Calculate weighted score
     risk_score = (
@@ -116,12 +117,16 @@ def calculate_risk_score(
     if rent_stabilized:
         risk_score *= 0.9
 
-    # Determine risk level
-    if risk_score >= 0.7:
+    # Determine risk level - NYC target: ~45% High Risk, rest split between Moderate and Low
+    # Simple logic: prioritize by issues, then rent stabilization status
+    total_issues = evictions + violations
+    if total_issues >= 1:
         risk_level = "High Risk"
-    elif risk_score >= 0.4:
+    elif not rent_stabilized:
+        # Non-rent-stabilized with no issues = Moderate Risk (will be adjusted in repository)
         risk_level = "Moderate Risk"
     else:
+        # Rent stabilized with no issues = Low Risk
         risk_level = "Low Risk"
 
     return round(risk_score, 2), risk_level

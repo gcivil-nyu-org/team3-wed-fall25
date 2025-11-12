@@ -1,5 +1,4 @@
 import { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification } from "./auth";
-import type { CommunityInbox, CommunityMessageThread } from "./community";
 import axiosInstance from "./axiosInstance";
 
 // Building data interfaces and API functions
@@ -178,21 +177,39 @@ export const searchBuildings = async (params: {
   query?: string;
   borough?: string;
   rentStabilized?: boolean;
+  rent_stabilized?: string;
+  affordable_housing?: string;
+  risk_level?: string;
+  violation_class?: string;
+  rent_impairing?: string;
+  complaint_category?: string;
+  recent_activity_days?: string;
   evictionsMin?: number;
   evictionsMax?: number;
   violationsMin?: number;
   violationsMax?: number;
   zipCode?: string;
+  zip?: string;
   page?: number;
   limit?: number;
+  sort_by?: string;
 }): Promise<SearchApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
 
     if (params.query) searchParams.append("q", params.query);
-    if (params.borough && params.borough !== "All Boroughs")
+    if (params.borough && params.borough !== "All Boroughs") {
       searchParams.append("borough", params.borough);
+      console.log("[DEBUG API] Sending borough filter:", params.borough);
+    }
     if (params.rentStabilized) searchParams.append("rent_stabilized", "true");
+    if (params.rent_stabilized) searchParams.append("rent_stabilized", params.rent_stabilized);
+    if (params.affordable_housing) searchParams.append("affordable_housing", params.affordable_housing);
+    if (params.risk_level) searchParams.append("risk_level", params.risk_level);
+    if (params.violation_class) searchParams.append("violation_class", params.violation_class);
+    if (params.rent_impairing) searchParams.append("rent_impairing", params.rent_impairing);
+    if (params.complaint_category) searchParams.append("complaint_category", params.complaint_category);
+    if (params.recent_activity_days) searchParams.append("recent_activity_days", params.recent_activity_days);
     if (params.evictionsMin !== undefined)
       searchParams.append("evictions_min", params.evictionsMin.toString());
     if (params.evictionsMax !== undefined)
@@ -202,12 +219,16 @@ export const searchBuildings = async (params: {
     if (params.violationsMax !== undefined)
       searchParams.append("violations_max", params.violationsMax.toString());
     if (params.zipCode) searchParams.append("zip", params.zipCode);
+    if (params.zip) searchParams.append("zip", params.zip);
     if (params.page) searchParams.append("page", params.page.toString());
     if (params.limit) searchParams.append("limit", params.limit.toString());
+    if (params.sort_by) {
+      searchParams.append("sort_by", params.sort_by);
+    }
 
-    const response = await axiosInstance.get<SearchApiResponse>(
-      `/buildings/search/?${searchParams.toString()}`
-    );
+    const url = `/buildings/search/?${searchParams.toString()}`;
+    console.log("Search API URL:", url); // Debug log
+    const response = await axiosInstance.get<SearchApiResponse>(url);
 
     if (!response.data.result) {
       throw new Error("Failed to search buildings");
@@ -940,7 +961,3 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 
 // Re-export auth functions
 export { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification };
-
-// Re-export community types and functions
-export type { CommunityInbox, CommunityMessageThread };
-export { fetchInboxs, fetchInboxMessages } from "./community";
