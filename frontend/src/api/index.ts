@@ -1,6 +1,7 @@
 // Main API exports - clean imports for all API functions
 
 import axiosInstance from './axiosInstance';
+import type { CommunityInbox, CommunityMessageThread } from './community';
 
 export * from './auth';
 export * from './building';
@@ -515,23 +516,7 @@ export interface CommunityReviewComment {
   username: string;
 }
 
-export interface CommunityInbox {
-  peer: {
-    id: number;
-    username: string;
-    email: string;
-  };
-  last_message: {
-    id: number;
-    body: string;
-    sender_id: number;
-    receiver_id: number;
-    bbl: string | null;
-    created_at: string;
-    read_at: string;
-  };
-  is_unread: boolean;
-}
+// CommunityInbox is exported from ./community (see imports above)
 
 export interface CommunityMessageItem {
   id: number;
@@ -802,7 +787,7 @@ export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
 
 export const fetchInboxMessages = async (
   peer_id: CommunityInbox["peer"]["id"]
-): Promise<import('./community/communityApi').CommunityMessageThread> => {
+): Promise<CommunityMessageThread> => {
   try {
     const response = await axiosInstance.get<any>(
       `/community/messages/thread/?peer_id=${peer_id}&limit=50&order=asc`,

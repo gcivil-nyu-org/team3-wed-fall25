@@ -61,7 +61,7 @@ const ReceiverList = ({
           >
             <ListItemText primary={peer.username} />
             <Typography variant="caption" color="text.secondary">
-              {last_message.body}
+              {last_message?.body || "No messages"}
             </Typography>
           </ListItemButton>
         </ListItem>

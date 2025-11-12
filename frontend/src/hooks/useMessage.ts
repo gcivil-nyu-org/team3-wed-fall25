@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import {
   fetchInboxs,
-  type CommunityInbox,
-} from "../api";
-import {
   fetchInboxMessages,
+  type CommunityInbox,
   type CommunityMessageThread,
 } from "../api/community";
 
