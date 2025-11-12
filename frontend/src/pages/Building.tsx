@@ -213,7 +213,7 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button
             variant="contained"
-            onClick={() => navigate("/landlord/apply")}
+            onClick={() => navigate(`/landlord/apply/${registration.bbl}`)}
             sx={{
               backgroundColor: "#FF6B35",
               color: "white",
