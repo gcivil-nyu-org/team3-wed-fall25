@@ -1,6 +1,6 @@
 import { styled } from "@mui/material/styles";
 import Box from "@mui/material/Box";
-import AppBar from "@mui/material/AppBar";
+import MuiAppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -11,12 +11,14 @@ import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import MenuIcon from "@mui/icons-material/Menu";
-import CloseIcon from "@mui/icons-material/Close";
-import BusinessIcon from "@mui/icons-material/Business";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LogoutIcon from "@mui/icons-material/Logout";
-import { useState } from "react";
+import {
+  Menu as MenuIcon,
+  Close as CloseIcon,
+  Business as BusinessIcon,
+  AccountCircle as AccountCircleIcon,
+  Logout as LogoutIcon,
+} from "@mui/icons-material";
+import { useState, type MouseEvent } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "../hooks";
 import { COLORS } from "../constants";
@@ -44,7 +46,7 @@ export default function AppAppBar() {
     setOpen(newOpen);
   };
 
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleProfileMenuOpen = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -75,7 +77,7 @@ export default function AppAppBar() {
   };
 
   return (
-    <AppBar
+    <MuiAppBar
       position="fixed"
       enableColorOnDark
       sx={{
@@ -288,12 +290,14 @@ export default function AppAppBar() {
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
                   onClose={handleProfileMenuClose}
-                  PaperProps={{
-                    sx: {
-                      mt: 1,
-                      minWidth: 200,
-                      borderRadius: 2,
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        mt: 1,
+                        minWidth: 200,
+                        borderRadius: 2,
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                      },
                     },
                   }}
                 >
@@ -694,6 +698,6 @@ export default function AppAppBar() {
           </Box>
         </StyledToolbar>
       </Container>
-    </AppBar>
+    </MuiAppBar>
   );
 }
