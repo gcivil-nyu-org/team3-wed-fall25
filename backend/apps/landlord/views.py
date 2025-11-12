@@ -964,7 +964,7 @@ class BuildingStatsView(APIView):
                 "eviction_filings": 1,
             }
             return Response(mock_stats, status=status.HTTP_200_OK)
-        
+
     def _get_address_from_building(self, bld, bbl):
         """Extract address from Building object"""
         if not bld or not bld.registration:
@@ -999,6 +999,7 @@ class BuildingStatsView(APIView):
             address_parts.append(str(zip_code))
 
         return ", ".join(address_parts) if address_parts else f"Property {bbl}"
+
 
 # NEW: Get overall landlord stats
 class LandlordStatsView(APIView):
