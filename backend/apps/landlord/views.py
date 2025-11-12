@@ -908,6 +908,7 @@ class BuildingStatsView(APIView):
             if not bld:
                 return Response(
                     {
+                        "address": "Unknown",
                         "total_violations": 0,
                         "open_violations": 0,
                         "total_complaints": 0,
@@ -941,8 +942,9 @@ class BuildingStatsView(APIView):
                 ]
             )
             eviction_filings = len(evictions)
-
+            address = self._get_address_from_building(bld, bbl)
             stats = {
+                "address": address or f"Property {bbl}",
                 "total_violations": total_violations,
                 "open_violations": open_violations,
                 "total_complaints": total_complaints,
@@ -962,7 +964,41 @@ class BuildingStatsView(APIView):
                 "eviction_filings": 1,
             }
             return Response(mock_stats, status=status.HTTP_200_OK)
+        
+    def _get_address_from_building(self, bld, bbl):
+        """Extract address from Building object"""
+        if not bld or not bld.registration:
+            return f"Property {bbl}"
 
+        reg = bld.registration
+        print("Registration object attributes:", dir(reg))
+
+        # Access the Registration attributes directly
+        house_number = reg.house_number if reg.house_number else None
+        street_name = reg.street_name if reg.street_name else None
+        borough = reg.boro if reg.boro else None
+        zip_code = reg.zip if reg.zip else None
+
+        # Build address
+        address_parts = []
+
+        # Street address
+        street_parts = []
+        if house_number:
+            street_parts.append(str(house_number))
+        if street_name:
+            street_parts.append(str(street_name))
+
+        if street_parts:
+            address_parts.append(" ".join(street_parts))
+
+        # Borough and ZIP
+        if borough:
+            address_parts.append(str(borough))
+        if zip_code:
+            address_parts.append(str(zip_code))
+
+        return ", ".join(address_parts) if address_parts else f"Property {bbl}"
 
 # NEW: Get overall landlord stats
 class LandlordStatsView(APIView):
