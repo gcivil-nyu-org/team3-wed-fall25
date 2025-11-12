@@ -517,7 +517,6 @@ class BuildingRepository:
                 else "Most Relevant"
             )
 
-
             order_by_clause = ""
             if sort_by_normalized == "Most Violations":
                 order_by_clause = "COALESCE(v.open_violations_count, 0) DESC, COALESCE(ev.evictions_count, 0) DESC, br.street_name ASC, br.house_number ASC"

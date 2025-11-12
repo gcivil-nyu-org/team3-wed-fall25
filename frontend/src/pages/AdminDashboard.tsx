@@ -120,15 +120,15 @@ export default function AdminDashboard() {
     storageUsage: 65,
   };
 
-  const handleApprove = (id: number) => {
+  const handleApprove = (_id: number) => {
     // TODO: Implement approve action
   };
 
-  const handleRemove = (id: number) => {
+  const handleRemove = (_id: number) => {
     // TODO: Implement remove action
   };
 
-  const handleReview = (id: number) => {
+  const handleReview = (_id: number) => {
     // TODO: Navigate to detail view
   };
 

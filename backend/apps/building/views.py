@@ -196,7 +196,6 @@ class BuildingSearchView(APIView):
             else "Most Relevant"
         )
 
-
         if not query:
             return Response(
                 {
