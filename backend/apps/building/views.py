@@ -165,7 +165,7 @@ class BuildingByBblView(APIView):
 class BuildingSearchView(APIView):
     """
     GET /api/buildings/search/?q=10001&limit=10&borough=Manhattan
-    Search buildings by address or zip code.
+    Search buildings by address or zip code with advanced filtering.
     """
 
     permission_classes = [AllowAny]
@@ -174,6 +174,41 @@ class BuildingSearchView(APIView):
         query = request.query_params.get("q", "").strip()
         limit = int(request.query_params.get("limit", 10))
         borough = request.query_params.get("borough")
+
+        # Advanced filters
+        rent_stabilized = request.query_params.get("rent_stabilized")
+        affordable_housing = request.query_params.get("affordable_housing")
+        risk_level = request.query_params.get("risk_level")
+        violation_class = request.query_params.get("violation_class")
+        rent_impairing = request.query_params.get("rent_impairing")
+        complaint_category = request.query_params.get("complaint_category")
+        recent_activity_days = request.query_params.get("recent_activity_days")
+        evictions_min = request.query_params.get("evictions_min")
+        evictions_max = request.query_params.get("evictions_max")
+        violations_min = request.query_params.get("violations_min")
+        violations_max = request.query_params.get("violations_max")
+        zip_code = request.query_params.get("zip")
+        sort_by_raw = request.query_params.get("sort_by", "Most Relevant")
+        # Handle URL encoding - Django automatically decodes, but be safe
+        sort_by = (
+            sort_by_raw.replace("+", " ").replace("%20", " ").strip()
+            if sort_by_raw
+            else "Most Relevant"
+        )
+
+        # Debug logging - force output to console
+        print(
+            f"[DEBUG BuildingSearchView] sort_by_raw: '{sort_by_raw}', sort_by: '{sort_by}'",
+            flush=True,
+        )
+        print(
+            f"[DEBUG BuildingSearchView] All params: q='{query}', borough='{borough}', sort_by='{sort_by}'",
+            flush=True,
+        )
+        print(
+            f"[DEBUG BuildingSearchView] Borough received: '{borough}' (type: {type(borough)})",
+            flush=True,
+        )
 
         if not query:
             return Response(
@@ -196,6 +231,19 @@ class BuildingSearchView(APIView):
                 query=query,
                 limit=limit,
                 borough=borough,
+                rent_stabilized=rent_stabilized,
+                affordable_housing=affordable_housing,
+                risk_level=risk_level,
+                violation_class=violation_class,
+                rent_impairing=rent_impairing,
+                complaint_category=complaint_category,
+                recent_activity_days=recent_activity_days,
+                evictions_min=evictions_min,
+                evictions_max=evictions_max,
+                violations_min=violations_min,
+                violations_max=violations_max,
+                zip_code=zip_code,
+                sort_by=sort_by,
             )
 
             return Response(
