@@ -196,19 +196,6 @@ class BuildingSearchView(APIView):
             else "Most Relevant"
         )
 
-        # Debug logging - force output to console
-        print(
-            f"[DEBUG BuildingSearchView] sort_by_raw: '{sort_by_raw}', sort_by: '{sort_by}'",
-            flush=True,
-        )
-        print(
-            f"[DEBUG BuildingSearchView] All params: q='{query}', borough='{borough}', sort_by='{sort_by}'",
-            flush=True,
-        )
-        print(
-            f"[DEBUG BuildingSearchView] Borough received: '{borough}' (type: {type(borough)})",
-            flush=True,
-        )
 
         if not query:
             return Response(

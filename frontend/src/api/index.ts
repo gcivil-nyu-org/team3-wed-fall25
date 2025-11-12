@@ -200,7 +200,6 @@ export const searchBuildings = async (params: {
     if (params.query) searchParams.append("q", params.query);
     if (params.borough && params.borough !== "All Boroughs") {
       searchParams.append("borough", params.borough);
-      console.log("[DEBUG API] Sending borough filter:", params.borough);
     }
     if (params.rentStabilized) searchParams.append("rent_stabilized", "true");
     if (params.rent_stabilized) searchParams.append("rent_stabilized", params.rent_stabilized);
@@ -227,7 +226,6 @@ export const searchBuildings = async (params: {
     }
 
     const url = `/buildings/search/?${searchParams.toString()}`;
-    console.log("Search API URL:", url); // Debug log
     const response = await axiosInstance.get<SearchApiResponse>(url);
 
     if (!response.data.result) {

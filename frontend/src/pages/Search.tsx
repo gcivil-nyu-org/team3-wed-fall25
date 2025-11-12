@@ -111,7 +111,6 @@ const Search: React.FC = () => {
       // Add borough filter if selected
       if (currentBorough !== "All Boroughs") {
         searchParams.borough = currentBorough;
-        console.log("[DEBUG Search] Adding borough filter:", currentBorough);
       }
       
       // Add rent stabilized filter

@@ -517,11 +517,6 @@ class BuildingRepository:
                 else "Most Relevant"
             )
 
-            # Debug logging
-            print(
-                f"[DEBUG BuildingRepository] sort_by received: '{sort_by}', effective: '{effective_sort_by}', normalized: '{sort_by_normalized}'",
-                flush=True,
-            )
 
             order_by_clause = ""
             if sort_by_normalized == "Most Violations":

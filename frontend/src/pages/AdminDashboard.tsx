@@ -121,17 +121,14 @@ export default function AdminDashboard() {
   };
 
   const handleApprove = (id: number) => {
-    console.log("Approve:", id);
     // TODO: Implement approve action
   };
 
   const handleRemove = (id: number) => {
-    console.log("Remove:", id);
     // TODO: Implement remove action
   };
 
   const handleReview = (id: number) => {
-    console.log("Review:", id);
     // TODO: Navigate to detail view
   };
 
