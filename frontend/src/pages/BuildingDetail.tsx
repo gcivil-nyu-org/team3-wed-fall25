@@ -159,9 +159,10 @@ export default function BuildingDetail() {
         const firstRecord = violationsData[0] || complaintsData[0];
         if (firstRecord) {
           setBuildingInfo({
-            address:
-              `${firstRecord.house_number || ""} ${firstRecord.street_name || ""}`.trim() ||
-              "Address not available",
+            address: 
+              stats.address || "Address not available",
+              // `${firstRecord.house_number || ""} ${firstRecord.street_name || ""}`.trim() ||
+              // "Address not available",
             bbl: bbl,
           });
         } else {
@@ -252,7 +253,7 @@ export default function BuildingDetail() {
     <Box sx={{ p: { xs: 2, md: 4 } }}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        // In BuildingDetail.tsx, update the breadcrumbs:
+        {/* In BuildingDetail.tsx, update the breadcrumbs:*/}
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
           <Link
             color="inherit"
