@@ -272,7 +272,7 @@ export const searchBuildings = async (params: {
           page: 1,
           limit: 1,
         };
-      } catch (buildingError) {
+      } catch {
         throw error; // Throw original search error
       }
     }
