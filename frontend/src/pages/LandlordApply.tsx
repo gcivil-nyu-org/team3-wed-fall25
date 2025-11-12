@@ -13,8 +13,9 @@ import {
   Snackbar,
   type AlertColor, // Use type-only import
 } from "@mui/material";
-import { useState, type FormEvent } from "react"; // Use type-only import
+import { useState, type FormEvent, useEffect } from "react"; // Use type-only import
 import * as landlordApi from "../api/landlord";
+import { useParams } from "react-router";
 
 interface FormData {
   name: string;
@@ -25,6 +26,7 @@ interface FormData {
 }
 
 export default function LandlordApply() {
+  const { bbl } = useParams<{ bbl: string }>();
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -42,6 +44,15 @@ export default function LandlordApply() {
     message: "",
     severity: "success",
   });
+
+  useEffect(() => {
+    if (bbl) {
+      setFormData((prevData) => ({
+        ...prevData,
+        bbl: bbl,
+      }));
+    }
+  }, [bbl]); // This effect runs when the bbl parameter changes
 
   // Separate handlers for different input types
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,7 +98,7 @@ export default function LandlordApply() {
       setFormData({
         name: "",
         email: "",
-        bbl: "",
+        bbl: bbl ||"",
         country: "",
         agreeTerms: false,
       });
@@ -95,7 +106,9 @@ export default function LandlordApply() {
       // Show error message
       setSnackbar({
         open: true,
-        message: "Failed to submit application. Please try again." + (error instanceof Error ? `Error: ${error.message}` : ""),
+        message:
+          "Failed to submit application. Please try again." +
+          (error instanceof Error ? `Error: ${error.message}` : ""),
         severity: "error",
       });
       console.error("Submission error:", error);
@@ -118,7 +131,7 @@ export default function LandlordApply() {
           flexDirection: "column",
           maxWidth: 600,
           mx: "auto",
-          mt: 4,
+          mt: 12,
           p: 2,
           border: "1px solid #ccc",
           borderRadius: 2,
