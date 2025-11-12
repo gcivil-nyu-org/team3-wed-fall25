@@ -1,5 +1,7 @@
 // Main API exports - clean imports for all API functions
 
+import axiosInstance from './axiosInstance';
+
 export * from './auth';
 export * from './building';
 export * from './neighborhood';
@@ -881,5 +883,3 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 // =========================================================
 // END OF COMMUNITY API TYPES AND FUNCTIONS
 // =========================================================
-
-export { fetchProfile };

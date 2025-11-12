@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { fetchProfile } from "../api";
-import type { Profile } from "../api/auth";
+import type { User } from "../types";
 
 export const useProfile = () => {
-  const [user, setUser] = useState<Profile | null>();
+  const [user, setUser] = useState<User | null>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

@@ -30,8 +30,8 @@ const mockViolations = [
 ];
 
 const mockReviews: Review[] = [
-  { id: "1", author: "Jane D.", content: "Great landlord, quick to fix issues!", date: "2025-09-01" , flagged: false, comments: []},
-  { id: "2", author: "John S.", content: "Had some problems with heating last winter.", date: "2025-08-15" , flagged: false, comments: []},
+  { id: "1", author: "Jane D.", content: "Great landlord, quick to fix issues!", date: "2025-09-01", flagged: false, comments: []},
+  { id: "2", author: "John S.", content: "Had some problems with heating last winter.", date: "2025-08-15", flagged: false, comments: []},
 ];
 
 export default function LandlordDashboard() {

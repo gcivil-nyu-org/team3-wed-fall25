@@ -262,7 +262,7 @@ export const removeFavorite = async (favoriteId: number | string): Promise<void>
 export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
   try {
     const response = await axiosInstance.get<any>(
-      API_ENDPOINTS.COMMUNITY.MESSAGES_INBOX
+      API_ENDPOINTS.COMMUNITY.MESSAGES_THREADS
     );
     const data = unwrap<any>(response);
     return Array.isArray(data) ? data : [];
@@ -277,7 +277,7 @@ export const fetchInboxMessages = async (
 ): Promise<CommunityMessageThread> => {
   try {
     const response = await axiosInstance.get<any>(
-      `${API_ENDPOINTS.COMMUNITY.MESSAGES_INBOX}?peer_id=${peerId}`
+      `${API_ENDPOINTS.COMMUNITY.MESSAGES_THREAD}?peer_id=${peerId}`
     );
     const data = unwrap<any>(response);
 

@@ -23,6 +23,8 @@ export const API_ENDPOINTS = {
     REVIEW_COMMENTS: '/community/review-comments/',
     FAVORITES: '/community/favorites/',
     MESSAGES_INBOX: '/community/messages/inbox/',
+    MESSAGES_THREAD: '/community/messages/thread/',
+    MESSAGES_THREADS: '/community/messages/threads/',
     MESSAGES_OUTBOX: '/community/messages/outbox/',
     MESSAGES_SEND: '/community/messages/send/',
     MESSAGES_MARK_READ: '/community/messages',

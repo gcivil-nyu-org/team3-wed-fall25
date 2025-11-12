@@ -1,4 +1,5 @@
-import { Box } from "@mui/material";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 import { useMessages } from "../../hooks/useMessage";
 import { type CommunityInbox } from "../../api";
 import MessageItem from "./MessageItem";
@@ -19,18 +20,42 @@ const MessageList = ({
     refresh();
   }, [timestamp]);
 
-  return (
-    !!user && (
-      <Box>
-        {messages?.messages.map((message) => (
-          <MessageItem
-            key={message.id}
-            message={message}
-            direction={message.sender_id === user.id ? "out" : "in"}
-          />
-        ))}
+  if (!user) {
+    return null;
+  }
+
+  if (!messages) {
+    return (
+      <Box sx={{ p: 2, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          Loading messages...
+        </Typography>
       </Box>
-    )
+    );
+  }
+
+  const messageList = messages.messages ?? [];
+
+  if (messageList.length === 0) {
+    return (
+      <Box sx={{ p: 2, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          No messages yet. Start the conversation!
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      {messageList.map((message) => (
+        <MessageItem
+          key={message.id}
+          message={message}
+          direction={message.sender_id === user.id ? "out" : "in"}
+        />
+      ))}
+    </Box>
   );
 };
 

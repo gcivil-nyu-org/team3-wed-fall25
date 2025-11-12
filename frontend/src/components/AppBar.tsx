@@ -1,6 +1,6 @@
 import { styled } from "@mui/material/styles";
 import Box from "@mui/material/Box";
-import AppBar from "@mui/material/AppBar";
+import MuiAppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
@@ -11,12 +11,14 @@ import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
-import MenuIcon from "@mui/icons-material/Menu";
-import CloseIcon from "@mui/icons-material/Close";
-import BusinessIcon from "@mui/icons-material/Business";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LogoutIcon from "@mui/icons-material/Logout";
-import { useState } from "react";
+import {
+  Menu as MenuIcon,
+  Close as CloseIcon,
+  Business as BusinessIcon,
+  AccountCircle as AccountCircleIcon,
+  Logout as LogoutIcon,
+} from "@mui/icons-material";
+import { useState, type MouseEvent } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { useAuth } from "../hooks";
 import { COLORS } from "../constants";
@@ -44,7 +46,7 @@ export default function AppAppBar() {
     setOpen(newOpen);
   };
 
-  const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleProfileMenuOpen = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
@@ -75,7 +77,7 @@ export default function AppAppBar() {
   };
 
   return (
-    <AppBar
+    <MuiAppBar
       position="fixed"
       enableColorOnDark
       sx={{
@@ -181,42 +183,46 @@ export default function AppAppBar() {
                 Community
               </Button>
             </NavLink>
-            <NavLink to="/landlord/dashboard">
-              <Button
-                variant="text"
-                size="small"
-                sx={{
-                  color: "#4A5568",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    color: "#FF6B35",
-                    backgroundColor: "rgba(255, 107, 53, 0.05)",
-                  },
-                }}
-              >
-                Landlords
-              </Button>
-            </NavLink>
-            <NavLink to="/message">
-              <Button
-                variant="text"
-                size="small"
-                sx={{
-                  color: "#4A5568",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    color: "#FF6B35",
-                    backgroundColor: "rgba(255, 107, 53, 0.05)",
-                  },
-                }}
-              >
-                Message
-              </Button>
-            </NavLink>
+            {user && (
+              <>
+                <NavLink to="/landlord/dashboard">
+                  <Button
+                    variant="text"
+                    size="small"
+                    sx={{
+                      color: "#4A5568",
+                      fontWeight: 500,
+                      textTransform: "uppercase",
+                      fontSize: "0.85rem",
+                      "&:hover": {
+                        color: "#FF6B35",
+                        backgroundColor: "rgba(255, 107, 53, 0.05)",
+                      },
+                    }}
+                  >
+                    My Portfolio
+                  </Button>
+                </NavLink>
+                <NavLink to="/message">
+                  <Button
+                    variant="text"
+                    size="small"
+                    sx={{
+                      color: "#4A5568",
+                      fontWeight: 500,
+                      textTransform: "uppercase",
+                      fontSize: "0.85rem",
+                      "&:hover": {
+                        color: "#FF6B35",
+                        backgroundColor: "rgba(255, 107, 53, 0.05)",
+                      },
+                    }}
+                  >
+                    Messages
+                  </Button>
+                </NavLink>
+              </>
+            )}
             <Button
               variant="text"
               size="small"
@@ -234,34 +240,6 @@ export default function AppAppBar() {
               Admin
             </Button>
           </Box>
-
-          {/* Auth Buttons */}
-          <Box
-            sx={{
-              display: { xs: "none", md: "flex" },
-              gap: 1,
-              alignItems: "center",
-            }}
-          >
-            <NavLink to="/signin">
-              <Button
-                variant="text"
-                size="small"
-                sx={{
-                  color: "#4A5568",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    color: "#FF6B35",
-                    backgroundColor: "rgba(255, 107, 53, 0.05)",
-                  },
-                }}
-              >
-                Landlords
-              </Button>
-            </NavLink>
-            </Box>
 
           {/* Auth Buttons / User Profile */}
           <Box
@@ -310,20 +288,22 @@ export default function AppAppBar() {
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
                   onClose={handleProfileMenuClose}
-                  PaperProps={{
-                    sx: {
-                      mt: 1,
-                      minWidth: 200,
-                      borderRadius: 2,
-                      boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        mt: 1,
+                        minWidth: 200,
+                        borderRadius: 2,
+                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                      },
                     },
                   }}
                 >
                   {user && (
-                    <MenuItem onClick={handleProfileClick}>
-                      <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
-                      My Profile
-                    </MenuItem>
+                  <MenuItem onClick={handleProfileClick}>
+                    <AccountCircleIcon sx={{ mr: 1, fontSize: 20 }} />
+                    My Profile
+                  </MenuItem>
                   )}
                   {isAdmin && (
                     <MenuItem onClick={() => { navigate('/admin/dashboard'); handleProfileMenuClose(); }}>
@@ -518,10 +498,7 @@ export default function AppAppBar() {
                       Community
                     </Button>
                   </NavLink>
-                  <NavLink
-                    to="/landlord/dashboard"
-                    style={{ textDecoration: "none" }}
-                  >
+                  <NavLink to="/landlords" style={{ textDecoration: "none" }}>
                     <Button
                       fullWidth
                       variant="text"
@@ -540,25 +517,48 @@ export default function AppAppBar() {
                       Landlords
                     </Button>
                   </NavLink>
-                  <NavLink to="/message" style={{ textDecoration: "none" }}>
-                    <Button
-                      fullWidth
-                      variant="text"
-                      sx={{
-                        justifyContent: "flex-start",
-                        color: "#4A5568",
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.9rem",
-                        "&:hover": {
-                          color: "#FF6B35",
-                          backgroundColor: "rgba(255, 107, 53, 0.05)",
-                        },
-                      }}
-                    >
-                      Message
-                    </Button>
-                  </NavLink>
+                  {user && (
+                    <>
+                      <NavLink to="/landlord/dashboard" style={{ textDecoration: "none" }}>
+                        <Button
+                          fullWidth
+                          variant="text"
+                          sx={{
+                            justifyContent: "flex-start",
+                            color: "#4A5568",
+                            fontWeight: 500,
+                            textTransform: "uppercase",
+                            fontSize: "0.9rem",
+                            "&:hover": {
+                              color: "#FF6B35",
+                              backgroundColor: "rgba(255, 107, 53, 0.05)",
+                            },
+                          }}
+                        >
+                          My Portfolio
+                        </Button>
+                      </NavLink>
+                      <NavLink to="/message" style={{ textDecoration: "none" }}>
+                        <Button
+                          fullWidth
+                          variant="text"
+                          sx={{
+                            justifyContent: "flex-start",
+                            color: "#4A5568",
+                            fontWeight: 500,
+                            textTransform: "uppercase",
+                            fontSize: "0.9rem",
+                            "&:hover": {
+                              color: "#FF6B35",
+                              backgroundColor: "rgba(255, 107, 53, 0.05)",
+                            },
+                          }}
+                        >
+                          Messages
+                        </Button>
+                      </NavLink>
+                    </>
+                  )}
                   <Button
                     fullWidth
                     variant="text"
@@ -696,6 +696,6 @@ export default function AppAppBar() {
           </Box>
         </StyledToolbar>
       </Container>
-    </AppBar>
+    </MuiAppBar>
   );
 }

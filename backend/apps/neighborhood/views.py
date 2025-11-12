@@ -27,7 +27,8 @@ def _to_primitive(value):
 
 class NeighborhoodStatsView(APIView):
     """
-    GET /api/neighborhood/stats?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9&data_type=violations
+    GET /api/neighborhood/stats?min_lat=40.7&max_lat=40.8&min_lng=-74.0
+    &max_lng=-73.9&data_type=violations
 
     Get neighborhood statistics for buildings within geographic bounds.
     """
@@ -110,7 +111,8 @@ class NeighborhoodStatsView(APIView):
 
 class HeatmapDataView(APIView):
     """
-    GET /api/neighborhood/heatmap?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9&data_type=violations&borough=MANHATTAN
+    GET /api/neighborhood/heatmap?min_lat=40.7&max_lat=40.8&min_lng=-74.0
+    &max_lng=-73.9&data_type=violations&borough=MANHATTAN
 
     Get heatmap data points for visualization.
     """

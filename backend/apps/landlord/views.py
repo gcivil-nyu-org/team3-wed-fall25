@@ -573,7 +573,15 @@ class LandlordApplicationView(APIView):
                 #           experience_years, country, agree_terms, user_id)
                 #         VALUES (%s, %s, %s, %s, %s, %s, %s)
                 #         """,
-                #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
+                #         (
+                #             full_name,
+                #             email,
+                #             phone,
+                #             experience_years,
+                #             country,
+                #             agree_terms,
+                #             user_id,
+                #         ),
                 #     )
 
             return Response(
@@ -656,7 +664,9 @@ def landlord_apply_get(request):
             # if all([full_name, email, phone, experience_years]):
             #     db.execute(
             #         """
-            #         INSERT INTO landlord_applications (full_name, email, phone, experience_years, country, agree_terms, user_id)
+            #         INSERT INTO landlord_applications (
+            #             full_name, email, phone, experience_years, country, agree_terms, user_id
+            #         )
             #         VALUES (%s, %s, %s, %s, %s, %s, %s)
             #         """,
             #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
@@ -1147,7 +1157,9 @@ class ReviewResponseView(APIView):
                 # Insert the response into community_review_comments
                 db.execute(
                     """
-                    INSERT INTO community_review_comments (review_id, user_id, body, created_at, updated_at)
+                    INSERT INTO community_review_comments (
+                        review_id, user_id, body, created_at, updated_at
+                    )
                     VALUES (%s, %s, %s, NOW(), NOW())
                     """,
                     (review_id, user_id, response),

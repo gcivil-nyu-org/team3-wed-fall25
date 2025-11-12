@@ -4,6 +4,7 @@ import {
   ListItemButton,
   ListItemText,
   Typography,
+  Box,
 } from "@mui/material";
 import { useInboxs } from "../../hooks/useMessage";
 import { useEffect } from "react";
@@ -21,16 +22,30 @@ const ReceiverList = ({
   const { messages, refresh } = useInboxs();
 
   useEffect(() => {
-    onSelect(messages.length > 0 ? messages[0].peer.id : 0);
-  }, [messages]);
+    if (messages.length > 0 && messages[0]?.peer?.id && selectedPeerId === 0) {
+      onSelect(messages[0].peer.id);
+    }
+  }, [messages]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     refresh();
   }, [timestamp]);
 
+  const validMessages = messages.filter((inbox) => inbox?.peer?.id);
+
+  if (validMessages.length === 0) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          No conversations yet
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <List>
-      {messages.map(({ peer, last_message }) => (
+      {validMessages.map(({ peer, last_message }) => (
         <ListItem
           key={peer.id}
           disablePadding
