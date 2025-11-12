@@ -50,7 +50,7 @@ const Review = ({
           }}
         >
           <UserLabel
-            username={review.username}
+            username={review.username || 'Unknown'}
             userId={review.user_id}
             enableActions={user?.id !== review.user_id}
           />
