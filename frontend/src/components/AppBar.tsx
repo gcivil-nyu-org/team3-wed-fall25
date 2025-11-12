@@ -180,10 +180,72 @@ export default function AppAppBar() {
                   },
                 }}
               >
-                  Community
-                </Button>
-              </NavLink>
-            <NavLink to="/landlords">
+                Community
+              </Button>
+            </NavLink>
+            <NavLink to="/landlord/dashboard">
+              <Button
+                variant="text"
+                size="small"
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
+              >
+                Landlords
+              </Button>
+            </NavLink>
+            <NavLink to="/message">
+              <Button
+                variant="text"
+                size="small"
+                sx={{
+                  color: "#4A5568",
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  fontSize: "0.85rem",
+                  "&:hover": {
+                    color: "#FF6B35",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                }}
+              >
+                Message
+              </Button>
+            </NavLink>
+            <Button
+              variant="text"
+              size="small"
+              sx={{
+                color: "#4A5568",
+                fontWeight: 500,
+                textTransform: "uppercase",
+                fontSize: "0.85rem",
+                "&:hover": {
+                  color: "#FF6B35",
+                  backgroundColor: "rgba(255, 107, 53, 0.05)",
+                },
+              }}
+            >
+              Admin
+            </Button>
+          </Box>
+
+          {/* Auth Buttons */}
+          <Box
+            sx={{
+              display: { xs: "none", md: "flex" },
+              gap: 1,
+              alignItems: "center",
+            }}
+          >
+            <NavLink to="/signin">
               <Button
                 variant="text"
                 size="small"

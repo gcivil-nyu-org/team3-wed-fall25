@@ -159,9 +159,10 @@ export default function BuildingDetail() {
         const firstRecord = violationsData[0] || complaintsData[0];
         if (firstRecord) {
           setBuildingInfo({
-            address:
-              `${firstRecord.house_number || ""} ${firstRecord.street_name || ""}`.trim() ||
-              "Address not available",
+            address: 
+              stats.address || "Address not available",
+              // `${firstRecord.house_number || ""} ${firstRecord.street_name || ""}`.trim() ||
+              // "Address not available",
             bbl: bbl,
           });
         } else {

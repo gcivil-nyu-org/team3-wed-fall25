@@ -59,9 +59,9 @@ const ReceiverList = ({
               alignItems: "flex-start",
             }}
           >
-            <ListItemText primary={peer.username || `User ${peer.id}`} />
+            <ListItemText primary={peer.username} />
             <Typography variant="caption" color="text.secondary">
-              {last_message?.body ?? "No messages yet"}
+              {last_message.body}
             </Typography>
           </ListItemButton>
         </ListItem>

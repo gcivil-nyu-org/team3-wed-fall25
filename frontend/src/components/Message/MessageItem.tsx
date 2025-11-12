@@ -5,7 +5,7 @@ const MessageItem = ({
   message,
   direction,
 }: {
-  message: CommunityMessage;
+  message: CommunityMessage["messages"][0];
   direction: "in" | "out";
 }) => {
   const isIn = direction === "in";
