@@ -548,14 +548,15 @@ export interface CommunityMessage {
 // Community API Functions
 export const fetchFavorites = async (): Promise<CommunityFavorite[]> => {
   try {
-    const response = await axiosInstance.get<any>("/community/favorites/", {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityFavorite[];
+    }>("/community/favorites/", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching favorites:", error);
     throw error;
@@ -567,7 +568,10 @@ export const addFavorite = async (
   note?: string
 ): Promise<CommunityFavorite> => {
   try {
-    const response = await axiosInstance.post<any>(
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityFavorite;
+    }>(
       "/community/favorites/",
       {
         bbl,
@@ -579,9 +583,7 @@ export const addFavorite = async (
         },
       }
     );
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as CommunityFavorite;
+    return response.data.data;
   } catch (error) {
     console.error("Error adding favorite:", error);
     throw error;
@@ -603,10 +605,11 @@ export const removeFavorite = async (favoriteId: number): Promise<void> => {
 
 export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
   try {
-    const response = await axiosInstance.get<any>(`/community/reviews/?bbl=${bbl}`);
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReview[];
+    }>(`/community/reviews/?bbl=${bbl}`);
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching reviews:", error);
     throw error;
@@ -615,14 +618,15 @@ export const fetchReviews = async (bbl: string): Promise<CommunityReview[]> => {
 
 export const fetchMyReviews = async (): Promise<CommunityReview[]> => {
   try {
-    const response = await axiosInstance.get<any>(`/community/reviews/mine/`, {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReview[];
+    }>(`/community/reviews/mine/`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching reviews:", error);
     throw error;
@@ -636,7 +640,10 @@ export const createReview = async (
   rating?: number
 ): Promise<CommunityReview> => {
   try {
-    const response = await axiosInstance.post<any>(
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityReview;
+    }>(
       "/community/reviews/",
       {
         bbl,
@@ -650,9 +657,7 @@ export const createReview = async (
         },
       }
     );
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as CommunityReview;
+    return response.data.data;
   } catch (error) {
     console.error("Error creating review:", error);
     throw error;
@@ -666,7 +671,10 @@ export const updateReview = async (
   rating?: number
 ): Promise<CommunityReview> => {
   try {
-    const response = await axiosInstance.put<any>(
+    const response = await axiosInstance.put<{
+      result: boolean;
+      data: CommunityReview;
+    }>(
       `/community/reviews/${reviewId}/`,
       {
         title,
@@ -679,9 +687,7 @@ export const updateReview = async (
         },
       }
     );
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as CommunityReview;
+    return response.data.data;
   } catch (error) {
     console.error("Error updating review:", error);
     throw error;
@@ -692,14 +698,15 @@ export const deleteReview = async (
   reviewId: number
 ): Promise<{ detail: string }> => {
   try {
-    const response = await axiosInstance.delete<any>(`/community/reviews/${reviewId}/`, {
+    const response = await axiosInstance.delete<{
+      result: boolean;
+      data: { detail: string };
+    }>(`/community/reviews/${reviewId}/`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as { detail: string };
+    return response.data.data;
   } catch (error) {
     console.error("Error deleting review:", error);
     throw error;
@@ -710,10 +717,11 @@ export const fetchReviewComments = async (
   reviewId: number
 ): Promise<CommunityReviewComment[]> => {
   try {
-    const response = await axiosInstance.get<any>(`/community/review-comments/?review_id=${reviewId}`);
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityReviewComment[];
+    }>(`/community/review-comments/?review_id=${reviewId}`);
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching review comments:", error);
     throw error;
@@ -725,7 +733,10 @@ export const createReviewComment = async (
   body: string
 ): Promise<CommunityReviewComment> => {
   try {
-    const response = await axiosInstance.post<any>(
+    const response = await axiosInstance.post<{
+      result: boolean;
+      data: CommunityReviewComment;
+    }>(
       "/community/review-comments/",
       {
         review_id: reviewId,
@@ -737,9 +748,7 @@ export const createReviewComment = async (
         },
       }
     );
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as CommunityReviewComment;
+    return response.data.data;
   } catch (error) {
     console.error("Error creating review comment:", error);
     throw error;
@@ -761,14 +770,15 @@ export const deleteReviewComment = async (commentId: number): Promise<void> => {
 
 export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
   try {
-    const response = await axiosInstance.get<any>("/community/messages/threads/", {
+    const response = await axiosInstance.get<{
+      result: boolean;
+      data: CommunityInbox[];
+    }>("/community/messages/threads/", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? data : [];
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching inbox messages:", error);
     throw error;
@@ -787,9 +797,7 @@ export const fetchInboxMessages = async (
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    // Handle OkJSONRenderer wrapper: response.data.data or response.data
-    const data = response.data?.data ?? response.data;
-    return data as CommunityMessage;
+    return response.data.data;
   } catch (error) {
     console.error("Error fetching inbox messages:", error);
     throw error;
