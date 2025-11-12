@@ -178,8 +178,8 @@ class BuildingRepository:
         for bbl in bbls:
             try:
                 result[bbl] = self.get_by_bbl(bbl)
-            except Exception as e:
-                print(f"[BuildingRepository] get_by_bbl failed for {bbl}: {e}")
+            except Exception:
+                pass
         return result
 
     def get_registration_by_bbl(self, bbl: str) -> Optional[Dict[str, Any]]:

@@ -63,25 +63,15 @@ class PropertiesView(APIView):
             properties = []
             for bbl, bld in buildings.items():
                 # Debug: print the building object structure
-                print(f"Building {bbl} type: {type(bld)}")
                 # if bld:
                 #     print(f"Building {bbl} attributes: {dir(bld)}")
 
                 address = self._get_address_from_building(bld, bbl)
-                print(f"Property {bbl} address: {address}")
-                # print((len(getattr(bld, "complaints", []))))
-                # print(getattr(bld, "complaints", []))
 
-                complaints = getattr(bld, "complaints", []) or []
                 violations = getattr(bld, "violations", []) or []
                 evictions = getattr(bld, "evictions", []) or []
 
-                print(f"Found {len(complaints)} complaints for BBL {bbl}")
-                print(f"Found {len(violations)} violations for BBL {bbl}")
-                print(f"Found {len(evictions)} evictions for BBL {bbl}")
-
                 # Count them separately
-                # complaints_count = len(complaints)
                 violations_count = len(violations)
                 evictions_count = len(evictions)
 
@@ -574,8 +564,13 @@ class LandlordApplicationView(APIView):
                 #         VALUES (%s, %s, %s, %s, %s, %s, %s)
                 #         """,
                 #         (
-                #           full_name, email, phone, experience_years,
-                #           country, agree_terms, user_id
+                #             full_name,
+                #             email,
+                #             phone,
+                #             experience_years,
+                #             country,
+                #             agree_terms,
+                #             user_id,
                 #         ),
                 #     )
 
@@ -660,8 +655,7 @@ def landlord_apply_get(request):
             #     db.execute(
             #         """
             #         INSERT INTO landlord_applications (
-            #           full_name, email, phone, experience_years,
-            #           country, agree_terms, user_id
+            #             full_name, email, phone, experience_years, country, agree_terms, user_id
             #         )
             #         VALUES (%s, %s, %s, %s, %s, %s, %s)
             #         """,
@@ -1153,7 +1147,9 @@ class ReviewResponseView(APIView):
                 # Insert the response into community_review_comments
                 db.execute(
                     """
-                    INSERT INTO community_review_comments (review_id, user_id, body, created_at, updated_at)
+                    INSERT INTO community_review_comments (
+                        review_id, user_id, body, created_at, updated_at
+                    )
                     VALUES (%s, %s, %s, NOW(), NOW())
                     """,
                     (review_id, user_id, response),

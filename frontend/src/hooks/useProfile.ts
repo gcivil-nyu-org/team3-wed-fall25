@@ -2,11 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { fetchProfile } from "../api";
-// Profile type is returned from API, using any for now
-type Profile = any;
+import type { User } from "../types";
 
 export const useProfile = () => {
-  const [user, setUser] = useState<Profile | null>();
+  const [user, setUser] = useState<User | null>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

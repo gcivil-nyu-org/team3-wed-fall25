@@ -253,7 +253,6 @@ export default function BuildingDetail() {
     <Box sx={{ p: { xs: 2, md: 4 } }}>
       {/* Header */}
       <Box sx={{ mb: 3 }}>
-        {/* In BuildingDetail.tsx, update the breadcrumbs:*/}
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
           <Link
             color="inherit"

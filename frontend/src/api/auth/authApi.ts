@@ -5,9 +5,13 @@ import type {
   LoginCredentials, 
   UserRegistration, 
   EmailVerificationParams, 
-  ResendVerificationParams 
+  ResendVerificationParams,
+  User
 } from '../../types';
 import { API_ENDPOINTS } from '../../constants';
+
+// Export Profile as an alias for User for backward compatibility
+export type Profile = User;
 
 export const fetchProfile = () => {
   return axiosInstance.get(API_ENDPOINTS.AUTH.PROFILE);

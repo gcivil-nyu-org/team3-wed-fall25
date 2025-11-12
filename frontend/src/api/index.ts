@@ -1,5 +1,9 @@
-import { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification } from "./auth";
-import axiosInstance from "./axiosInstance";
+import axiosInstance from './axiosInstance';
+
+export * from './auth';
+export * from './building';
+export * from './neighborhood';
+export * from './community';
 
 // Building data interfaces and API functions
 
@@ -956,6 +960,3 @@ export const deleteMessage = async (messageId: number): Promise<void> => {
 // =========================================================
 // END OF COMMUNITY API TYPES AND FUNCTIONS
 // =========================================================
-
-// Re-export auth functions
-export { fetchProfile, loginUser, registerUser, verifyEmail, resendVerification };
