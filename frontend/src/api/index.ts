@@ -786,15 +786,14 @@ export const deleteReviewComment = async (commentId: number): Promise<void> => {
 
 export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
   try {
-    const response = await axiosInstance.get<{
-      result: boolean;
-      data: CommunityInbox[];
-    }>("/community/messages/threads/", {
+    const response = await axiosInstance.get<any>("/community/messages/threads/", {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       },
     });
-    return response.data.data;
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Error fetching inbox messages:", error);
     throw error;
@@ -803,17 +802,38 @@ export const fetchInboxs = async (): Promise<CommunityInbox[]> => {
 
 export const fetchInboxMessages = async (
   peer_id: CommunityInbox["peer"]["id"]
-): Promise<CommunityMessage> => {
+): Promise<import('./community/communityApi').CommunityMessageThread> => {
   try {
-    const response = await axiosInstance.get<{
-      result: boolean;
-      data: CommunityMessage;
-    }>(`/community/messages/thread/?peer_id=${peer_id}&limit=50&order=asc`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      },
-    });
-    return response.data.data;
+    const response = await axiosInstance.get<any>(
+      `/community/messages/thread/?peer_id=${peer_id}&limit=50&order=asc`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }
+    );
+    // Handle OkJSONRenderer wrapper: response.data.data or response.data
+    const data = response.data?.data ?? response.data;
+    
+    // Handle different response formats
+    if (data && data.messages && Array.isArray(data.messages)) {
+      return {
+        peer: data.peer || { id: Number(peer_id) },
+        messages: data.messages,
+      };
+    }
+    
+    if (Array.isArray(data)) {
+      return {
+        peer: { id: Number(peer_id) },
+        messages: data,
+      };
+    }
+    
+    return {
+      peer: { id: Number(peer_id) },
+      messages: [],
+    };
   } catch (error) {
     console.error("Error fetching inbox messages:", error);
     throw error;
