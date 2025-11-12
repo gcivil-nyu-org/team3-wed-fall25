@@ -2,14 +2,24 @@ import { Box, Button, TextField } from "@mui/material";
 import { useState } from "react";
 
 export interface ReviewResponseFormProps {
-  onSubmit: (response: string) => void;
+  onSubmit: (response: string, reviewId: string) => void;
+  reviewId: string; // reviewId as a prop
   loading?: boolean;
 }
 
-export function ReviewResponseForm({ onSubmit, loading }: ReviewResponseFormProps) {
+export function ReviewResponseForm({ onSubmit, reviewId, loading }: ReviewResponseFormProps) {
   const [value, setValue] = useState("");
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (value.trim()) {
+      onSubmit(value, reviewId); 
+      setValue("");
+    }
+  };
+  
   return (
-    <Box component="form" onSubmit={e => { e.preventDefault(); onSubmit(value); setValue(""); }} sx={{ display: "flex", gap: 2, mt: 2 }}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", gap: 2, mt: 2 }}>
       <TextField
         label="Your Response"
         value={value}

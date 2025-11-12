@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Q, F, Case, When, IntegerField, Max, Exists, OuterRef
+from django.db.models import Q, F, Case, When, IntegerField, Max
+
+# from django.db.models import OuterRef, Exists
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -479,6 +481,7 @@ def messages_thread(request):
             ).update(read_at=timezone.now())
 
         # 페이징 힌트
+        # next_since_id = messages[-1].id if messages else int(since_id) if since_id else None
         prev_before_id = (
             messages[0].id if messages else int(before_id) if before_id else None
         )
@@ -575,6 +578,14 @@ def message_threads_simple(request):
     last_map = {m.id: m for m in CommunityMessages.objects.filter(id__in=last_ids)}
     peer_ids = [g["peer_id"] for g in grouped if g.get("peer_id")]
     peers = User.objects.in_bulk(peer_ids)
+
+    # 각 peer별 미읽음 존재 여부
+    # unread_subq = CommunityMessages.objects.filter(
+    #     sender_id=OuterRef("peer_id"),
+    #     receiver_id=user_id,
+    #     read_at__isnull=True,
+    #     deleted_at__isnull=True,
+    # )
 
     # 결과 조합
     results = []
