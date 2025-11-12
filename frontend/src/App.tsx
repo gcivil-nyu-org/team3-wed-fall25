@@ -64,7 +64,7 @@ function App() {
           <Route path="landlords" element={<Landlords />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
-          <Route path="landlord/apply" element={<LandlordApply />} />
+          <Route path="landlord/apply/:bbl" element={<LandlordApply />} />
           <Route path="landlord/building/:bbl" element={<BuildingDetail />} />
           <Route path="profile" element={<Profile />} />
           <Route path="message" element={<Message />} />
