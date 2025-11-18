@@ -454,7 +454,7 @@ class ReviewsView(APIView):
                             else ""
                         ),
                         "bbl": row["bbl"],
-                        "flagged": False,
+                        "flagged": bool(row.get("flagged")),
                         "comments": comments,
                     }
                 )
@@ -951,19 +951,114 @@ class BuildingStatsView(APIView):
                 "open_complaints": open_complaints,
                 "eviction_filings": eviction_filings,
             }
-
+            print(f"Building stats for BBL {bbl}: {stats}")
             return Response(stats, status=status.HTTP_200_OK)
         except Exception as e:
             print(f"[BuildingStatsView] DB error: {e}")
             # Fallback mock stats
             mock_stats = {
+                "address": address or f"Property {bbl}",
                 "total_violations": 2,
                 "open_violations": 2,
                 "total_complaints": 5,
                 "open_complaints": 2,
                 "eviction_filings": 1,
             }
+            print("Returning mock stats:", mock_stats)
             return Response(mock_stats, status=status.HTTP_200_OK)
+
+
+# NEW: Update building metadata (average rent, occupancy)
+class BuildingUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, bbl):
+        """Persist simple building metadata for a landlord-owned property.
+
+        This endpoint performs a best-effort upsert into a lightweight
+        `landlord_property_meta` table. If the table doesn't exist yet it will
+        be created. This keeps the change local and avoids modifying existing
+        crawled tables.
+        """
+        try:
+            try:
+                user_id = (
+                    request.user.id
+                    if request.user and request.user.is_authenticated
+                    else None
+                )
+            except Exception:
+                user_id = None
+
+            if not user_id:
+                return Response(
+                    {"error": "Authentication required."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+
+            # Verify ownership
+            with PostgresClient() as db:
+                ownership = db.query_one(
+                    """
+                    SELECT bbl FROM landlord_owners
+                    WHERE owner_user_id = %s AND bbl = %s AND deleted_at IS NULL
+                    """,
+                    (user_id, bbl),
+                )
+
+                if not ownership:
+                    return Response(
+                        {"error": "You don't have access to this property."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
+                avg = request.data.get("average_rent")
+                occ = request.data.get("occupancy_rate")
+
+                # Create a small metadata table if it doesn't exist yet
+                db.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS landlord_property_meta (
+                        bbl TEXT PRIMARY KEY,
+                        average_rent NUMERIC,
+                        occupancy_rate NUMERIC,
+                        updated_by INTEGER,
+                        updated_at TIMESTAMP
+                    )
+                    """,
+                    (),
+                )
+
+                # Upsert the values
+                db.execute(
+                    """
+                    INSERT INTO landlord_property_meta (bbl, average_rent, occupancy_rate, updated_by, updated_at)
+                    VALUES (%s, %s, %s, %s, NOW())
+                    ON CONFLICT (bbl) DO UPDATE SET
+                      average_rent = EXCLUDED.average_rent,
+                      occupancy_rate = EXCLUDED.occupancy_rate,
+                      updated_by = EXCLUDED.updated_by,
+                      updated_at = EXCLUDED.updated_at
+                    """,
+                    (bbl, avg, occ, user_id),
+                )
+
+                # Return the current metadata row
+                row = db.query_one(
+                    """
+                    SELECT bbl, average_rent, occupancy_rate, updated_by, updated_at
+                    FROM landlord_property_meta WHERE bbl = %s
+                    """,
+                    (bbl,),
+                )
+
+            return Response({"data": row}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[BuildingUpdateView] DB error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def _get_address_from_building(self, bld, bbl):
         """Extract address from Building object"""

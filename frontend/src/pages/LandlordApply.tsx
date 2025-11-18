@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import { useState, type FormEvent, useEffect } from "react"; // Use type-only import
 import * as landlordApi from "../api/landlord";
-import { useParams } from "react-router";
+import { useParams, useNavigate } from "react-router";
 
 interface FormData {
   name: string;
@@ -53,6 +53,9 @@ export default function LandlordApply() {
       }));
     }
   }, [bbl]); // This effect runs when the bbl parameter changes
+
+  // router navigation helper for Back button
+  const navigate = useNavigate();
 
   // Separate handlers for different input types
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,6 +140,15 @@ export default function LandlordApply() {
           borderRadius: 2,
         }}
       >
+        {/* Back button to return to previous page */}
+        <Button
+          onClick={() => navigate(-1)}
+          variant="text"
+          aria-label="Back"
+          sx={{ mb: 2, alignSelf: "flex-start" }}
+        >
+          Back
+        </Button>
         <Typography variant="h4" component="h1" gutterBottom>
           Landlord Application
         </Typography>
