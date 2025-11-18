@@ -69,6 +69,8 @@ export interface BuildingComplaintDTO {
 }
 
 export interface BuildingStatsDTO {
+  address?: string;
+  bbl?: string;
   total_violations: number;
   open_violations: number;
   total_complaints: number;
@@ -439,6 +441,42 @@ export async function submitApplication(applicationData: {
     }
   } catch (error: any) {
     console.error("Axios error details:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+}
+
+// Update building info (best-effort helper). Backend route may not exist yet;
+// this helper attempts POST to `/landlord/building/{bbl}/update/` and returns the server payload.
+export async function updateBuildingInfo(
+  bbl: string,
+  payload: { average_rent?: number | null; occupancy_rate?: number | null }
+) {
+  try {
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      throw new Error("No authentication token found. Please log in.");
+    }
+
+    const resp = await axios.post(`/landlord/building/${bbl}/update/`, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = resp.data as any;
+    if (resp.status >= 200 && resp.status < 300) {
+      // try to return server-updated building info
+      return data && data.data ? data.data : data;
+    }
+    throw new Error(data?.error || `Update failed: ${resp.status}`);
+  } catch (error: any) {
+    console.error("updateBuildingInfo: error", {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
