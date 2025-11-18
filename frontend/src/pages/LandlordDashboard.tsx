@@ -125,7 +125,7 @@ export default function LandlordDashboard() {
           rating: r.rating !== null ? r.rating : undefined,
           date: r.date,
           bbl: r.bbl,
-          flagged: r.flagged,
+          flagged: !!r.flagged,
           comments: r.comments ?? [],
         }))
       );

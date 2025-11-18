@@ -10,6 +10,7 @@ from .views import (
     LandlordStatsView,
     ReviewResponseView,
     FlagReviewView,
+    BuildingUpdateView,
 )
 
 urlpatterns = [
@@ -44,6 +45,11 @@ urlpatterns = [
         "building-stats/bbl/<str:bbl>/",
         BuildingStatsView.as_view(),
         name="building_stats",
+    ),
+    path(
+        "building/<str:bbl>/update/",
+        BuildingUpdateView.as_view(),
+        name="building_update",
     ),
     path("stats/", LandlordStatsView.as_view(), name="landlord_stats"),
     path("reviews/response/", ReviewResponseView.as_view(), name="review_response"),
