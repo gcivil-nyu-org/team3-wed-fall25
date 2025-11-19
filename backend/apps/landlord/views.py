@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 
 from infrastructures.postgres.postgres_client import PostgresClient
 from infrastructures.postgres.building_repository import BuildingRepository
+from infrastructures.postgres.landlord_repository import LandlordRepository
 
 # from django.conf import settings
 
@@ -1288,15 +1289,24 @@ class FlagReviewView(APIView):
                     {"error": "Review ID is required."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            # Persist flag via repository (updates community_reviews if possible,
+            # otherwise records flag in a separate table).
+            repo = LandlordRepository()
+            user_id = None
+            try:
+                user_id = request.user.id
+            except Exception:
+                user_id = None
 
-            # In a real implementation, you would save this to your database
-            # For now, we'll just return success
-            print(f"Review {review_id} flagged for reason: {reason}")
+            if not user_id:
+                return Response(
+                    {"error": "Authentication required."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
-            return Response(
-                {"message": "Review flagged successfully."},
-                status=status.HTTP_200_OK,
-            )
+            row = repo.flag_review(review_id, user_id, reason)
+            print(f"Review {review_id} flagged by {user_id}: {row}")
+            return Response({"data": row}, status=status.HTTP_200_OK)
         except Exception as e:
             print(f"[FlagReviewView] Error: {e}")
             return Response(

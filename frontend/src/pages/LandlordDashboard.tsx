@@ -103,10 +103,19 @@ export default function LandlordDashboard() {
   }, []);
 
   const handleRespond = (id: string) => setRespondingTo(id);
-  const handleFlag = (id: string) =>
-    setReviews((r) =>
-      r ? r.map((rv) => (rv.id === id ? { ...rv, flagged: true } : rv)) : r
-    );
+  const handleFlag = async (id: string) => {
+    // optimistic update
+    const prev = reviews;
+    setReviews((r) => (r ? r.map((rv) => (rv.id === id ? { ...rv, flagged: true } : rv)) : r));
+    try {
+      await landlordApi.flagReview(id, "flagged by landlord");
+    } catch (error) {
+      console.error("Failed to flag review:", error);
+      // rollback
+      setReviews(prev);
+      alert("Failed to flag review. Please try again.");
+    }
+  };
   const handleSubmitResponse = async (response: string, reviewId: string) => {
     setResponseLoading(true);
     try {
