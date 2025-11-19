@@ -388,3 +388,5 @@ class CrawlerIntegrationTests(TestCase):
 
         # Test that field candidates is not empty
         self.assertGreater(len(crawler.FIELD_CANDIDATES), 0)
+
+

@@ -265,7 +265,10 @@ class NeighborhoodRepository:
         limit: int = 50000,
         time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get violations heatmap data - optimized to use all data points"""
+        """
+        Get violations heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
         # Calculate date threshold based on time range
         date_filter = ""
         date_params = []
@@ -280,17 +283,17 @@ class NeighborhoodRepository:
                 date_threshold = None
 
             if date_threshold:
-                date_filter = " AND v.inspection_date >= %s"
+                date_filter = " AND v.nov_issued_date >= %s"
                 date_params = [date_threshold]
 
-        # Build query with optional borough filter and time range
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
         query = f"""
             SELECT 
-                e.bbl,
-                e.latitude,
-                e.longitude,
-                e.eviction_address as address,
-                e.borough,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
                 COALESCE(v.violation_count, 0) as count,
                 -- More granular intensity calculation using all data
                 CASE 
@@ -301,25 +304,25 @@ class NeighborhoodRepository:
                     WHEN COALESCE(v.violation_count, 0) <= 20 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions e
+            FROM building_locations bl
+            -- Count violations (same logic as search)
             LEFT JOIN (
                 SELECT 
                     bbl,
                     COUNT(*) as violation_count
                 FROM building_violations
-                WHERE violation_status = 'Open'{date_filter}
+                WHERE UPPER(violation_status) = 'OPEN'{date_filter}
                 GROUP BY bbl
-            ) v ON e.bbl = v.bbl
-            WHERE e.latitude IS NOT NULL 
-                AND e.longitude IS NOT NULL
-                AND e.latitude BETWEEN %s AND %s
-                AND e.longitude BETWEEN %s AND %s
+            ) v ON bl.bbl = v.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (violations count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
-        # Use RANDOM() to get truly representative sample across all count ranges
         if borough and borough != "All Boroughs":
-            query += " AND e.borough = %s"
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
             query += " ORDER BY RANDOM() LIMIT %s"
             params = tuple(
                 date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit]
@@ -507,7 +510,10 @@ class NeighborhoodRepository:
         limit: int = 50000,
         time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get evictions heatmap data - optimized to use all data points"""
+        """
+        Get evictions heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
         # Calculate date threshold based on time range (default to 3 years if not specified)
         if time_range and time_range != "all":
             if time_range == "6months":
@@ -526,45 +532,56 @@ class NeighborhoodRepository:
                 else datetime.now() - timedelta(days=3 * 365)
             )
 
-        # Build query with optional borough filter and time range
-        date_filter = " AND e.executed_date >= %s" if date_threshold else ""
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
+        # Build date filter for evictions subquery
+        evictions_where = "executed_date >= (CURRENT_DATE - INTERVAL '3 years')::date"
+        date_params = []
+        if date_threshold:
+            evictions_where += " AND executed_date >= %s"
+            date_params.append(date_threshold)
+        
         query = f"""
             SELECT 
-                e.bbl,
-                e.latitude,
-                e.longitude,
-                e.eviction_address as address,
-                e.borough,
-                COUNT(*) as count,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
+                COALESCE(ev.eviction_count, 0) as count,
                 -- More granular intensity calculation
                 CASE 
-                    WHEN COUNT(*) = 0 THEN 0.0
-                    WHEN COUNT(*) = 1 THEN 0.2
-                    WHEN COUNT(*) = 2 THEN 0.4
-                    WHEN COUNT(*) <= 4 THEN 0.6
-                    WHEN COUNT(*) <= 8 THEN 0.8
+                    WHEN COALESCE(ev.eviction_count, 0) = 0 THEN 0.0
+                    WHEN COALESCE(ev.eviction_count, 0) = 1 THEN 0.2
+                    WHEN COALESCE(ev.eviction_count, 0) = 2 THEN 0.4
+                    WHEN COALESCE(ev.eviction_count, 0) <= 4 THEN 0.6
+                    WHEN COALESCE(ev.eviction_count, 0) <= 8 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions e
-            WHERE e.latitude IS NOT NULL 
-                AND e.longitude IS NOT NULL
-                AND e.latitude BETWEEN %s AND %s
-                AND e.longitude BETWEEN %s AND %s{date_filter}
+            FROM building_locations bl
+            -- Count evictions (same logic as search - last 3 years)
+            LEFT JOIN (
+                SELECT 
+                    bbl,
+                    COUNT(*) as eviction_count
+                FROM building_evictions
+                WHERE {evictions_where}
+                GROUP BY bbl
+            ) ev ON bl.bbl = ev.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (eviction count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
-        # Use RANDOM() to get truly representative sample across all count ranges
-        base_params = [min_lat, max_lat, min_lng, max_lng]
-        if date_threshold:
-            base_params.insert(0, date_threshold)
-
+        base_params = date_params + [min_lat, max_lat, min_lng, max_lng]
         if borough and borough != "All Boroughs":
-            query += " AND e.borough = %s"
-            query += " GROUP BY e.bbl, e.latitude, e.longitude, e.eviction_address, e.borough ORDER BY RANDOM() LIMIT %s"
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
+            query += " ORDER BY RANDOM() LIMIT %s"
             params = tuple(base_params + [borough, limit])
             rows = db.query_all(query, params)
         else:
-            query += " GROUP BY e.bbl, e.latitude, e.longitude, e.eviction_address, e.borough ORDER BY RANDOM() LIMIT %s"
+            query += " ORDER BY RANDOM() LIMIT %s"
             params = tuple(base_params + [limit])
             rows = db.query_all(query, params)
         return [as_heatmap_point({**row, "data_type": "evictions"}) for row in rows]
@@ -580,7 +597,10 @@ class NeighborhoodRepository:
         limit: int = 50000,
         time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get complaints heatmap data - optimized to use all data points"""
+        """
+        Get complaints heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
         # Calculate date threshold based on time range
         date_filter = ""
         date_params = []
@@ -598,15 +618,14 @@ class NeighborhoodRepository:
                 date_filter = " AND c.complaint_status_date >= %s"
                 date_params = [date_threshold]
 
-        # Build query: Start from evictions (has location), then count ALL complaints for those buildings
-        # This ensures we show all buildings with complaints that have location data
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
         query = f"""
             SELECT 
-                e.bbl,
-                e.latitude,
-                e.longitude,
-                e.eviction_address as address,
-                e.borough,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
                 COALESCE(c.complaint_count, 0) as count,
                 -- More granular intensity calculation
                 CASE 
@@ -617,7 +636,8 @@ class NeighborhoodRepository:
                     WHEN COALESCE(c.complaint_count, 0) <= 15 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions e
+            FROM building_locations bl
+            -- Count complaints (same logic as search)
             LEFT JOIN (
                 SELECT 
                     bbl,
@@ -625,24 +645,20 @@ class NeighborhoodRepository:
                 FROM building_complaints
                 WHERE 1=1{date_filter}
                 GROUP BY bbl
-            ) c ON e.bbl = c.bbl
-            WHERE e.latitude IS NOT NULL 
-                AND e.longitude IS NOT NULL
-                AND e.latitude BETWEEN %s AND %s
-                AND e.longitude BETWEEN %s AND %s
-                AND c.complaint_count > 0
+            ) c ON bl.bbl = c.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (complaint count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
-        if borough and borough != "All Boroughs":
-            query += " AND e.borough = %s"
-
-        query += " ORDER BY RANDOM() LIMIT %s"
-
-        # Build params: date_params first, then bounds, then borough (if any), then limit
         params_list = date_params + [min_lat, max_lat, min_lng, max_lng]
         if borough and borough != "All Boroughs":
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
             params_list.append(borough)
+        
+        query += " ORDER BY RANDOM() LIMIT %s"
         params_list.append(limit)
 
         rows = db.query_all(query, tuple(params_list))
