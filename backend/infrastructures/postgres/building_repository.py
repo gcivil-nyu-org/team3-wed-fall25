@@ -25,7 +25,7 @@ class BuildingRepository:
                 """,
                 (bbl,),
             )
-            
+
             reg_row = db.query_one(
                 """
                 SELECT
@@ -38,20 +38,31 @@ class BuildingRepository:
                 """,
                 (bbl,),
             )
-            
+
             # Enrich registration with unified address from building_locations
             if location_row and reg_row:
                 # Use address from building_locations if available, otherwise keep registration address
-                if location_row.get("address") and location_row["address"] != "Address not available":
+                if (
+                    location_row.get("address")
+                    and location_row["address"] != "Address not available"
+                ):
                     # Update reg_row with unified address
-                    reg_row["house_number"] = location_row.get("house_number") or reg_row.get("house_number")
-                    reg_row["street_name"] = location_row.get("street_name") or reg_row.get("street_name")
+                    reg_row["house_number"] = location_row.get(
+                        "house_number"
+                    ) or reg_row.get("house_number")
+                    reg_row["street_name"] = location_row.get(
+                        "street_name"
+                    ) or reg_row.get("street_name")
                     # If we have a formatted address, we can use it (but registration expects house_number + street_name)
                     # For now, prefer building_locations address components
                 elif not reg_row.get("house_number") or not reg_row.get("street_name"):
                     # If registration is missing address but building_locations has it, use that
-                    reg_row["house_number"] = location_row.get("house_number") or reg_row.get("house_number")
-                    reg_row["street_name"] = location_row.get("street_name") or reg_row.get("street_name")
+                    reg_row["house_number"] = location_row.get(
+                        "house_number"
+                    ) or reg_row.get("house_number")
+                    reg_row["street_name"] = location_row.get(
+                        "street_name"
+                    ) or reg_row.get("street_name")
             elif location_row and not reg_row:
                 # Building exists in building_locations but not in registrations
                 # Create a minimal registration row for display
@@ -344,15 +355,21 @@ class BuildingRepository:
         """
         with self.client_factory() as db:
             query_clean = query.strip() if query else ""
-            
+
             # Check if query is a BBL (10 digits)
             is_bbl = query_clean.isdigit() and len(query_clean) == 10
-            
+
             # Check if query is a zip code (5 digits)
             is_zip_code = query_clean.isdigit() and len(query_clean) == 5
-            
+
             # Check if query matches a borough name (case-insensitive)
-            borough_names = ["manhattan", "brooklyn", "queens", "bronx", "staten island"]
+            borough_names = [
+                "manhattan",
+                "brooklyn",
+                "queens",
+                "bronx",
+                "staten island",
+            ]
             query_lower = query_clean.lower()
             matched_borough = None
             for boro in borough_names:
@@ -393,7 +410,9 @@ class BuildingRepository:
             if borough and borough != "All Boroughs":
                 # Database stores boroughs in UPPERCASE, frontend sends title case
                 borough_normalized = borough.upper()
-                where_conditions.append("UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)")
+                where_conditions.append(
+                    "UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)"
+                )
                 params.append(borough_normalized)
 
             # Zip code filter (separate from query)
@@ -650,7 +669,7 @@ class BuildingRepository:
             # Format results and calculate risk levels
             formatted_results = []
             skipped_count = 0  # Track how many results we've skipped for pagination
-            
+
             for row in results:
                 evictions = row.get("evictions_count", 0) or 0
                 violations = row.get("open_violations_count", 0) or 0
@@ -691,27 +710,27 @@ class BuildingRepository:
                 # Get units from affordable_housing, default to None if not available
                 units = row.get("units")
                 units_int = int(units) if units is not None else None
-                
+
                 formatted_results.append(
-                        {
-                            "bbl": str(row.get("bbl", "")),
-                            "address": row.get("address", "Address not available"),
-                            "borough": row.get("borough", "") or "",
-                            "zip": str(row.get("zip", "")) if row.get("zip") else "",
-                            "units": units_int,
-                            "evictions3yr": int(evictions),
-                            "openViolations": int(violations),
-                            "rentStabilized": rent_stabilized,
-                            "riskLevel": assigned_risk_level,
-                        }
-                    )
+                    {
+                        "bbl": str(row.get("bbl", "")),
+                        "address": row.get("address", "Address not available"),
+                        "borough": row.get("borough", "") or "",
+                        "zip": str(row.get("zip", "")) if row.get("zip") else "",
+                        "units": units_int,
+                        "evictions3yr": int(evictions),
+                        "openViolations": int(violations),
+                        "rentStabilized": rent_stabilized,
+                        "riskLevel": assigned_risk_level,
+                    }
+                )
 
                 # Stop once we have enough results
                 if len(formatted_results) >= limit:
                     break
 
             return formatted_results
-    
+
     def search_buildings_count(
         self,
         query: str,
@@ -737,15 +756,21 @@ class BuildingRepository:
         # This is a simplified version that just counts
         with self.client_factory() as db:
             query_clean = query.strip() if query else ""
-            
+
             # Check if query is a BBL (10 digits)
             is_bbl = query_clean.isdigit() and len(query_clean) == 10
-            
+
             # Check if query is a zip code (5 digits)
             is_zip_code = query_clean.isdigit() and len(query_clean) == 5
-            
+
             # Check if query matches a borough name
-            borough_names = ["manhattan", "brooklyn", "queens", "bronx", "staten island"]
+            borough_names = [
+                "manhattan",
+                "brooklyn",
+                "queens",
+                "bronx",
+                "staten island",
+            ]
             query_lower = query_clean.lower() if query_clean else ""
             matched_borough = None
             for boro in borough_names:
@@ -779,7 +804,9 @@ class BuildingRepository:
 
             if borough and borough != "All Boroughs":
                 borough_normalized = borough.upper()
-                where_conditions.append("UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)")
+                where_conditions.append(
+                    "UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)"
+                )
                 params.append(borough_normalized)
 
             if zip_code:
@@ -787,7 +814,9 @@ class BuildingRepository:
                 params.append(zip_code)
 
             # Build subqueries with same filters as search_buildings
-            evictions_where = "executed_date >= (CURRENT_DATE - INTERVAL '3 years')::date"
+            evictions_where = (
+                "executed_date >= (CURRENT_DATE - INTERVAL '3 years')::date"
+            )
             violations_where = "UPPER(violation_status) = 'OPEN'"
             complaints_where = "1=1"
 
@@ -805,10 +834,14 @@ class BuildingRepository:
             if rent_impairing == "true":
                 violations_where += " AND rent_impairing = true"
             elif rent_impairing == "false":
-                violations_where += " AND (rent_impairing = false OR rent_impairing IS NULL)"
+                violations_where += (
+                    " AND (rent_impairing = false OR rent_impairing IS NULL)"
+                )
 
             if complaint_category and complaint_category != "Any":
-                complaints_where += f" AND UPPER(major_category) = UPPER('{complaint_category}')"
+                complaints_where += (
+                    f" AND UPPER(major_category) = UPPER('{complaint_category}')"
+                )
 
             where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
 
@@ -869,32 +902,42 @@ class BuildingRepository:
 
             if evictions_min:
                 try:
-                    having_conditions.append(f"COALESCE(ev.evictions_count, 0) >= {int(evictions_min)}")
+                    having_conditions.append(
+                        f"COALESCE(ev.evictions_count, 0) >= {int(evictions_min)}"
+                    )
                 except ValueError:
                     pass
 
             if evictions_max:
                 try:
-                    having_conditions.append(f"COALESCE(ev.evictions_count, 0) <= {int(evictions_max)}")
+                    having_conditions.append(
+                        f"COALESCE(ev.evictions_count, 0) <= {int(evictions_max)}"
+                    )
                 except ValueError:
                     pass
 
             if violations_min:
                 try:
-                    having_conditions.append(f"COALESCE(v.open_violations_count, 0) >= {int(violations_min)}")
+                    having_conditions.append(
+                        f"COALESCE(v.open_violations_count, 0) >= {int(violations_min)}"
+                    )
                 except ValueError:
                     pass
 
             if violations_max:
                 try:
-                    having_conditions.append(f"COALESCE(v.open_violations_count, 0) <= {int(violations_max)}")
+                    having_conditions.append(
+                        f"COALESCE(v.open_violations_count, 0) <= {int(violations_max)}"
+                    )
                 except ValueError:
                     pass
 
             if rent_stabilized == "true":
                 having_conditions.append("BOOL_OR(rs.bbl IS NOT NULL) = true")
             elif rent_stabilized == "false":
-                having_conditions.append("(BOOL_OR(rs.bbl IS NOT NULL) = false OR BOOL_OR(rs.bbl IS NOT NULL) IS NULL)")
+                having_conditions.append(
+                    "(BOOL_OR(rs.bbl IS NOT NULL) = false OR BOOL_OR(rs.bbl IS NOT NULL) IS NULL)"
+                )
 
             if affordable_housing == "true":
                 having_conditions.append("BOOL_OR(ah.bbl IS NOT NULL) = true")
@@ -907,21 +950,23 @@ class BuildingRepository:
             if risk_level and risk_level in ["High", "Moderate", "Low"]:
                 # Fetch all matching buildings (with a reasonable limit to avoid memory issues)
                 # Calculate risk levels and filter
-                fetch_query = base_query + " LIMIT 100000"  # Allow up to 100k for risk level filtering
-                
+                fetch_query = (
+                    base_query + " LIMIT 100000"
+                )  # Allow up to 100k for risk level filtering
+
                 results = db.query_all(fetch_query, tuple(params))
-                
+
                 # Calculate risk levels and filter
                 count = 0
                 expected_level = f"{risk_level} Risk"
-                
+
                 for row in results:
                     evictions = row.get("evictions_count", 0) or 0
                     violations = row.get("open_violations_count", 0) or 0
                     complaints = row.get("open_complaints_count", 0) or 0
                     rent_stabilized = bool(row.get("rent_stabilized", False))
                     bbl = str(row.get("bbl", ""))
-                    
+
                     # Calculate risk score and level (same logic as search_buildings)
                     risk_score, calculated_risk_level = calculate_risk_score(
                         violations=violations,
@@ -929,7 +974,7 @@ class BuildingRepository:
                         complaints=complaints,
                         rent_stabilized=rent_stabilized,
                     )
-                    
+
                     # Assign risk level with distribution (same logic as search_buildings)
                     assigned_risk_level = self._assign_risk_level_with_distribution(
                         calculated_risk_level=calculated_risk_level,
@@ -939,11 +984,11 @@ class BuildingRepository:
                         rent_stabilized=rent_stabilized,
                         bbl=bbl,
                     )
-                    
+
                     # Count if it matches the filter
                     if assigned_risk_level == expected_level:
                         count += 1
-                
+
                 return count
             else:
                 # No risk level filter: use simple SQL count

@@ -539,7 +539,7 @@ class NeighborhoodRepository:
         if date_threshold:
             evictions_where += " AND executed_date >= %s"
             date_params.append(date_threshold)
-        
+
         query = f"""
             SELECT 
                 bl.bbl,
@@ -657,7 +657,7 @@ class NeighborhoodRepository:
         if borough and borough != "All Boroughs":
             query += " AND UPPER(bl.borough) = UPPER(%s)"
             params_list.append(borough)
-        
+
         query += " ORDER BY RANDOM() LIMIT %s"
         params_list.append(limit)
 
