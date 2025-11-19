@@ -124,6 +124,7 @@ class BuildingByBblView(APIView):
         # Check if building has location data in building_locations (appears on map)
         # If it has location data, allow it to be viewed even if it's otherwise "empty"
         from infrastructures.postgres.postgres_client import PostgresClient
+
         has_location_data = False
         with PostgresClient() as db:
             location_check = db.query_one(
@@ -137,7 +138,11 @@ class BuildingByBblView(APIView):
             if location_check:
                 has_location_data = bool(location_check.get("has_location"))
                 # If building has location but no registration, enrich the building object
-                if has_location_data and not building.registration and location_check.get("address"):
+                if (
+                    has_location_data
+                    and not building.registration
+                    and location_check.get("address")
+                ):
                     # Building exists on map but has no registration data
                     # We'll allow it to be viewed with the address from building_locations
                     pass
@@ -148,7 +153,7 @@ class BuildingByBblView(APIView):
                 e.latitude is not None and e.longitude is not None
                 for e in building.evictions
             )
-        
+
         # If building has registration data, it exists
         if not has_location_data and building.registration:
             has_location_data = bool(
@@ -164,9 +169,10 @@ class BuildingByBblView(APIView):
             )
 
         payload = _to_primitive(building)
-        
+
         # Enrich payload with unified address from building_locations
         from infrastructures.postgres.postgres_client import PostgresClient
+
         with PostgresClient() as db:
             location_row = db.query_one(
                 """
@@ -180,13 +186,20 @@ class BuildingByBblView(APIView):
                 # Add unified address to payload
                 payload["unified_address"] = location_row["address"]
                 # If registration is missing address, update it
-                if not payload.get("registration") or not payload["registration"].get("house_number"):
+                if not payload.get("registration") or not payload["registration"].get(
+                    "house_number"
+                ):
                     if not payload.get("registration"):
                         payload["registration"] = {}
-                    if location_row.get("address") and location_row["address"] != "Address not available":
+                    if (
+                        location_row.get("address")
+                        and location_row["address"] != "Address not available"
+                    ):
                         # Try to parse address or use as-is
-                        payload["registration"]["unified_address"] = location_row["address"]
-        
+                        payload["registration"]["unified_address"] = location_row[
+                            "address"
+                        ]
+
         payload["counts"] = {
             "contacts": _safe_len(getattr(building, "contacts", None)),
             "affordable": _safe_len(getattr(building, "affordable", None)),
@@ -239,22 +252,24 @@ class BuildingSearchView(APIView):
         )
 
         # Allow empty query if filters are provided
-        has_filters = any([
-            borough and borough != "All Boroughs",
-            rent_stabilized,
-            affordable_housing,
-            risk_level and risk_level != "Any",
-            violation_class and violation_class != "Any",
-            rent_impairing and rent_impairing != "Any",
-            complaint_category and complaint_category != "Any",
-            recent_activity_days,
-            evictions_min,
-            evictions_max,
-            violations_min,
-            violations_max,
-            zip_code,
-        ])
-        
+        has_filters = any(
+            [
+                borough and borough != "All Boroughs",
+                rent_stabilized,
+                affordable_housing,
+                risk_level and risk_level != "Any",
+                violation_class and violation_class != "Any",
+                rent_impairing and rent_impairing != "Any",
+                complaint_category and complaint_category != "Any",
+                recent_activity_days,
+                evictions_min,
+                evictions_max,
+                violations_min,
+                violations_max,
+                zip_code,
+            ]
+        )
+
         if not query and not has_filters:
             return Response(
                 {
@@ -273,7 +288,7 @@ class BuildingSearchView(APIView):
 
         try:
             repo = BuildingRepository()
-            
+
             # Get total count first
             total_count = repo.search_buildings_count(
                 query=query,
@@ -291,11 +306,11 @@ class BuildingSearchView(APIView):
                 violations_max=violations_max,
                 zip_code=zip_code,
             )
-            
+
             # Get paginated results
             page = int(request.query_params.get("page", 1))
             offset = (page - 1) * limit
-            
+
             results = repo.search_buildings(
                 query=query,
                 limit=limit,

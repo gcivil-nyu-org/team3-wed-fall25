@@ -9,5 +9,3 @@ class Neighborhood(models.Model):
 
     class Meta:
         app_label = "neighborhood"
-
-
