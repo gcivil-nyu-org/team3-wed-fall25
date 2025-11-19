@@ -45,47 +45,14 @@ class LandlordRepository:
                     """,
                     (review_id,),
                 )
+                # print(f"[LandlordRepository] Updated community_reviews for review {review_id}")
+                # print(row)
                 return row or {"id": review_id, "flagged": True}
-            except Exception:
-                # If updating the crawler table fails (e.g., column missing),
-                # record the flag in a separate table to avoid schema changes.
-                try:
-                    db.execute(
-                        """
-                        CREATE TABLE IF NOT EXISTS landlord_review_flags (
-                            id SERIAL PRIMARY KEY,
-                            review_id TEXT NOT NULL,
-                            flagged_by INTEGER,
-                            reason TEXT,
-                            created_at TIMESTAMP DEFAULT NOW()
-                        )
-                        """,
-                        (),
-                    )
-
-                    db.execute(
-                        """
-                        INSERT INTO landlord_review_flags (review_id, flagged_by, reason)
-                        VALUES (%s, %s, %s)
-                        RETURNING id, review_id, flagged_by, reason, created_at
-                        """,
-                        (review_id, flagged_by, reason),
-                    )
-
-                    flag_row = db.query_one(
-                        """
-                        SELECT id, review_id, flagged_by, reason, created_at
-                        FROM landlord_review_flags
-                        WHERE review_id = %s
-                        ORDER BY created_at DESC
-                        LIMIT 1
-                        """,
-                        (review_id,),
-                    )
-
-                    return flag_row or {"review_id": review_id, "flagged": True}
-                except Exception as e:
-                    print(f"[LandlordRepository] failed to persist flag: {e}")
+            except Exception as e:
+                # Do not create a fallback table. Surface the error so the
+                # caller (view) can decide how to handle it (e.g., return 500).
+                print(f"[LandlordRepository] failed to update community_reviews: {e}")
+                raise
 
     def create_landlord_application(self, bbl: str, owner_user_id: int) -> bool:
         """
