@@ -392,7 +392,8 @@ class ReviewsView(APIView):
                         rating,
                         title,
                         body,
-                        created_at
+                        created_at,
+                        flagged
                     FROM community_reviews
                     WHERE bbl = ANY(%s) 
                     AND deleted_at IS NULL
@@ -459,6 +460,7 @@ class ReviewsView(APIView):
                         "comments": comments,
                     }
                 )
+            # print("Returning reviews:", reviews)
 
             return Response(reviews, status=status.HTTP_200_OK)
 
