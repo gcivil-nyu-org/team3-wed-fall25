@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import { CircleMarker, Popup } from 'react-leaflet';
 import { useNavigate } from 'react-router';
@@ -36,6 +36,7 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
   const navigate = useNavigate();
   const [zoom, setZoom] = useState(map.getZoom());
   const [bounds, setBounds] = useState(map.getBounds());
+  const openPopupRef = useRef<{ bbl: string; lat: number; lng: number } | null>(null);
 
   // Track zoom and bounds changes
   useEffect(() => {
@@ -130,18 +131,19 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
 
   return (
     <>
-      {displayData.map((point, index) => {
+      {displayData.map((point) => {
         const count = point.count || 0;
         
         // Size based on count
         const radius = Math.max(3, Math.min(8, Math.sqrt(count) * 0.3));
         
-        // Generate unique key using index to avoid duplicates
-        const uniqueKey = `${point.bbl}-${point.latitude}-${point.longitude}-${index}`;
+        // Use stable key based on BBL to prevent popup from closing during data updates
+        // BBL is unique and stable, so React won't recreate the component unnecessarily
+        const stableKey = `marker-${point.bbl}`;
         
         return (
           <CircleMarker
-            key={uniqueKey}
+            key={stableKey}
             center={[point.latitude, point.longitude]}
             radius={radius}
             pathOptions={{
@@ -151,8 +153,28 @@ const PointsLayer: React.FC<PointsLayerProps> = ({
               opacity: 0.8,
               fillOpacity: 0.7,
             }}
+            eventHandlers={{
+              popupopen: () => {
+                // Track that this popup is open
+                openPopupRef.current = {
+                  bbl: point.bbl,
+                  lat: point.latitude,
+                  lng: point.longitude
+                };
+              },
+              popupclose: () => {
+                // Clear tracking when popup is closed
+                if (openPopupRef.current?.bbl === point.bbl) {
+                  openPopupRef.current = null;
+                }
+              }
+            }}
           >
-            <Popup>
+            <Popup
+              autoClose={true}
+              closeOnClick={false}
+              closeOnEscapeKey={true}
+            >
               <div style={{ padding: "12px", minWidth: "240px", fontFamily: "Arial, sans-serif" }}>
                 {/* Address Header */}
                 <h3 style={{ 

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { MapContainer, TileLayer, useMap, CircleMarker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "../styles/leaflet-overrides.css";
 import { type HeatmapPoint } from "../api/index.js";
 import SimpleGradientHeatmap from "./SimpleGradientHeatmap";
 

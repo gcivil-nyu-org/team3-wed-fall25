@@ -22,6 +22,7 @@ import { useNavigate } from "react-router";
 import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "../styles/leaflet-overrides.css";
 import TrueHeatmap from "../components/TrueHeatmap";
 import { fetchHeatmapData, type HeatmapPoint } from "../api/index.js";
 

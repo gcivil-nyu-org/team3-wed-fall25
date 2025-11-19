@@ -20,6 +20,7 @@ import RemoveFavoritesButton from "../components/RemoveFavoritesButton";
 // Temporarily inline the BuildingData type to resolve export issue
 interface BuildingData {
   bbl: string;
+  unified_address?: string; // Address from building_locations (unified source)
   registration: {
     bbl: string;
     bin: number;
@@ -184,9 +185,19 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontFamily: '"Montserrat", "Roboto", sans-serif',
             }}
           >
-            {registration 
-              ? `${registration.house_number || ''} ${registration.street_name || ''}`.trim() || 'Building Address'
-              : 'Building Address'}
+            {(() => {
+              // Use unified_address if available (from building_locations)
+              if (building.unified_address && building.unified_address !== 'Address not available') {
+                return building.unified_address;
+              }
+              // Fallback to house_number + street_name from registration
+              if (registration) {
+                const addr = `${registration.house_number || ''} ${registration.street_name || ''}`.trim();
+                if (addr) return addr;
+              }
+              // Last resort: check if building has any address data
+              return 'Building Address';
+            })()}
           </Typography>
           <Typography
             variant="h6"
