@@ -1,11 +1,11 @@
-// Main API exports - clean imports for all API functions
-
 import axiosInstance from './axiosInstance';
 
 export * from './auth';
 export * from './building';
 export * from './neighborhood';
 export * from './community';
+
+// Building data interfaces and API functions
 
 export interface BuildingData {
   bbl: string;
@@ -181,21 +181,38 @@ export const searchBuildings = async (params: {
   query?: string;
   borough?: string;
   rentStabilized?: boolean;
+  rent_stabilized?: string;
+  affordable_housing?: string;
+  risk_level?: string;
+  violation_class?: string;
+  rent_impairing?: string;
+  complaint_category?: string;
+  recent_activity_days?: string;
   evictionsMin?: number;
   evictionsMax?: number;
   violationsMin?: number;
   violationsMax?: number;
   zipCode?: string;
+  zip?: string;
   page?: number;
   limit?: number;
+  sort_by?: string;
 }): Promise<SearchApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
 
     if (params.query) searchParams.append("q", params.query);
-    if (params.borough && params.borough !== "All Boroughs")
+    if (params.borough && params.borough !== "All Boroughs") {
       searchParams.append("borough", params.borough);
+    }
     if (params.rentStabilized) searchParams.append("rent_stabilized", "true");
+    if (params.rent_stabilized) searchParams.append("rent_stabilized", params.rent_stabilized);
+    if (params.affordable_housing) searchParams.append("affordable_housing", params.affordable_housing);
+    if (params.risk_level) searchParams.append("risk_level", params.risk_level);
+    if (params.violation_class) searchParams.append("violation_class", params.violation_class);
+    if (params.rent_impairing) searchParams.append("rent_impairing", params.rent_impairing);
+    if (params.complaint_category) searchParams.append("complaint_category", params.complaint_category);
+    if (params.recent_activity_days) searchParams.append("recent_activity_days", params.recent_activity_days);
     if (params.evictionsMin !== undefined)
       searchParams.append("evictions_min", params.evictionsMin.toString());
     if (params.evictionsMax !== undefined)
@@ -205,12 +222,15 @@ export const searchBuildings = async (params: {
     if (params.violationsMax !== undefined)
       searchParams.append("violations_max", params.violationsMax.toString());
     if (params.zipCode) searchParams.append("zip", params.zipCode);
+    if (params.zip) searchParams.append("zip", params.zip);
     if (params.page) searchParams.append("page", params.page.toString());
     if (params.limit) searchParams.append("limit", params.limit.toString());
+    if (params.sort_by) {
+      searchParams.append("sort_by", params.sort_by);
+    }
 
-    const response = await axiosInstance.get<SearchApiResponse>(
-      `/buildings/search/?${searchParams.toString()}`
-    );
+    const url = `/buildings/search/?${searchParams.toString()}`;
+    const response = await axiosInstance.get<SearchApiResponse>(url);
 
     if (!response.data.result) {
       throw new Error("Failed to search buildings");
@@ -254,7 +274,7 @@ export const searchBuildings = async (params: {
           page: 1,
           limit: 1,
         };
-      } catch (buildingError) {
+      } catch {
         throw error; // Throw original search error
       }
     }
@@ -297,6 +317,7 @@ export interface HeatmapPoint {
   count: number;
   address: string;
   borough: string;
+  is_rent_stabilized?: boolean; // Optional: rent stabilized status from backend
 }
 
 export interface BoroughSummary {
@@ -405,6 +426,7 @@ export const fetchHeatmapData = async (params: {
   data_type?: string;
   borough?: string;
   limit?: number;
+  time_range?: string;
 }): Promise<HeatmapDataApiResponse> => {
   try {
     const searchParams = new URLSearchParams();
@@ -413,6 +435,7 @@ export const fetchHeatmapData = async (params: {
     searchParams.append("min_lng", params.min_lng.toString());
     searchParams.append("max_lng", params.max_lng.toString());
     if (params.data_type) searchParams.append("data_type", params.data_type);
+    if (params.time_range) searchParams.append("time_range", params.time_range);
     if (params.borough) searchParams.append("borough", params.borough);
     if (params.limit) searchParams.append("limit", params.limit.toString());
 
@@ -427,6 +450,60 @@ export const fetchHeatmapData = async (params: {
     return response.data;
   } catch (error) {
     console.error("Error fetching heatmap data:", error);
+    throw error;
+  }
+};
+
+export const fetchFilteredViolations = async (params: {
+  min_lat: number;
+  max_lat: number;
+  min_lng: number;
+  max_lng: number;
+  borough?: string;
+  limit?: number;
+  min_open_violations?: number;
+  max_open_violations?: number;
+  min_closed_violations?: number;
+  max_closed_violations?: number;
+  min_class_a?: number;
+  max_class_a?: number;
+  min_class_b?: number;
+  max_class_b?: number;
+  min_class_c?: number;
+  max_class_c?: number;
+  max_response_days?: number;
+}): Promise<HeatmapDataApiResponse> => {
+  try {
+    const searchParams = new URLSearchParams();
+    searchParams.append("min_lat", params.min_lat.toString());
+    searchParams.append("max_lat", params.max_lat.toString());
+    searchParams.append("min_lng", params.min_lng.toString());
+    searchParams.append("max_lng", params.max_lng.toString());
+    if (params.borough) searchParams.append("borough", params.borough);
+    if (params.limit) searchParams.append("limit", params.limit.toString());
+    if (params.min_open_violations !== undefined) searchParams.append("min_open_violations", params.min_open_violations.toString());
+    if (params.max_open_violations !== undefined) searchParams.append("max_open_violations", params.max_open_violations.toString());
+    if (params.min_closed_violations !== undefined) searchParams.append("min_closed_violations", params.min_closed_violations.toString());
+    if (params.max_closed_violations !== undefined) searchParams.append("max_closed_violations", params.max_closed_violations.toString());
+    if (params.min_class_a !== undefined) searchParams.append("min_class_a", params.min_class_a.toString());
+    if (params.max_class_a !== undefined) searchParams.append("max_class_a", params.max_class_a.toString());
+    if (params.min_class_b !== undefined) searchParams.append("min_class_b", params.min_class_b.toString());
+    if (params.max_class_b !== undefined) searchParams.append("max_class_b", params.max_class_b.toString());
+    if (params.min_class_c !== undefined) searchParams.append("min_class_c", params.min_class_c.toString());
+    if (params.max_class_c !== undefined) searchParams.append("max_class_c", params.max_class_c.toString());
+    if (params.max_response_days !== undefined) searchParams.append("max_response_days", params.max_response_days.toString());
+
+    const response = await axiosInstance.get<HeatmapDataApiResponse>(
+      `/neighborhood/filtered-violations/?${searchParams.toString()}`
+    );
+
+    if (!response.data.result) {
+      throw new Error("Failed to fetch filtered violations");
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching filtered violations:", error);
     throw error;
   }
 };

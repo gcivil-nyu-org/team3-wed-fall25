@@ -68,20 +68,14 @@ export const useAuth = () => {
         
         // Set user data in state
         if (userData) {
-          console.log('Setting user data from login response:', userData);
           setUser(userData);
         } else {
           // If no user data in login response, fetch it from profile endpoint
           try {
-            console.log('No user data in login response, fetching from profile...');
             const profileResponse = await fetchProfile();
-            console.log('Profile response:', profileResponse.data);
             const userData = profileResponse.data?.data || profileResponse.data;
-            console.log('Setting user with profile data:', userData);
             setUser(userData);
-            console.log('User state should now be set');
           } catch (profileErr) {
-            console.warn('Could not fetch user profile after login:', profileErr);
           }
         }
         

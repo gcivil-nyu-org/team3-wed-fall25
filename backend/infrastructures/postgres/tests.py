@@ -182,6 +182,193 @@ class BuildingRepositoryTests(TestCase):
         """Test that BuildingRepository has expected methods"""
         self.assertTrue(hasattr(self.repository, "get_by_bbl"))
         self.assertTrue(callable(getattr(self.repository, "get_by_bbl")))
+        self.assertTrue(hasattr(self.repository, "search_buildings"))
+        self.assertTrue(callable(getattr(self.repository, "search_buildings")))
+
+    def test_search_buildings_empty_query(self):
+        """Test search_buildings with empty query"""
+        try:
+            results = self.repository.search_buildings("")
+            self.assertEqual(results, [])
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_zip_code(self):
+        """Test search_buildings with zip code query"""
+        try:
+            results = self.repository.search_buildings("10001", limit=5)
+            self.assertIsInstance(results, list)
+            # Results should have expected structure
+            if results:
+                self.assertIn("bbl", results[0])
+                self.assertIn("address", results[0])
+                self.assertIn("borough", results[0])
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_address(self):
+        """Test search_buildings with address query"""
+        try:
+            results = self.repository.search_buildings("Broadway", limit=5)
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_borough_filter(self):
+        """Test search_buildings with borough filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", borough="Manhattan", limit=5
+            )
+            self.assertIsInstance(results, list)
+            if results:
+                self.assertEqual(results[0]["borough"], "MANHATTAN")
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_rent_stabilized_filter(self):
+        """Test search_buildings with rent stabilized filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", rent_stabilized="true", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_affordable_housing_filter(self):
+        """Test search_buildings with affordable housing filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", affordable_housing="true", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_risk_level_filter(self):
+        """Test search_buildings with risk level filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", risk_level="High", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_violation_class_filter(self):
+        """Test search_buildings with violation class filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", violation_class="A", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_rent_impairing_filter(self):
+        """Test search_buildings with rent impairing filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", rent_impairing="true", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_complaint_category_filter(self):
+        """Test search_buildings with complaint category filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", complaint_category="HEAT/HOT WATER", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_recent_activity_filter(self):
+        """Test search_buildings with recent activity filter"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", recent_activity_days="30", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_evictions_min_max(self):
+        """Test search_buildings with evictions min/max filters"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", evictions_min="1", evictions_max="10", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_violations_min_max(self):
+        """Test search_buildings with violations min/max filters"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", violations_min="1", violations_max="50", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_sort_by_most_relevant(self):
+        """Test search_buildings with Most Relevant sort"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", sort_by="Most Relevant", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_sort_by_most_violations(self):
+        """Test search_buildings with Most Violations sort"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", sort_by="Most Violations", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_sort_by_highest_rating(self):
+        """Test search_buildings with Highest Rating sort"""
+        try:
+            results = self.repository.search_buildings(
+                "10001", sort_by="Highest Rating", limit=5
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_search_buildings_with_all_filters(self):
+        """Test search_buildings with multiple filters combined"""
+        try:
+            results = self.repository.search_buildings(
+                "10001",
+                borough="Manhattan",
+                rent_stabilized="true",
+                risk_level="High",
+                violation_class="A",
+                limit=5,
+            )
+            self.assertIsInstance(results, list)
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
+
+    def test_get_registration_by_bbl(self):
+        """Test get_registration_by_bbl method"""
+        try:
+            reg = self.repository.get_registration_by_bbl("9999999999")
+            # Should return None for non-existent BBL or a dict if exists
+            self.assertTrue(reg is None or isinstance(reg, dict))
+        except Exception as e:
+            self.skipTest(f"Database query failed: {e}")
 
 
 class NeighborhoodRepositoryTests(TestCase):

@@ -57,7 +57,6 @@ export default function LandlordDashboard() {
           landlordApi.fetchReviews(),
         ]);
         if (!mounted) return;
-        console.log("Fetched properties:", propsResp);
         setProperties(
           propsResp.map((p) => ({
             address: p.address,

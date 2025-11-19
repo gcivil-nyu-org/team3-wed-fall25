@@ -65,6 +65,7 @@ function App() {
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
           <Route path="landlord/apply/:bbl" element={<LandlordApply />} />
+          <Route path="landlord/apply/" element={<LandlordApply />} />
           <Route path="landlord/building/:bbl" element={<BuildingDetail />} />
           <Route path="profile" element={<Profile />} />
           <Route path="message" element={<Message />} />
@@ -77,7 +78,13 @@ function App() {
         <Route
           path="admin/dashboard"
           element={
-            <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                minHeight: "100vh",
+              }}
+            >
               <AppAppBar />
               <Box component="main" sx={{ flex: 1 }}>
                 <AdminDashboard />

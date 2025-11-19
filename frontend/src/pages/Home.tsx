@@ -373,7 +373,7 @@ export default function Home() {
 
               <Button 
                 component={Link}
-                to="/search"
+                to="/map"
                 variant="contained"
                 size="large"
                 endIcon={<ArrowForward />}

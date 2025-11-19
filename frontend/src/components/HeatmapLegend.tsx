@@ -20,10 +20,10 @@ const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ mode, dataType, isOpen, o
         title: "Data Intensity",
         description: "Shows the overall intensity of housing issues in the area",
         colors: [
-          { value: "Low", color: "hsl(220, 85%, 55%)", description: "Few issues reported" },
-          { value: "Medium", color: "hsl(200, 90%, 70%)", description: "Moderate activity" },
-          { value: "High", color: "hsl(160, 95%, 60%)", description: "Significant issues" },
-          { value: "Very High", color: "hsl(120, 100%, 55%)", description: "Critical problems" }
+          { value: "Low", color: "hsl(210, 90%, 60%)", description: "Few issues reported" }, // Blue
+          { value: "Medium", color: "hsl(60, 95%, 65%)", description: "Moderate activity" }, // Yellow
+          { value: "High", color: "hsl(40, 100%, 60%)", description: "Significant issues" }, // Orange
+          { value: "Critical", color: "hsl(0, 100%, 50%)", description: "Critical hotspots - immediate attention needed" } // Red
         ]
       };
     } else if (mode === "risk") {
@@ -31,10 +31,10 @@ const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ mode, dataType, isOpen, o
         title: "Risk Assessment",
         description: "Evaluates the risk level based on issue intensity and frequency",
         colors: [
-          { value: "Low Risk", color: "hsl(140, 90%, 50%)", description: "Safe area with minimal issues" },
-          { value: "Medium Risk", color: "hsl(120, 95%, 70%)", description: "Moderate concerns present" },
-          { value: "High Risk", color: "hsl(90, 100%, 60%)", description: "Significant risk factors" },
-          { value: "Critical Risk", color: "hsl(60, 100%, 55%)", description: "High-risk area requiring attention" }
+          { value: "Low Risk", color: "hsl(120, 80%, 50%)", description: "Safe area with minimal issues" }, // Green
+          { value: "Medium Risk", color: "hsl(60, 95%, 65%)", description: "Moderate concerns present" }, // Yellow
+          { value: "High Risk", color: "hsl(40, 100%, 60%)", description: "Significant risk factors" }, // Orange
+          { value: "Critical Risk", color: "hsl(0, 100%, 50%)", description: "High-risk hotspot - immediate attention needed" } // Red
         ]
       };
     } else {
@@ -42,10 +42,10 @@ const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ mode, dataType, isOpen, o
         title: "Inequality Index",
         description: "Measures how much this area deviates from the citywide average",
         colors: [
-          { value: "Low Inequality", color: "hsl(240, 85%, 50%)", description: "Similar to city average" },
-          { value: "Medium Inequality", color: "hsl(220, 90%, 70%)", description: "Moderate deviation" },
-          { value: "High Inequality", color: "hsl(180, 95%, 60%)", description: "Significant disparity" },
-          { value: "Extreme Inequality", color: "hsl(140, 100%, 55%)", description: "Major inequality hotspot" }
+          { value: "Low Inequality", color: "hsl(240, 85%, 55%)", description: "Similar to city average" }, // Blue
+          { value: "Medium Inequality", color: "hsl(300, 85%, 60%)", description: "Moderate deviation" }, // Purple
+          { value: "High Inequality", color: "hsl(330, 85%, 60%)", description: "Significant disparity" }, // Pink
+          { value: "Extreme Inequality", color: "hsl(0, 100%, 50%)", description: "Major inequality hotspot" } // Red
         ]
       };
     }
@@ -70,14 +70,16 @@ const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ mode, dataType, isOpen, o
     <Paper
       sx={{
         position: "absolute",
-        top: 20,
-        right: 20,
+        bottom: 20,
+        left: 20,
         width: 280,
+        maxHeight: "70vh",
+        overflowY: "auto",
         zIndex: 1000,
-        background: "rgba(255, 255, 255, 0.95)",
+        background: "rgba(255, 255, 255, 0.98)",
         backdropFilter: "blur(10px)",
         borderRadius: 3,
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15)",
         border: "1px solid rgba(255, 107, 53, 0.2)"
       }}
     >
@@ -165,10 +167,10 @@ const HeatmapLegend: React.FC<HeatmapLegendProps> = ({ mode, dataType, isOpen, o
               sx={{
                 height: "100%",
                   background: mode === "default" 
-                    ? "linear-gradient(90deg, hsl(220, 85%, 55%) 0%, hsl(200, 90%, 70%) 33%, hsl(160, 95%, 60%) 66%, hsl(120, 100%, 55%) 100%)"
+                    ? "linear-gradient(90deg, hsl(210, 90%, 60%) 0%, hsl(60, 95%, 65%) 33%, hsl(40, 100%, 60%) 66%, hsl(0, 100%, 50%) 100%)"
                     : mode === "risk"
-                    ? "linear-gradient(90deg, hsl(140, 90%, 50%) 0%, hsl(120, 95%, 70%) 33%, hsl(90, 100%, 60%) 66%, hsl(60, 100%, 55%) 100%)"
-                    : "linear-gradient(90deg, hsl(240, 85%, 50%) 0%, hsl(220, 90%, 70%) 33%, hsl(180, 95%, 60%) 66%, hsl(140, 100%, 55%) 100%)",
+                    ? "linear-gradient(90deg, hsl(120, 80%, 50%) 0%, hsl(60, 95%, 65%) 33%, hsl(40, 100%, 60%) 66%, hsl(0, 100%, 50%) 100%)"
+                    : "linear-gradient(90deg, hsl(240, 85%, 55%) 0%, hsl(300, 85%, 60%) 33%, hsl(330, 85%, 60%) 66%, hsl(0, 100%, 50%) 100%)",
                 "& .MuiLinearProgress-bar": {
                   backgroundColor: "transparent"
                 }
