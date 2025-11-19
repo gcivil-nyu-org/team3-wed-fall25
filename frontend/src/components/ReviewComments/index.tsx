@@ -1,10 +1,12 @@
 import { Box, Typography } from "@mui/material";
 import { useReviewComment } from "../../hooks/useReviewComment";
+import { useAuth } from "../../hooks";
 import type { CommunityReview } from "../../api";
 import ReviewCommentForm from "./ReviewCommentForm";
 import ReviewComment from "./ReviewComment";
 
 const ReviewComments = ({ reviewId }: { reviewId: CommunityReview["id"] }) => {
+  const { user } = useAuth();
   const { comments, refresh: refreshComments } = useReviewComment(reviewId);
 
   return (
@@ -21,9 +23,11 @@ const ReviewComments = ({ reviewId }: { reviewId: CommunityReview["id"] }) => {
         />
       ))}
 
-      <Box sx={{ pt: 2 }}>
-        <ReviewCommentForm reviewId={reviewId} onSuccess={refreshComments} />
-      </Box>
+      {user && (
+        <Box sx={{ pt: 2 }}>
+          <ReviewCommentForm reviewId={reviewId} onSuccess={refreshComments} />
+        </Box>
+      )}
     </Box>
   );
 };

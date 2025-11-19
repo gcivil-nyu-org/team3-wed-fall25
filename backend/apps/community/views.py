@@ -228,6 +228,84 @@ def my_reviews(request):
     return Response(serializer.data)
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_reviews(request):
+    """
+    Get all public reviews with optional filters (borough, zip, bbl)
+    This endpoint is public and doesn't require authentication
+    """
+    from infrastructures.postgres.postgres_client import PostgresClient
+    
+    borough = request.query_params.get("borough")
+    zip_code = request.query_params.get("zip")
+    bbl = request.query_params.get("bbl")
+    
+    # Build the query with joins to building_registrations
+    query = """
+        SELECT DISTINCT
+            cr.id,
+            cr.user_id,
+            cr.bbl,
+            cr.rating,
+            cr.title,
+            cr.body,
+            cr.created_at,
+            cr.updated_at,
+            br.boro as borough,
+            br.zip,
+            br.house_number,
+            br.street_name
+        FROM community_reviews cr
+        LEFT JOIN building_registrations br ON cr.bbl = br.bbl
+        WHERE cr.deleted_at IS NULL
+    """
+    
+    params = []
+    
+    if borough:
+        query += " AND br.boro = %s"
+        params.append(borough)
+    
+    if zip_code:
+        query += " AND br.zip = %s"
+        params.append(zip_code)
+    
+    if bbl:
+        query += " AND cr.bbl = %s"
+        params.append(bbl)
+    
+    query += " ORDER BY cr.created_at DESC LIMIT 100"
+    
+    try:
+        with PostgresClient() as db:
+            review_rows = db.query_all(query, tuple(params) if params else None)
+        
+        # Convert to serializer format
+        reviews_data = []
+        for row in review_rows:
+            reviews_data.append({
+                "id": row["id"],
+                "user_id": row["user_id"],
+                "bbl": row["bbl"],
+                "rating": float(row["rating"]) if row["rating"] else None,
+                "title": row["title"],
+                "body": row["body"],
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+                "borough": row["borough"],
+                "zip": row["zip"],
+                "address": f"{row['house_number'] or ''} {row['street_name'] or ''}".strip() if row.get("house_number") or row.get("street_name") else None,
+            })
+        
+        return Response(reviews_data, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"detail": f"Error fetching reviews: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 @api_view(["PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def reviews_update_delete(request, review_id):

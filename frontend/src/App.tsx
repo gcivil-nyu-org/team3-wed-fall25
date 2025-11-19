@@ -20,6 +20,7 @@ import {
   Message,
   Profile,
   Landlords,
+  PublicReviews,
 } from "./pages";
 import TenantDashboard from "./pages/TenantDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -61,6 +62,7 @@ function App() {
           <Route path="search" element={<Search />} />
           <Route path="map" element={<SimplifiedMap />} />
           <Route path="community" element={<Community />} />
+          <Route path="reviews" element={<PublicReviews />} />
           <Route path="landlords" element={<Landlords />} />
           <Route path="building/:bbl" element={<Building />} />
           <Route path="landlord/dashboard" element={<LandlordDashboard />} />
