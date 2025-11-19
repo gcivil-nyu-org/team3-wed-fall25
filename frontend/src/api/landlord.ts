@@ -415,6 +415,10 @@ export async function submitApplication(applicationData: {
   email: string;
   bbl: string;
   country: string;
+  landlordType?: string;
+  organizationName?: string;
+  hpdRegistration?: string;
+  businessPhone?: string;
   agreeTerms: boolean;
 }) {
   try {

@@ -1,5 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import { useReview } from "../../hooks/useReview";
+import { useAuth } from "../../hooks";
 import Review from "./Review";
 import ReviewCreateButton from "./ReviewCreateButton";
 import type { BuildingData } from "../../api";
@@ -13,6 +14,7 @@ const Reviews = ({
   hideTitle?: boolean;
   readonly?: boolean;
 }) => {
+  const { user } = useAuth();
   const { reviews, refresh: refreshReviews } = useReview(bbl || "");
 
   return bbl ? (
@@ -29,7 +31,7 @@ const Reviews = ({
           </Typography>
         )}
 
-        {!readonly && (
+        {!readonly && user && (
           <ReviewCreateButton bbl={bbl} onSuccess={refreshReviews} />
         )}
       </Box>

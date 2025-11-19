@@ -12,7 +12,14 @@ export default defineConfig(({ mode }) => {
     base,
     build: {
       outDir: '../backend/static/_app',
-      emptyOutDir: true
+      emptyOutDir: true,
+      commonjsOptions: {
+        include: [/leaflet\.heat/, /node_modules/],
+        transformMixedEsModules: true
+      }
+    },
+    optimizeDeps: {
+      include: ['leaflet.heat']
     },
     server: {
       proxy: {

@@ -1,4 +1,4 @@
-import { Box, Container, Typography, Link as MuiLink, Button } from "@mui/material";
+import { Box, Container, Typography, Link as MuiLink } from "@mui/material";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../hooks";
 import BusinessIcon from "@mui/icons-material/Business";
@@ -113,20 +113,21 @@ export function SiteFooter() {
               >
                 Neighborhood Explorer
               </MuiLink>
-              <MuiLink
-                href="#"
-                sx={{
-                  color: "#4A5568",
-                  fontSize: "0.85rem",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#FF6B35",
-                  },
-                  transition: "color 0.2s ease",
-                }}
-              >
-                Community Reviews
-              </MuiLink>
+              <Link to="/community" style={{ textDecoration: "none" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#4A5568",
+                    fontSize: "0.85rem",
+                    "&:hover": {
+                      color: "#FF6B35",
+                    },
+                    transition: "color 0.2s ease",
+                  }}
+                >
+                  Community Reviews
+                </Typography>
+              </Link>
             </Box>
           </Box>
 
@@ -178,7 +179,7 @@ export function SiteFooter() {
                             transition: "color 0.2s ease",
                           }}
                         >
-                          Dashboard
+                          My Dashboard
                         </Typography>
                       </Link>
                     </>
@@ -215,20 +216,22 @@ export function SiteFooter() {
                       Admin
                     </Typography>
                   </Link>
-                  <Button
-                    onClick={handleLogout}
-                    variant="text"
-                    sx={{
-                      p: 0,
-                      width: "fit-content",
-                      color: "#e53e3e",
-                      textTransform: "none",
-                      fontSize: "0.85rem",
-                      "&:hover": { textDecoration: "underline", background: "transparent" },
-                    }}
-                  >
-                    Logout
-                  </Button>
+                  <Link to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#e53e3e",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#c53030",
+                          textDecoration: "underline",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Logout
+                    </Typography>
+                  </Link>
                 </>
               ) : (
                 <>

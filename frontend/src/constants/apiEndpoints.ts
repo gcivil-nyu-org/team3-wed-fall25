@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
     REGISTER: '/auth/signup/',
     VERIFY_EMAIL: '/auth/verify-email/',
     RESEND_VERIFICATION: '/auth/resend-verification/',
+    USERS: '/auth/users/',
   },
   BUILDING: {
     DETAILS: '/building/',

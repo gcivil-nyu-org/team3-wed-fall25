@@ -223,24 +223,6 @@ export default function AppAppBar() {
                 </NavLink>
               </>
             )}
-            <NavLink to="/admin/login">
-              <Button
-                variant="text"
-                size="small"
-                sx={{
-                  color: "#4A5568",
-                  fontWeight: 500,
-                  textTransform: "uppercase",
-                  fontSize: "0.85rem",
-                  "&:hover": {
-                    color: "#FF6B35",
-                    backgroundColor: "rgba(255, 107, 53, 0.05)",
-                  },
-                }}
-              >
-                Admin
-              </Button>
-            </NavLink>
           </Box>
 
           {/* Auth Buttons / User Profile */}
@@ -561,25 +543,6 @@ export default function AppAppBar() {
                       </NavLink>
                     </>
                   )}
-                  <NavLink to="/admin/login" style={{ textDecoration: "none" }}>
-                    <Button
-                      fullWidth
-                      variant="text"
-                      sx={{
-                        justifyContent: "flex-start",
-                        color: "#4A5568",
-                        fontWeight: 500,
-                        textTransform: "uppercase",
-                        fontSize: "0.9rem",
-                        "&:hover": {
-                          color: "#FF6B35",
-                          backgroundColor: "rgba(255, 107, 53, 0.05)",
-                        },
-                      }}
-                    >
-                      Admin
-                    </Button>
-                  </NavLink>
                 </Box>
 
                 <Divider
