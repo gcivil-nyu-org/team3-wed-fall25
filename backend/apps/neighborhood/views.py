@@ -130,6 +130,9 @@ class HeatmapDataView(APIView):
         limit = request.query_params.get(
             "limit", "50000"
         )  # Default limit for performance
+        time_range = request.query_params.get(
+            "time_range", "all"
+        )  # "all", "6months", "1year", "3years"
 
         # Validate required parameters
         if not all([min_lat, max_lat, min_lng, max_lng]):
@@ -172,6 +175,11 @@ class HeatmapDataView(APIView):
                 data_type=data_type,
                 borough=borough,
                 limit=limit,
+                time_range=(
+                    time_range
+                    if time_range in ["all", "6months", "1year", "3years"]
+                    else "all"
+                ),
             )
 
             # Convert to primitive types for JSON serialization
@@ -197,6 +205,210 @@ class HeatmapDataView(APIView):
         except Exception as e:
             return Response(
                 {"detail": f"Internal error while fetching heatmap data: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class RentStabilizedBBLsView(APIView):
+    """
+    GET /api/neighborhood/rent-stabilized-bbls/
+
+    Get all rent-stabilized building BBLs.
+    Returns a simple list of BBL strings.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            from infrastructures.postgres.postgres_client import PostgresClient
+
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT DISTINCT bbl
+                    FROM building_rent_stabilized_list
+                    WHERE bbl IS NOT NULL
+                    """
+                )
+                bbls = [row["bbl"] for row in rows if row.get("bbl")]
+
+            return Response(
+                {
+                    "result": True,
+                    "data": bbls,
+                    "count": len(bbls),
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Internal error while fetching rent stabilized BBLs: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class AffordableHousingBBLsView(APIView):
+    """
+    GET /api/neighborhood/affordable-housing-bbls/
+
+    Get all affordable housing building BBLs.
+    Returns a simple list of BBL strings.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            from infrastructures.postgres.postgres_client import PostgresClient
+
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT DISTINCT bbl
+                    FROM building_affordable_housing
+                    WHERE bbl IS NOT NULL
+                    """
+                )
+                bbls = [row["bbl"] for row in rows if row.get("bbl")]
+
+            return Response(
+                {
+                    "result": True,
+                    "data": bbls,
+                    "count": len(bbls),
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "detail": (
+                        f"Internal error while fetching affordable housing BBLs: {e}"
+                    )
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class FilteredViolationsView(APIView):
+    """
+    GET /api/neighborhood/filtered-violations?min_lat=40.7&max_lat=40.8
+    &min_lng=-74.0&max_lng=-73.9&min_open_violations=5&max_open_violations=50
+
+    Get violation points with advanced filtering options:
+    - Status filters: min_open_violations, max_open_violations,
+      min_closed_violations, max_closed_violations
+    - Class filters: min_class_a, max_class_a, min_class_b, max_class_b, min_class_c, max_class_c
+    - Response time: max_response_days (buildings that fix issues within X days)
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        # Get query parameters
+        min_lat = request.query_params.get("min_lat")
+        max_lat = request.query_params.get("max_lat")
+        min_lng = request.query_params.get("min_lng")
+        max_lng = request.query_params.get("max_lng")
+        borough = request.query_params.get("borough", "All Boroughs")
+        limit = request.query_params.get("limit", "1000000")
+
+        # Status filters
+        min_open_violations = request.query_params.get("min_open_violations")
+        max_open_violations = request.query_params.get("max_open_violations")
+        min_closed_violations = request.query_params.get("min_closed_violations")
+        max_closed_violations = request.query_params.get("max_closed_violations")
+
+        # Class filters
+        min_class_a = request.query_params.get("min_class_a")
+        max_class_a = request.query_params.get("max_class_a")
+        min_class_b = request.query_params.get("min_class_b")
+        max_class_b = request.query_params.get("max_class_b")
+        min_class_c = request.query_params.get("min_class_c")
+        max_class_c = request.query_params.get("max_class_c")
+
+        # Response time filter
+        max_response_days = request.query_params.get("max_response_days")
+
+        # Validate required parameters
+        if not all([min_lat, max_lat, min_lng, max_lng]):
+            return Response(
+                {
+                    "detail": "Missing required parameters: min_lat, max_lat, min_lng, max_lng"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Convert to appropriate types
+            min_lat = float(min_lat)
+            max_lat = float(max_lat)
+            min_lng = float(min_lng)
+            max_lng = float(max_lng)
+            limit = int(limit)
+
+            # Parse optional filters
+            min_open_violations = (
+                int(min_open_violations) if min_open_violations else None
+            )
+            max_open_violations = (
+                int(max_open_violations) if max_open_violations else None
+            )
+            min_closed_violations = (
+                int(min_closed_violations) if min_closed_violations else None
+            )
+            max_closed_violations = (
+                int(max_closed_violations) if max_closed_violations else None
+            )
+
+            min_class_a = int(min_class_a) if min_class_a else None
+            max_class_a = int(max_class_a) if max_class_a else None
+            min_class_b = int(min_class_b) if min_class_b else None
+            max_class_b = int(max_class_b) if max_class_b else None
+            min_class_c = int(min_class_c) if min_class_c else None
+            max_class_c = int(max_class_c) if max_class_c else None
+
+            max_response_days = int(max_response_days) if max_response_days else None
+        except (ValueError, TypeError) as e:
+            return Response(
+                {"detail": f"Invalid parameter values: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            repo = NeighborhoodRepository()
+            points = repo.get_filtered_violations_points(
+                min_lat=min_lat,
+                max_lat=max_lat,
+                min_lng=min_lng,
+                max_lng=max_lng,
+                borough=borough if borough != "All Boroughs" else None,
+                limit=limit,
+                min_open_violations=min_open_violations,
+                max_open_violations=max_open_violations,
+                min_closed_violations=min_closed_violations,
+                max_closed_violations=max_closed_violations,
+                min_class_a=min_class_a,
+                max_class_a=max_class_a,
+                min_class_b=min_class_b,
+                max_class_b=max_class_b,
+                min_class_c=min_class_c,
+                max_class_c=max_class_c,
+                max_response_days=max_response_days,
+            )
+
+            return Response(
+                {
+                    "result": True,
+                    "data": [_to_primitive(point) for point in points],
+                    "count": len(points),
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Internal error while fetching filtered violations: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 

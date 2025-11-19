@@ -97,12 +97,23 @@ const FavoriteItem = ({
           display: "flex",
           gap: 0.5,
           alignItems: "center",
+          flexWrap: "wrap",
         }}
       >
         <Typography variant="caption" color="text.secondary">
           Added to favorites on
         </Typography>{" "}
         <DateLabel date={updated_at} />
+        {favorite.note && (
+          <>
+            <Typography variant="caption" color="text.secondary">
+              •
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+              Note: {favorite.note}
+            </Typography>
+          </>
+        )}
       </Box>
 
       <Box>

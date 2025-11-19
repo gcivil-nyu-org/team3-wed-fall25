@@ -66,7 +66,8 @@ export type CommunityInbox = {
     email?: string;
   };
   last_message?: CommunityMessage;
-  unread_count?: number;
+  is_unread?: boolean;
+  unread_count?: number; // Legacy support
 };
 
 export type CommunityMessageThread = {

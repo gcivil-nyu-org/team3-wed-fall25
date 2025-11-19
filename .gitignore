@@ -20,6 +20,9 @@ build/
 # PyInstaller
 *.manifest
 *.spec
+
+# --- Local environment variables ---
+/.env.*
 .env
 
 # --- Local environment variables ---

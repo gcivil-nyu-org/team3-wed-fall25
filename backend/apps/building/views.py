@@ -41,7 +41,24 @@ def _to_primitive(value):
 
 
 def _is_empty_building(b) -> bool:
-    """등록/태그/컨텐츠가 전혀 없으면 비어있다고 간주 (취향껏 조정)"""
+    """등록/태그/컨텐츠가 전혀 없으면 비어있다고 간주 (취향껏 조정)
+
+    Note: A building is NOT considered empty if it has:
+    - Registration data
+    - Rent stabilized status
+    - Contacts
+    - Affordable housing
+    - Complaints
+    - Violations
+    - Evictions
+    - ACRIS data
+
+    If a building appears on the map (has location data), it should be viewable
+    even if it has minimal data. This function allows buildings with any data
+    to be viewed.
+    """
+    # A building is empty only if it has absolutely no data at all
+    # If it appears on the map, it has at least location data, so allow it
     return all(
         [
             b.registration is None,
@@ -98,7 +115,30 @@ class BuildingByBblView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if building is None or _is_empty_building(building):
+        if building is None:
+            return Response(
+                {"detail": "Building not found for given bbl."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if building has location data (appears on map)
+        # If it has location data, allow it to be viewed even if it's otherwise "empty"
+        has_location_data = False
+        if building.evictions:
+            # Check if any eviction has location data
+            has_location_data = any(
+                e.latitude is not None and e.longitude is not None
+                for e in building.evictions
+            )
+        if not has_location_data and building.registration:
+            # Registration might have address data (indicates building exists)
+            has_location_data = bool(
+                building.registration.house_number or building.registration.street_name
+            )
+
+        # Only reject if building is empty AND has no location data
+        # If it appears on the map (has location), allow it to be viewed
+        if _is_empty_building(building) and not has_location_data:
             return Response(
                 {"detail": "Building not found for given bbl."},
                 status=status.HTTP_404_NOT_FOUND,
@@ -120,3 +160,95 @@ class BuildingByBblView(APIView):
             ),
         }
         return Response(payload, status=status.HTTP_200_OK)
+
+
+class BuildingSearchView(APIView):
+    """
+    GET /api/buildings/search/?q=10001&limit=10&borough=Manhattan
+    Search buildings by address or zip code with advanced filtering.
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        query = request.query_params.get("q", "").strip()
+        limit = int(request.query_params.get("limit", 10))
+        borough = request.query_params.get("borough")
+
+        # Advanced filters
+        rent_stabilized = request.query_params.get("rent_stabilized")
+        affordable_housing = request.query_params.get("affordable_housing")
+        risk_level = request.query_params.get("risk_level")
+        violation_class = request.query_params.get("violation_class")
+        rent_impairing = request.query_params.get("rent_impairing")
+        complaint_category = request.query_params.get("complaint_category")
+        recent_activity_days = request.query_params.get("recent_activity_days")
+        evictions_min = request.query_params.get("evictions_min")
+        evictions_max = request.query_params.get("evictions_max")
+        violations_min = request.query_params.get("violations_min")
+        violations_max = request.query_params.get("violations_max")
+        zip_code = request.query_params.get("zip")
+        sort_by_raw = request.query_params.get("sort_by", "Most Relevant")
+        # Handle URL encoding - Django automatically decodes, but be safe
+        sort_by = (
+            sort_by_raw.replace("+", " ").replace("%20", " ").strip()
+            if sort_by_raw
+            else "Most Relevant"
+        )
+
+        if not query:
+            return Response(
+                {
+                    "result": False,
+                    "detail": "Query parameter 'q' (address or zip code) is required.",
+                    "data": [],
+                    "total": 0,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate limit
+        if limit < 1 or limit > 100:
+            limit = 10
+
+        try:
+            repo = BuildingRepository()
+            results = repo.search_buildings(
+                query=query,
+                limit=limit,
+                borough=borough,
+                rent_stabilized=rent_stabilized,
+                affordable_housing=affordable_housing,
+                risk_level=risk_level,
+                violation_class=violation_class,
+                rent_impairing=rent_impairing,
+                complaint_category=complaint_category,
+                recent_activity_days=recent_activity_days,
+                evictions_min=evictions_min,
+                evictions_max=evictions_max,
+                violations_min=violations_min,
+                violations_max=violations_max,
+                zip_code=zip_code,
+                sort_by=sort_by,
+            )
+
+            return Response(
+                {
+                    "result": True,
+                    "data": results,
+                    "total": len(results),
+                    "page": 1,
+                    "limit": limit,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            return Response(
+                {
+                    "result": False,
+                    "detail": f"Error searching buildings: {e}",
+                    "data": [],
+                    "total": 0,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

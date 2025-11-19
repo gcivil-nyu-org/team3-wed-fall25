@@ -1,8 +1,8 @@
 from __future__ import annotations
-
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
 from datetime import datetime
-from typing import Optional
+from decimal import Decimal
 
 
 @dataclass
@@ -57,6 +57,13 @@ class HeatmapPoint:
     count: int
     address: str
     borough: str
+    # Optional fields for advanced filtering (violations only)
+    open_violations: Optional[int] = None
+    closed_violations: Optional[int] = None
+    class_a_count: Optional[int] = None
+    class_b_count: Optional[int] = None
+    class_c_count: Optional[int] = None
+    avg_response_days: Optional[float] = None
 
 
 @dataclass
@@ -88,15 +95,16 @@ def calculate_risk_score(
     Returns:
         Tuple of (risk_score, risk_level)
     """
-    # Base scoring weights
-    violation_weight = 0.4
+    # Base scoring weights - adjusted for better balance
+    violation_weight = 0.5  # Increased from 0.4
     eviction_weight = 0.4
-    complaint_weight = 0.2
+    complaint_weight = 0.1  # Decreased from 0.2
 
-    # Normalize scores (these thresholds can be adjusted based on data analysis)
-    violation_score = min(violations / 10.0, 1.0)  # Cap at 10 violations
-    eviction_score = min(evictions / 5.0, 1.0)  # Cap at 5 evictions
-    complaint_score = min(complaints / 5.0, 1.0)  # Cap at 5 complaints
+    # Normalize scores - adjusted for NYC to get ~45% High Risk
+    # More lenient normalization so more buildings score higher
+    violation_score = min(violations / 2.0, 1.0)  # Cap at 2 violations
+    eviction_score = min(evictions / 1.0, 1.0)  # Cap at 1 eviction (very impactful)
+    complaint_score = min(complaints / 3.0, 1.0)  # Cap at 3 complaints
 
     # Calculate weighted score
     risk_score = (
@@ -109,12 +117,16 @@ def calculate_risk_score(
     if rent_stabilized:
         risk_score *= 0.9
 
-    # Determine risk level
-    if risk_score >= 0.7:
+    # Determine risk level - NYC target: ~45% High Risk, rest split between Moderate and Low
+    # Simple logic: prioritize by issues, then rent stabilization status
+    total_issues = evictions + violations
+    if total_issues >= 1:
         risk_level = "High Risk"
-    elif risk_score >= 0.4:
+    elif not rent_stabilized:
+        # Non-rent-stabilized with no issues = Moderate Risk (will be adjusted in repository)
         risk_level = "Moderate Risk"
     else:
+        # Rent stabilized with no issues = Low Risk
         risk_level = "Low Risk"
 
     return round(risk_score, 2), risk_level
@@ -127,7 +139,31 @@ def as_neighborhood_stats(row: dict) -> NeighborhoodStats:
 
 def as_heatmap_point(row: dict) -> HeatmapPoint:
     """Convert database row to HeatmapPoint object"""
-    return HeatmapPoint(**row)
+    # Only include fields that exist in the row
+    point_data = {
+        "bbl": row.get("bbl", ""),
+        "latitude": row.get("latitude", 0.0),
+        "longitude": row.get("longitude", 0.0),
+        "intensity": row.get("intensity", 0.0),
+        "data_type": row.get("data_type", ""),
+        "count": row.get("count", 0),
+        "address": row.get("address", ""),
+        "borough": row.get("borough", ""),
+    }
+    # Add optional fields if they exist
+    if "open_violations" in row:
+        point_data["open_violations"] = row.get("open_violations")
+    if "closed_violations" in row:
+        point_data["closed_violations"] = row.get("closed_violations")
+    if "class_a_count" in row:
+        point_data["class_a_count"] = row.get("class_a_count")
+    if "class_b_count" in row:
+        point_data["class_b_count"] = row.get("class_b_count")
+    if "class_c_count" in row:
+        point_data["class_c_count"] = row.get("class_c_count")
+    if "avg_response_days" in row:
+        point_data["avg_response_days"] = row.get("avg_response_days")
+    return HeatmapPoint(**point_data)
 
 
 def as_neighborhood_summary(row: dict) -> NeighborhoodSummary:

@@ -36,27 +36,21 @@ export default function Profile() {
   useEffect(() => {
     const loadUserProfile = async () => {
       try {
-        console.log('Profile page - authLoading:', authLoading, 'authUser:', authUser);
-        
         // Wait for auth loading to complete
         if (authLoading) {
-          console.log('Profile page - Auth still loading, waiting...');
           return;
         }
         
         // Check if user is authenticated
         if (!authUser) {
-          console.log('Profile page - No authUser after loading complete, redirecting to signin');
           navigate('/signin');
           return;
         }
 
         // Use the user data from auth context
-        console.log('Profile page - Setting user:', authUser);
         setUser(authUser);
         setLoading(false);
       } catch (err) {
-        console.error('Profile page - Error loading profile:', err);
         setError('Failed to load user profile');
         setLoading(false);
       }
@@ -72,7 +66,6 @@ export default function Profile() {
 
   const handleEditProfile = () => {
     // Navigate to edit profile page (to be implemented)
-    console.log('Edit profile clicked');
   };
 
   const getRoleDisplayName = (role: string) => {

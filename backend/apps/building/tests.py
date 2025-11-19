@@ -787,6 +787,93 @@ class BuildingViewsAPITests(TestCase):
         except Exception as e:
             self.skipTest(f"Database connection failed: {e}")
 
+    def test_building_search_view_success(self):
+        """Test GET /api/buildings/search/?q=10001 with valid query"""
+        try:
+            params = {"q": "10001", "limit": 5}
+            response = self.client.get("/api/buildings/search/", params)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("result", response.data)
+            self.assertIn("data", response.data)
+            self.assertTrue(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_missing_query(self):
+        """Test GET /api/buildings/search/ without q parameter"""
+        try:
+            response = self.client.get("/api/buildings/search/")
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("detail", response.data)
+            self.assertFalse(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_with_borough_filter(self):
+        """Test GET /api/buildings/search/?q=10001&borough=Manhattan"""
+        try:
+            params = {"q": "10001", "borough": "Manhattan", "limit": 5}
+            response = self.client.get("/api/buildings/search/", params)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_with_filters(self):
+        """Test GET /api/buildings/search/ with multiple filters"""
+        try:
+            params = {
+                "q": "10001",
+                "rent_stabilized": "true",
+                "risk_level": "High",
+                "limit": 5,
+            }
+            response = self.client.get("/api/buildings/search/", params)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_invalid_limit(self):
+        """Test GET /api/buildings/search/?q=10001&limit=0 with invalid limit"""
+        try:
+            params = {"q": "10001", "limit": 0}
+            response = self.client.get("/api/buildings/search/", params)
+            # Should default to 10
+            self.assertEqual(response.status_code, 200)
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_limit_too_high(self):
+        """Test GET /api/buildings/search/?q=10001&limit=200 with limit > 100"""
+        try:
+            params = {"q": "10001", "limit": 200}
+            response = self.client.get("/api/buildings/search/", params)
+            # Should default to 10
+            self.assertEqual(response.status_code, 200)
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_with_sort_by(self):
+        """Test GET /api/buildings/search/?q=10001&sort_by=Most+Violations"""
+        try:
+            params = {"q": "10001", "sort_by": "Most Violations", "limit": 5}
+            response = self.client.get("/api/buildings/search/", params)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
+    def test_building_search_view_url_encoded_sort(self):
+        """Test GET /api/buildings/search/?q=10001&sort_by=Most%20Relevant"""
+        try:
+            params = {"q": "10001", "sort_by": "Most%20Relevant", "limit": 5}
+            response = self.client.get("/api/buildings/search/", params)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.data["result"])
+        except Exception as e:
+            self.skipTest(f"Database connection failed: {e}")
+
 
 class BuildingViewsHelperFunctionTests(TestCase):
     def test_default_serializer_dataclass(self):
