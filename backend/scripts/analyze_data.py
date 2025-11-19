@@ -4,56 +4,71 @@ Quick script to analyze database data for map/search unification
 """
 import sys
 import os
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from infrastructures.postgres.postgres_client import PostgresClient
+from infrastructures.postgres.postgres_client import PostgresClient  # noqa: E402
+
 
 def analyze_data():
     with PostgresClient() as db:
         print("=" * 80)
         print("DATABASE DATA ANALYSIS FOR MAP/SEARCH UNIFICATION")
         print("=" * 80)
-        
+
         # 1. Check how many buildings have location data
         print("\n1. LOCATION DATA AVAILABILITY:")
         print("-" * 80)
-        
-        evictions_with_loc = db.scalar("""
+
+        evictions_with_loc = db.scalar(
+            """
             SELECT COUNT(DISTINCT bbl) 
             FROM building_evictions 
             WHERE latitude IS NOT NULL AND longitude IS NOT NULL
-        """)
-        total_evictions = db.scalar("SELECT COUNT(DISTINCT bbl) FROM building_evictions")
-        total_registrations = db.scalar("SELECT COUNT(DISTINCT bbl) FROM building_registrations")
-        
+        """
+        )
+        total_evictions = db.scalar(
+            "SELECT COUNT(DISTINCT bbl) FROM building_evictions"
+        )
+        total_registrations = db.scalar(
+            "SELECT COUNT(DISTINCT bbl) FROM building_registrations"
+        )
+
         print(f"  - Buildings with evictions (with location): {evictions_with_loc:,}")
         print(f"  - Total buildings with evictions: {total_evictions:,}")
         print(f"  - Total registered buildings: {total_registrations:,}")
-        
+
         # 2. Check overlap between registrations and evictions
         print("\n2. DATA OVERLAP:")
         print("-" * 80)
-        
-        regs_with_evictions = db.scalar("""
+
+        regs_with_evictions = db.scalar(
+            """
             SELECT COUNT(DISTINCT br.bbl)
             FROM building_registrations br
             INNER JOIN building_evictions e ON br.bbl = e.bbl
             WHERE e.latitude IS NOT NULL AND e.longitude IS NOT NULL
-        """)
-        
-        regs_with_violations = db.scalar("""
+        """
+        )
+
+        regs_with_violations = db.scalar(
+            """
             SELECT COUNT(DISTINCT br.bbl)
             FROM building_registrations br
             INNER JOIN building_violations v ON br.bbl = v.bbl
-        """)
-        
-        regs_with_complaints = db.scalar("""
+        """
+        )
+
+        regs_with_complaints = db.scalar(
+            """
             SELECT COUNT(DISTINCT br.bbl)
             FROM building_registrations br
             INNER JOIN building_complaints c ON br.bbl = c.bbl
-        """)
-        
-        regs_with_any_data = db.scalar("""
+        """
+        )
+
+        regs_with_any_data = db.scalar(
+            """
             SELECT COUNT(DISTINCT br.bbl)
             FROM building_registrations br
             WHERE EXISTS (
@@ -63,40 +78,54 @@ def analyze_data():
             ) OR EXISTS (
                 SELECT 1 FROM building_complaints c WHERE c.bbl = br.bbl
             )
-        """)
-        
-        print(f"  - Registered buildings with evictions (with location): {regs_with_evictions:,}")
+        """
+        )
+
+        print(
+            f"  - Registered buildings with evictions (with location): {regs_with_evictions:,}"
+        )
         print(f"  - Registered buildings with violations: {regs_with_violations:,}")
         print(f"  - Registered buildings with complaints: {regs_with_complaints:,}")
-        print(f"  - Registered buildings with ANY data (evictions/violations/complaints): {regs_with_any_data:,}")
-        
+        print(
+            f"  - Registered buildings with ANY data (evictions/violations/complaints): {regs_with_any_data:,}"
+        )
+
         # 3. Check address completeness
         print("\n3. ADDRESS DATA QUALITY:")
         print("-" * 80)
-        
-        regs_with_address = db.scalar("""
+
+        regs_with_address = db.scalar(
+            """
             SELECT COUNT(DISTINCT bbl)
             FROM building_registrations
             WHERE (house_number IS NOT NULL AND house_number != '')
                OR (street_name IS NOT NULL AND street_name != '')
-        """)
-        
-        evictions_with_address = db.scalar("""
+        """
+        )
+
+        evictions_with_address = db.scalar(
+            """
             SELECT COUNT(DISTINCT bbl)
             FROM building_evictions
             WHERE eviction_address IS NOT NULL 
               AND eviction_address != ''
               AND eviction_address != 'building address'
-        """)
-        
-        print(f"  - Registered buildings with address: {regs_with_address:,} / {total_registrations:,}")
-        print(f"  - Evictions with valid address: {evictions_with_address:,} / {total_evictions:,}")
-        
+        """
+        )
+
+        print(
+            f"  - Registered buildings with address: {regs_with_address:,} / {total_registrations:,}"
+        )
+        print(
+            f"  - Evictions with valid address: {evictions_with_address:,} / {total_evictions:,}"
+        )
+
         # 4. Sample data comparison
         print("\n4. SAMPLE DATA COMPARISON (first 5 buildings):")
         print("-" * 80)
-        
-        sample = db.query_all("""
+
+        sample = db.query_all(
+            """
             SELECT 
                 br.bbl,
                 br.house_number || ' ' || br.street_name as reg_address,
@@ -115,20 +144,28 @@ def analyze_data():
             ) e ON br.bbl = e.bbl
             WHERE e.latitude IS NOT NULL
             LIMIT 5
-        """)
-        
+        """
+        )
+
         for i, row in enumerate(sample, 1):
             print(f"\n  Building {i} (BBL: {row['bbl']}):")
             print(f"    Registration Address: {row['reg_address']}")
             print(f"    Eviction Address: {row['eviction_address']}")
             print(f"    Location: ({row['latitude']}, {row['longitude']})")
-            print(f"    Violations: {row['violation_count']}, Evictions: {row['eviction_count']}, Complaints: {row['complaint_count']}")
-        
+            print(
+                f"    Violations: {row['violation_count']}, "
+                f"Evictions: {row['eviction_count']}, "
+                f"Complaints: {row['complaint_count']}"
+            )
+
         # 5. Buildings with violations/complaints but no evictions
-        print("\n5. BUILDINGS MISSING FROM MAP (have violations/complaints but no evictions):")
+        print(
+            "\n5. BUILDINGS MISSING FROM MAP (have violations/complaints but no evictions):"
+        )
         print("-" * 80)
-        
-        missing_from_map = db.scalar("""
+
+        missing_from_map = db.scalar(
+            """
             SELECT COUNT(DISTINCT br.bbl)
             FROM building_registrations br
             WHERE (
@@ -141,14 +178,18 @@ def analyze_data():
                 AND e.latitude IS NOT NULL 
                 AND e.longitude IS NOT NULL
             )
-        """)
-        
-        print(f"  - Buildings with violations/complaints but NO evictions with location: {missing_from_map:,}")
-        print(f"  - These buildings appear in search but NOT on map!")
-        
+        """
+        )
+
+        print(
+            f"  - Buildings with violations/complaints but NO evictions with location: {missing_from_map:,}"
+        )
+        print("  - These buildings appear in search but NOT on map!")
+
         print("\n" + "=" * 80)
         print("ANALYSIS COMPLETE")
         print("=" * 80)
+
 
 if __name__ == "__main__":
     try:
@@ -156,5 +197,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error: {e}")
         import traceback
-        traceback.print_exc()
 
+        traceback.print_exc()

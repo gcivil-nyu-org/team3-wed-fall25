@@ -8,19 +8,21 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from infrastructures.postgres.postgres_client import PostgresClient
+from infrastructures.postgres.postgres_client import PostgresClient  # noqa: E402
+
 
 def create_unified_locations_table():
     """Create and populate unified building_locations table"""
-    
+
     print("=" * 80)
     print("CREATING UNIFIED BUILDING LOCATIONS TABLE")
     print("=" * 80)
-    
+
     with PostgresClient() as db:
         # Create unified table
         print("\n1. Creating building_locations table...")
-        db.execute("""
+        db.execute(
+            """
             CREATE TABLE IF NOT EXISTS building_locations (
                 bbl VARCHAR(10) PRIMARY KEY,
                 -- Address from best available source
@@ -38,20 +40,35 @@ def create_unified_locations_table():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        """)
-        
+        """
+        )
+
         # Create indexes
         print("2. Creating indexes...")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_building_locations_bbl ON building_locations(bbl)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_building_locations_has_location ON building_locations(has_location)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_building_locations_lat_lng ON building_locations(latitude, longitude)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_building_locations_borough ON building_locations(borough)")
-        db.execute("CREATE INDEX IF NOT EXISTS idx_building_locations_zip ON building_locations(zip)")
-        
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_building_locations_bbl ON building_locations(bbl)"
+        )
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_building_locations_has_location ON building_locations(has_location)"
+        )
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_building_locations_lat_lng ON building_locations(latitude, longitude)"
+        )
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_building_locations_borough ON building_locations(borough)"
+        )
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_building_locations_zip ON building_locations(zip)"
+        )
+
         # Step 1: Populate from evictions (best source - has location + address)
         print("\n3. Populating from building_evictions (has location data)...")
-        db.execute("""
-            INSERT INTO building_locations (bbl, address, house_number, street_name, borough, zip, latitude, longitude, source, has_location)
+        db.execute(
+            """
+                    INSERT INTO building_locations (
+                        bbl, address, house_number, street_name, borough, zip,
+                        latitude, longitude, source, has_location
+                    )
             SELECT DISTINCT ON (bbl)
                 e.bbl,
                 COALESCE(e.eviction_address, 'Address not available') as address,
@@ -75,13 +92,19 @@ def create_unified_locations_table():
                 source = 'evictions',
                 has_location = TRUE,
                 updated_at = CURRENT_TIMESTAMP
-        """)
-        evictions_count = db.scalar("SELECT COUNT(*) FROM building_locations WHERE source = 'evictions'")
+        """
+        )
+        evictions_count = db.scalar(
+            "SELECT COUNT(*) FROM building_locations WHERE source = 'evictions'"
+        )
         print(f"   ✓ Inserted {evictions_count:,} locations from evictions")
-        
+
         # Step 2: Enrich with registration addresses (better address quality)
-        print("\n4. Enriching with building_registrations addresses (better quality)...")
-        db.execute("""
+        print(
+            "\n4. Enriching with building_registrations addresses (better quality)..."
+        )
+        db.execute(
+            """
             UPDATE building_locations bl
             SET 
                 house_number = br.house_number,
@@ -99,19 +122,26 @@ def create_unified_locations_table():
             FROM building_registrations br
             WHERE bl.bbl = br.bbl
               AND (br.house_number IS NOT NULL OR br.street_name IS NOT NULL)
-        """)
-        enriched_count = db.scalar("""
+        """
+        )
+        enriched_count = db.scalar(
+            """
             SELECT COUNT(*) 
             FROM building_locations bl
             JOIN building_registrations br ON bl.bbl = br.bbl
             WHERE bl.house_number IS NOT NULL
-        """)
+        """
+        )
         print(f"   ✓ Enriched {enriched_count:,} locations with registration addresses")
-        
+
         # Step 3: Add registrations that don't have location yet (will be geocoded)
         print("\n5. Adding building_registrations without location (for geocoding)...")
-        db.execute("""
-            INSERT INTO building_locations (bbl, address, house_number, street_name, borough, zip, latitude, longitude, source, has_location)
+        db.execute(
+            """
+                    INSERT INTO building_locations (
+                        bbl, address, house_number, street_name, borough, zip,
+                        latitude, longitude, source, has_location
+                    )
             SELECT DISTINCT
                 br.bbl,
                 CASE 
@@ -137,13 +167,17 @@ def create_unified_locations_table():
                   SELECT 1 FROM building_locations bl WHERE bl.bbl = br.bbl
               )
             ON CONFLICT (bbl) DO NOTHING
-        """)
-        pending_count = db.scalar("SELECT COUNT(*) FROM building_locations WHERE has_location = FALSE")
+        """
+        )
+        pending_count = db.scalar(
+            "SELECT COUNT(*) FROM building_locations WHERE has_location = FALSE"
+        )
         print(f"   ✓ Added {pending_count:,} registrations pending geocoding")
-        
+
         # Step 4: Add any geocoded locations we already have
         print("\n6. Adding existing geocoded locations...")
-        db.execute("""
+        db.execute(
+            """
             INSERT INTO building_locations (bbl, latitude, longitude, source, has_location)
             SELECT 
                 bbl,
@@ -159,24 +193,31 @@ def create_unified_locations_table():
                 source = 'geocoded',
                 has_location = TRUE,
                 updated_at = CURRENT_TIMESTAMP
-        """)
-        geocoded_count = db.scalar("SELECT COUNT(*) FROM building_locations WHERE source = 'geocoded'")
+        """
+        )
+        geocoded_count = db.scalar(
+            "SELECT COUNT(*) FROM building_locations WHERE source = 'geocoded'"
+        )
         print(f"   ✓ Added {geocoded_count:,} geocoded locations")
-        
+
         # Final stats
         print("\n" + "=" * 80)
         print("UNIFIED TABLE STATISTICS")
         print("=" * 80)
-        
+
         total = db.scalar("SELECT COUNT(*) FROM building_locations")
-        with_location = db.scalar("SELECT COUNT(*) FROM building_locations WHERE has_location = TRUE")
-        without_location = db.scalar("SELECT COUNT(*) FROM building_locations WHERE has_location = FALSE")
-        
+        with_location = db.scalar(
+            "SELECT COUNT(*) FROM building_locations WHERE has_location = TRUE"
+        )
+        without_location = db.scalar(
+            "SELECT COUNT(*) FROM building_locations WHERE has_location = FALSE"
+        )
+
         print(f"\nTotal BBLs in unified table: {total:,}")
         print(f"  - With location: {with_location:,}")
         print(f"  - Without location (need geocoding): {without_location:,}")
         print(f"\nCoverage: {(with_location/total*100):.1f}% have location data")
-        
+
         print("\n" + "=" * 80)
         print("UNIFIED TABLE CREATED SUCCESSFULLY")
         print("=" * 80)
@@ -191,5 +232,5 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\nError: {e}")
         import traceback
-        traceback.print_exc()
 
+        traceback.print_exc()
