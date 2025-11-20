@@ -27,8 +27,9 @@ export default function AdminLogin() {
 
     try {
       // Use real authentication API to get JWT token
+      // Try username as email (backend may accept username as email)
       const response = await loginUser({
-        email: username, // Login API expects email
+        email: username, // Backend login expects 'email' field, but we use username value
         password: password,
       });
 
@@ -57,10 +58,10 @@ export default function AdminLogin() {
         ? (err as any).response?.data?.error_message || 
           (err as any).response?.data?.detail || 
           (err as any).response?.data?.error || 
-          "Invalid email or password"
+          "Invalid username or password"
         : err instanceof Error 
         ? err.message 
-        : "Invalid email or password";
+        : "Invalid username or password";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -111,8 +112,7 @@ export default function AdminLogin() {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Email"
-              type="email"
+              label="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               margin="normal"
