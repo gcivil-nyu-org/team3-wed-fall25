@@ -11,11 +11,7 @@ import {
 } from "@mui/material";
 import { AdminPanelSettings, Lock } from "@mui/icons-material";
 import { COLORS } from "../constants";
-
-const ADMIN_CREDENTIALS = {
-  username: "admin",
-  password: "test1234",
-};
+import { loginUser } from "../api/auth";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -29,18 +25,44 @@ export default function AdminLogin() {
     setError(null);
     setLoading(true);
 
-    // Simple authentication check
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      // Store admin session
-      sessionStorage.setItem("admin_authenticated", "true");
-      sessionStorage.setItem("admin_username", username);
-      
-      // Redirect to admin dashboard
-      setTimeout(() => {
+    try {
+      // Use real authentication API to get JWT token
+      const response = await loginUser({
+        email: username, // Login API expects email
+        password: password,
+      });
+
+      const responseData = response.data;
+      const authData = responseData?.data || responseData;
+      const accessToken = authData?.access || authData?.access_token || authData?.token;
+      const refreshToken = authData?.refresh || authData?.refresh_token;
+
+      if (accessToken) {
+        // Store JWT token for API authentication
+        sessionStorage.setItem("access_token", accessToken);
+        if (refreshToken) {
+          sessionStorage.setItem("refresh_token", refreshToken);
+        }
+        // Also store admin session flag for dashboard check
+        sessionStorage.setItem("admin_authenticated", "true");
+        sessionStorage.setItem("admin_username", username);
+        
+        // Redirect to admin dashboard
         navigate("/admin/dashboard");
-      }, 500);
-    } else {
-      setError("Invalid username or password");
+      } else {
+        throw new Error("No access token received");
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error && 'response' in err
+        ? (err as any).response?.data?.error_message || 
+          (err as any).response?.data?.detail || 
+          (err as any).response?.data?.error || 
+          "Invalid email or password"
+        : err instanceof Error 
+        ? err.message 
+        : "Invalid email or password";
+      setError(errorMessage);
+    } finally {
       setLoading(false);
     }
   };
@@ -89,7 +111,8 @@ export default function AdminLogin() {
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
-              label="Username"
+              label="Email"
+              type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               margin="normal"
