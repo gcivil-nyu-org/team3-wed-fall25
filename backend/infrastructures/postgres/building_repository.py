@@ -14,6 +14,18 @@ class BuildingRepository:
 
     def get_by_bbl(self, bbl: str):
         with self.client_factory() as db:
+            # First, get unified address from building_locations
+            location_row = db.query_one(
+                """
+                SELECT
+                    address, house_number, street_name, borough, zip,
+                    latitude, longitude, has_location
+                FROM building_locations
+                WHERE bbl = %s
+                """,
+                (bbl,),
+            )
+
             reg_row = db.query_one(
                 """
                 SELECT
@@ -26,6 +38,50 @@ class BuildingRepository:
                 """,
                 (bbl,),
             )
+
+            # Enrich registration with unified address from building_locations
+            if location_row and reg_row:
+                # Use address from building_locations if available, otherwise keep registration address
+                if (
+                    location_row.get("address")
+                    and location_row["address"] != "Address not available"
+                ):
+                    # Update reg_row with unified address
+                    reg_row["house_number"] = location_row.get(
+                        "house_number"
+                    ) or reg_row.get("house_number")
+                    reg_row["street_name"] = location_row.get(
+                        "street_name"
+                    ) or reg_row.get("street_name")
+                    # If we have a formatted address, we can use it (but registration expects house_number + street_name)
+                    # For now, prefer building_locations address components
+                elif not reg_row.get("house_number") or not reg_row.get("street_name"):
+                    # If registration is missing address but building_locations has it, use that
+                    reg_row["house_number"] = location_row.get(
+                        "house_number"
+                    ) or reg_row.get("house_number")
+                    reg_row["street_name"] = location_row.get(
+                        "street_name"
+                    ) or reg_row.get("street_name")
+            elif location_row and not reg_row:
+                # Building exists in building_locations but not in registrations
+                # Create a minimal registration row for display
+                reg_row = {
+                    "bbl": bbl,
+                    "bin": None,
+                    "boro_id": None,
+                    "boro": location_row.get("borough"),
+                    "block": None,
+                    "lot": None,
+                    "house_number": location_row.get("house_number"),
+                    "street_name": location_row.get("street_name"),
+                    "zip": location_row.get("zip"),
+                    "community_board": None,
+                    "last_registration_date": None,
+                    "registration_end_date": None,
+                    "registration_id": None,
+                    "building_id": None,
+                }
 
             contact_rows: List[Dict[str, Any]] = []
             if reg_row and reg_row.get("registration_id") is not None:
@@ -256,6 +312,7 @@ class BuildingRepository:
         self,
         query: str,
         limit: int = 10,
+        offset: int = 0,
         borough: Optional[str] = None,
         rent_stabilized: Optional[str] = None,
         affordable_housing: Optional[str] = None,
@@ -297,39 +354,70 @@ class BuildingRepository:
             evictions count, violations count, and rent stabilized status.
         """
         with self.client_factory() as db:
-            query_clean = query.strip()
-            if not query_clean:
-                return []
+            query_clean = query.strip() if query else ""
+
+            # Check if query is a BBL (10 digits)
+            is_bbl = query_clean.isdigit() and len(query_clean) == 10
 
             # Check if query is a zip code (5 digits)
             is_zip_code = query_clean.isdigit() and len(query_clean) == 5
+
+            # Check if query matches a borough name (case-insensitive)
+            borough_names = [
+                "manhattan",
+                "brooklyn",
+                "queens",
+                "bronx",
+                "staten island",
+            ]
+            query_lower = query_clean.lower()
+            matched_borough = None
+            for boro in borough_names:
+                if query_lower == boro or query_lower == boro.replace(" ", ""):
+                    matched_borough = boro.title()
+                    if matched_borough == "Staten Island":
+                        matched_borough = "STATEN ISLAND"
+                    else:
+                        matched_borough = matched_borough.upper()
+                    break
 
             # Build WHERE clause
             where_conditions = []
             params = []
 
-            if is_zip_code:
-                # Exact zip code match
-                where_conditions.append("br.zip = %s")
+            if is_bbl:
+                # Exact BBL match
+                where_conditions.append("bl.bbl = %s")
                 params.append(query_clean)
-            else:
+            elif is_zip_code:
+                # Exact zip code match
+                where_conditions.append("COALESCE(br.zip, bl.zip) = %s")
+                params.append(query_clean)
+            elif matched_borough:
+                # Borough name search - search by borough instead of address
+                where_conditions.append("UPPER(COALESCE(bl.borough, br.boro)) = %s")
+                params.append(matched_borough)
+            elif query_clean:
                 # Address search - try to match full address or parts
                 search_pattern = f"%{query_clean}%"
                 where_conditions.append(
-                    "(br.street_name ILIKE %s OR (br.house_number || ' ' || br.street_name) ILIKE %s)"
+                    "(bl.address ILIKE %s OR br.street_name ILIKE %s OR (br.house_number || ' ' || br.street_name) ILIKE %s)"
                 )
-                params.extend([search_pattern, search_pattern])
+                params.extend([search_pattern, search_pattern, search_pattern])
+            # If query is empty, we'll rely on filters only (handled by caller)
 
             # Borough filter - normalize to uppercase to match database
             if borough and borough != "All Boroughs":
                 # Database stores boroughs in UPPERCASE, frontend sends title case
                 borough_normalized = borough.upper()
-                where_conditions.append("UPPER(br.boro) = UPPER(%s)")
+                where_conditions.append(
+                    "UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)"
+                )
                 params.append(borough_normalized)
 
             # Zip code filter (separate from query)
             if zip_code:
-                where_conditions.append("br.zip = %s")
+                where_conditions.append("COALESCE(br.zip, bl.zip) = %s")
                 params.append(zip_code)
 
             # Build subqueries with filters
@@ -396,50 +484,65 @@ class BuildingRepository:
 
             # Optimized query with better performance
             # Use subqueries with WHERE clause filtering first to reduce data before JOINs
+            # Use MAX() to get units from affordable_housing (handles multiple records per BBL)
+            # UNIFIED: Use address from building_locations (same as map)
             query_sql = f"""
                 SELECT
-                    br.bbl,
+                    bl.bbl,
                     br.house_number,
                     br.street_name,
-                    br.zip,
-                    br.boro as borough,
+                    COALESCE(br.zip, bl.zip) as zip,
+                    COALESCE(bl.borough, br.boro) as borough,
                     COALESCE(ev.evictions_count, 0) as evictions_count,
                     COALESCE(v.open_violations_count, 0) as open_violations_count,
                     COALESCE(c.open_complaints_count, 0) as open_complaints_count,
                     BOOL_OR(rs.bbl IS NOT NULL) as rent_stabilized,
-                    BOOL_OR(ah.bbl IS NOT NULL) as affordable_housing,
-                    -- Build formatted address
-                    CASE 
-                        WHEN br.house_number IS NOT NULL AND br.street_name IS NOT NULL 
-                        THEN br.house_number || ' ' || br.street_name
-                        WHEN br.street_name IS NOT NULL 
-                        THEN br.street_name
-                        ELSE 'Address not available'
-                    END as address
-                FROM building_registrations br
+                    BOOL_OR(ah.total_units IS NOT NULL) as affordable_housing,
+                    MAX(ah.total_units) as units,
+                    -- UNIFIED: Use address from building_locations (same as map)
+                    COALESCE(bl.address, 
+                        CASE 
+                            WHEN br.house_number IS NOT NULL AND br.street_name IS NOT NULL 
+                            THEN br.house_number || ' ' || br.street_name
+                            WHEN br.street_name IS NOT NULL 
+                            THEN br.street_name
+                            ELSE 'Address not available'
+                        END
+                    ) as address
+                FROM building_locations bl
+                -- UNIFIED: Use building_locations as base (all buildings with location)
+                -- LEFT JOIN with registrations for additional data
+                LEFT JOIN building_registrations br ON bl.bbl = br.bbl
                 LEFT JOIN (
                     SELECT bbl, COUNT(*) as evictions_count
                     FROM building_evictions
                     WHERE {evictions_where}
                     GROUP BY bbl
-                ) ev ON br.bbl = ev.bbl
+                ) ev ON bl.bbl = ev.bbl
                 {violation_join_type} JOIN (
                     SELECT bbl, COUNT(*) as open_violations_count
                     FROM building_violations
                     WHERE {violations_where}
                     GROUP BY bbl
-                ) v ON br.bbl = v.bbl
+                ) v ON bl.bbl = v.bbl
                 {complaint_join_type} JOIN (
                     SELECT bbl, COUNT(*) as open_complaints_count
                     FROM building_complaints
                     WHERE {complaints_where}
                     GROUP BY bbl
-                ) c ON br.bbl = c.bbl
-                LEFT JOIN building_rent_stabilized_list rs ON br.bbl = rs.bbl
-                LEFT JOIN building_affordable_housing ah ON br.bbl = ah.bbl
-                WHERE {where_clause}
-                GROUP BY br.bbl, br.house_number, br.street_name, br.zip, br.boro, 
-                         ev.evictions_count, v.open_violations_count, c.open_complaints_count
+                ) c ON bl.bbl = c.bbl
+                LEFT JOIN building_rent_stabilized_list rs ON bl.bbl = rs.bbl
+                LEFT JOIN (
+                    SELECT bbl, MAX(total_units) as total_units
+                    FROM building_affordable_housing
+                    GROUP BY bbl
+                ) ah ON bl.bbl = ah.bbl
+                -- UNIFIED: WHERE clause filters
+                WHERE bl.has_location = TRUE
+                    AND {where_clause}
+                GROUP BY bl.bbl, bl.address, bl.borough, bl.zip, br.house_number, br.street_name, br.zip, br.boro,
+                         ev.evictions_count, v.open_violations_count, c.open_complaints_count,
+                         ah.total_units
             """
 
             # Add HAVING clause for numeric filters and boolean filters
@@ -543,19 +646,20 @@ class BuildingRepository:
             # Risk level is computed after fetching, so we need to over-fetch to get enough matches
             # For Moderate, we need buildings with 1-4 violations, which come after 0-violation buildings
             # For Low Risk, we need buildings with 0 violations, which come first
+            # When paginating, we need to fetch enough results to cover the offset + limit
             if risk_level and risk_level in ["High", "Moderate", "Low"]:
                 if risk_level == "Low":
-                    fetch_limit = (
-                        limit * 20
-                    )  # Low Risk is rarer, need many more results
+                    # Low Risk is rarer, need many more results
+                    # Account for offset: fetch (offset + limit) * multiplier
+                    fetch_limit = (offset + limit) * 20
                 elif risk_level == "Moderate":
-                    fetch_limit = (
-                        limit * 30
-                    )  # Moderate needs even more - buildings with 1-4 violations come later
+                    # Moderate needs even more - buildings with 1-4 violations come later
+                    fetch_limit = (offset + limit) * 30
                 else:  # High
-                    fetch_limit = limit * 3
+                    fetch_limit = (offset + limit) * 3
             else:
-                fetch_limit = limit
+                # No risk filter: can use normal pagination
+                fetch_limit = offset + limit
 
             query_sql += f" ORDER BY {order_by_clause} LIMIT %s"
             params.append(fetch_limit)
@@ -564,6 +668,8 @@ class BuildingRepository:
 
             # Format results and calculate risk levels
             formatted_results = []
+            skipped_count = 0  # Track how many results we've skipped for pagination
+
             for row in results:
                 evictions = row.get("evictions_count", 0) or 0
                 violations = row.get("open_violations_count", 0) or 0
@@ -596,12 +702,22 @@ class BuildingRepository:
                     if assigned_risk_level != expected_level:
                         continue  # Skip this result
 
+                # Handle pagination: skip results until we reach the offset
+                if skipped_count < offset:
+                    skipped_count += 1
+                    continue
+
+                # Get units from affordable_housing, default to None if not available
+                units = row.get("units")
+                units_int = int(units) if units is not None else None
+
                 formatted_results.append(
                     {
                         "bbl": str(row.get("bbl", "")),
                         "address": row.get("address", "Address not available"),
-                        "borough": row.get("borough", ""),
-                        "zip": row.get("zip", ""),
+                        "borough": row.get("borough", "") or "",
+                        "zip": str(row.get("zip", "")) if row.get("zip") else "",
+                        "units": units_int,
                         "evictions3yr": int(evictions),
                         "openViolations": int(violations),
                         "rentStabilized": rent_stabilized,
@@ -614,6 +730,271 @@ class BuildingRepository:
                     break
 
             return formatted_results
+
+    def search_buildings_count(
+        self,
+        query: str,
+        borough: Optional[str] = None,
+        rent_stabilized: Optional[str] = None,
+        affordable_housing: Optional[str] = None,
+        risk_level: Optional[str] = None,
+        violation_class: Optional[str] = None,
+        rent_impairing: Optional[str] = None,
+        complaint_category: Optional[str] = None,
+        recent_activity_days: Optional[str] = None,
+        evictions_min: Optional[str] = None,
+        evictions_max: Optional[str] = None,
+        violations_min: Optional[str] = None,
+        violations_max: Optional[str] = None,
+        zip_code: Optional[str] = None,
+    ) -> int:
+        """
+        Get total count of buildings matching search criteria (without pagination).
+        Uses the same filtering logic as search_buildings but only returns count.
+        """
+        # Reuse the same query building logic from search_buildings
+        # This is a simplified version that just counts
+        with self.client_factory() as db:
+            query_clean = query.strip() if query else ""
+
+            # Check if query is a BBL (10 digits)
+            is_bbl = query_clean.isdigit() and len(query_clean) == 10
+
+            # Check if query is a zip code (5 digits)
+            is_zip_code = query_clean.isdigit() and len(query_clean) == 5
+
+            # Check if query matches a borough name
+            borough_names = [
+                "manhattan",
+                "brooklyn",
+                "queens",
+                "bronx",
+                "staten island",
+            ]
+            query_lower = query_clean.lower() if query_clean else ""
+            matched_borough = None
+            for boro in borough_names:
+                if query_lower == boro or query_lower == boro.replace(" ", ""):
+                    matched_borough = boro.title()
+                    if matched_borough == "Staten Island":
+                        matched_borough = "STATEN ISLAND"
+                    else:
+                        matched_borough = matched_borough.upper()
+                    break
+
+            where_conditions = []
+            params = []
+
+            if is_bbl:
+                where_conditions.append("bl.bbl = %s")
+                params.append(query_clean)
+            elif is_zip_code:
+                where_conditions.append("COALESCE(br.zip, bl.zip) = %s")
+                params.append(query_clean)
+            elif matched_borough:
+                where_conditions.append("UPPER(COALESCE(bl.borough, br.boro)) = %s")
+                params.append(matched_borough)
+            elif query_clean:
+                search_pattern = f"%{query_clean}%"
+                where_conditions.append(
+                    "(bl.address ILIKE %s OR br.street_name ILIKE %s OR (br.house_number || ' ' || br.street_name) ILIKE %s)"
+                )
+                params.extend([search_pattern, search_pattern, search_pattern])
+            # If query is empty, rely on filters only
+
+            if borough and borough != "All Boroughs":
+                borough_normalized = borough.upper()
+                where_conditions.append(
+                    "UPPER(COALESCE(bl.borough, br.boro)) = UPPER(%s)"
+                )
+                params.append(borough_normalized)
+
+            if zip_code:
+                where_conditions.append("COALESCE(br.zip, bl.zip) = %s")
+                params.append(zip_code)
+
+            # Build subqueries with same filters as search_buildings
+            evictions_where = (
+                "executed_date >= (CURRENT_DATE - INTERVAL '3 years')::date"
+            )
+            violations_where = "UPPER(violation_status) = 'OPEN'"
+            complaints_where = "1=1"
+
+            if recent_activity_days:
+                try:
+                    days = int(recent_activity_days)
+                    violations_where += f" AND nov_issued_date >= (CURRENT_DATE - INTERVAL '{days} days')::date"
+                    complaints_where += f" AND complaint_status_date >= (CURRENT_DATE - INTERVAL '{days} days')::date"
+                except ValueError:
+                    pass
+
+            if violation_class and violation_class in ["A", "B", "C"]:
+                violations_where += f" AND class = '{violation_class}'"
+
+            if rent_impairing == "true":
+                violations_where += " AND rent_impairing = true"
+            elif rent_impairing == "false":
+                violations_where += (
+                    " AND (rent_impairing = false OR rent_impairing IS NULL)"
+                )
+
+            if complaint_category and complaint_category != "Any":
+                complaints_where += (
+                    f" AND UPPER(major_category) = UPPER('{complaint_category}')"
+                )
+
+            where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+            has_violation_filter = (
+                violation_class
+                or rent_impairing == "true"
+                or rent_impairing == "false"
+                or recent_activity_days
+            )
+            violation_join_type = "INNER" if has_violation_filter else "LEFT"
+
+            has_complaint_filter = (
+                complaint_category and complaint_category != "Any"
+            ) or recent_activity_days
+            complaint_join_type = "INNER" if has_complaint_filter else "LEFT"
+
+            # Build base query for fetching building data
+            # This will be used for both count and risk level filtering
+            # UNIFIED: Join with building_locations (same as search_buildings)
+            base_query = f"""
+                SELECT bl.bbl, 
+                       COALESCE(ev.evictions_count, 0) as evictions_count,
+                       COALESCE(v.open_violations_count, 0) as open_violations_count,
+                       COALESCE(c.open_complaints_count, 0) as open_complaints_count,
+                       BOOL_OR(rs.bbl IS NOT NULL) as rent_stabilized,
+                       MAX(ah.total_units) as units
+                FROM building_locations bl
+                -- UNIFIED: Use building_locations as base (all buildings with location)
+                LEFT JOIN building_registrations br ON bl.bbl = br.bbl
+                LEFT JOIN (
+                    SELECT bbl, COUNT(*) as evictions_count
+                    FROM building_evictions
+                    WHERE {evictions_where}
+                    GROUP BY bbl
+                ) ev ON bl.bbl = ev.bbl
+                {violation_join_type} JOIN (
+                    SELECT bbl, COUNT(*) as open_violations_count
+                    FROM building_violations
+                    WHERE {violations_where}
+                    GROUP BY bbl
+                ) v ON bl.bbl = v.bbl
+                {complaint_join_type} JOIN (
+                    SELECT bbl, COUNT(*) as open_complaints_count
+                    FROM building_complaints
+                    WHERE {complaints_where}
+                    GROUP BY bbl
+                ) c ON bl.bbl = c.bbl
+                LEFT JOIN building_rent_stabilized_list rs ON bl.bbl = rs.bbl
+                LEFT JOIN building_affordable_housing ah ON bl.bbl = ah.bbl
+                -- UNIFIED: WHERE clause filters
+                WHERE bl.has_location = TRUE
+                    AND {where_clause}
+                GROUP BY bl.bbl, ev.evictions_count, v.open_violations_count, c.open_complaints_count
+            """
+
+            # Add HAVING clause for numeric and boolean filters
+            having_conditions = []
+
+            if evictions_min:
+                try:
+                    having_conditions.append(
+                        f"COALESCE(ev.evictions_count, 0) >= {int(evictions_min)}"
+                    )
+                except ValueError:
+                    pass
+
+            if evictions_max:
+                try:
+                    having_conditions.append(
+                        f"COALESCE(ev.evictions_count, 0) <= {int(evictions_max)}"
+                    )
+                except ValueError:
+                    pass
+
+            if violations_min:
+                try:
+                    having_conditions.append(
+                        f"COALESCE(v.open_violations_count, 0) >= {int(violations_min)}"
+                    )
+                except ValueError:
+                    pass
+
+            if violations_max:
+                try:
+                    having_conditions.append(
+                        f"COALESCE(v.open_violations_count, 0) <= {int(violations_max)}"
+                    )
+                except ValueError:
+                    pass
+
+            if rent_stabilized == "true":
+                having_conditions.append("BOOL_OR(rs.bbl IS NOT NULL) = true")
+            elif rent_stabilized == "false":
+                having_conditions.append(
+                    "(BOOL_OR(rs.bbl IS NOT NULL) = false OR BOOL_OR(rs.bbl IS NOT NULL) IS NULL)"
+                )
+
+            if affordable_housing == "true":
+                having_conditions.append("BOOL_OR(ah.bbl IS NOT NULL) = true")
+
+            if having_conditions:
+                base_query += " HAVING " + " AND ".join(having_conditions)
+
+            # If risk level filter is specified, we need to calculate risk levels in Python
+            # because risk level is computed dynamically, not in SQL
+            if risk_level and risk_level in ["High", "Moderate", "Low"]:
+                # Fetch all matching buildings (with a reasonable limit to avoid memory issues)
+                # Calculate risk levels and filter
+                fetch_query = (
+                    base_query + " LIMIT 100000"
+                )  # Allow up to 100k for risk level filtering
+
+                results = db.query_all(fetch_query, tuple(params))
+
+                # Calculate risk levels and filter
+                count = 0
+                expected_level = f"{risk_level} Risk"
+
+                for row in results:
+                    evictions = row.get("evictions_count", 0) or 0
+                    violations = row.get("open_violations_count", 0) or 0
+                    complaints = row.get("open_complaints_count", 0) or 0
+                    rent_stabilized = bool(row.get("rent_stabilized", False))
+                    bbl = str(row.get("bbl", ""))
+
+                    # Calculate risk score and level (same logic as search_buildings)
+                    risk_score, calculated_risk_level = calculate_risk_score(
+                        violations=violations,
+                        evictions=evictions,
+                        complaints=complaints,
+                        rent_stabilized=rent_stabilized,
+                    )
+
+                    # Assign risk level with distribution (same logic as search_buildings)
+                    assigned_risk_level = self._assign_risk_level_with_distribution(
+                        calculated_risk_level=calculated_risk_level,
+                        risk_score=risk_score,
+                        evictions=evictions,
+                        violations=violations,
+                        rent_stabilized=rent_stabilized,
+                        bbl=bbl,
+                    )
+
+                    # Count if it matches the filter
+                    if assigned_risk_level == expected_level:
+                        count += 1
+
+                return count
+            else:
+                # No risk level filter: use simple SQL count
+                count_query = f"SELECT COUNT(*) as total_count FROM ({base_query}) as filtered_buildings"
+                result = db.query_one(count_query, tuple(params))
+                return result.get("total_count", 0) if result else 0
 
     def _assign_risk_level_with_distribution(
         self,

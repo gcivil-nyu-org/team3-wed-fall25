@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import {
   Box,
@@ -53,6 +53,8 @@ const Search: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const resultsPerPage = 10;
   
   // Filter states
   const [selectedBorough, setSelectedBorough] = useState("All Boroughs");
@@ -64,6 +66,7 @@ const Search: React.FC = () => {
   const [complaintCategory, setComplaintCategory] = useState("Any");
   const [recentActivity, setRecentActivity] = useState("Any");
   const [sortBy, setSortBy] = useState("Most Relevant");
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const boroughs = ["All Boroughs", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
 
@@ -77,16 +80,29 @@ const Search: React.FC = () => {
     rentImpairing?: string;
     complaintCategory?: string;
     recentActivity?: string;
+    page?: number;
   }) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Use the main search query (address or zip code)
+      // Use the main search query (address, zip code, BBL, or borough)
       const query = searchQuery.trim();
       
-      if (!query) {
-        setError("Please enter an address or zip code to search.");
+      // Check if any filters are active
+      const hasActiveFilters = 
+        selectedBorough !== "All Boroughs" ||
+        rentStabilized ||
+        affordableHousing ||
+        riskLevel !== "Any" ||
+        violationClass !== "Any" ||
+        rentImpairing !== "Any" ||
+        complaintCategory !== "Any" ||
+        recentActivity !== "Any";
+      
+      // Allow empty query if filters are provided
+      if (!query && !hasActiveFilters) {
+        setError("Please enter a search term (address, zip code, BBL, or borough) or select at least one filter.");
         setLoading(false);
         return;
       }
@@ -101,11 +117,13 @@ const Search: React.FC = () => {
       const currentComplaintCategory = customFilters?.complaintCategory !== undefined ? customFilters.complaintCategory : complaintCategory;
       const currentRecentActivity = customFilters?.recentActivity !== undefined ? customFilters.recentActivity : recentActivity;
       const currentSortBy = customFilters?.sortBy !== undefined ? customFilters.sortBy : sortBy;
+      const pageToUse = customFilters?.page !== undefined ? customFilters.page : currentPage;
       
       // Build search parameters for the new endpoint
       const searchParams: any = {
         query: query,
-        limit: 10, // Always return 10 results
+        limit: resultsPerPage,
+        page: pageToUse,
       };
       
       // Add borough filter if selected
@@ -165,6 +183,10 @@ const Search: React.FC = () => {
       const response = await searchBuildings(searchParams);
       setSearchResults(response.data || []);
       setTotalResults(response.total || 0);
+      // Update current page from response if provided
+      if (response.page) {
+        setCurrentPage(response.page);
+      }
     } catch (err) {
       setError("Failed to search buildings. Please try again.");
     } finally {
@@ -181,6 +203,7 @@ const Search: React.FC = () => {
     setRentImpairing("Any");
     setComplaintCategory("Any");
     setRecentActivity("Any");
+    setCurrentPage(1);
     // Trigger search if there's a query with cleared filter values
     if (searchQuery.trim()) {
       handleSearch({
@@ -195,6 +218,37 @@ const Search: React.FC = () => {
       });
     }
   };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (searchQuery.trim()) {
+      handleSearch({ page: newPage });
+    }
+  };
+
+  // Debounced search function for filter changes
+  // Note: This uses handleSearch which is defined above, so we need to include all dependencies
+  const debouncedSearch = useCallback((filters: any) => {
+    if (filterDebounceRef.current) {
+      clearTimeout(filterDebounceRef.current);
+    }
+    filterDebounceRef.current = setTimeout(() => {
+      // Allow search even without query if filters are active
+      const hasActiveFilters = 
+        filters?.borough !== undefined && filters.borough !== "All Boroughs" ||
+        filters?.rentStabilized !== undefined ||
+        filters?.affordableHousing !== undefined ||
+        filters?.riskLevel !== undefined && filters.riskLevel !== "Any" ||
+        filters?.violationClass !== undefined && filters.violationClass !== "Any" ||
+        filters?.rentImpairing !== undefined && filters.rentImpairing !== "Any" ||
+        filters?.complaintCategory !== undefined && filters.complaintCategory !== "Any" ||
+        filters?.recentActivity !== undefined && filters.recentActivity !== "Any";
+      
+      if (searchQuery.trim() || hasActiveFilters) {
+        handleSearch(filters);
+      }
+    }, 500); // 500ms debounce
+  }, [searchQuery, selectedBorough, rentStabilized, affordableHousing, riskLevel, violationClass, rentImpairing, complaintCategory, recentActivity, sortBy]);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -261,7 +315,12 @@ const Search: React.FC = () => {
             placeholder="Search by address, borough, or ZIP code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                setCurrentPage(1);
+                handleSearch();
+              }
+            }}
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 3,
@@ -291,7 +350,10 @@ const Search: React.FC = () => {
           />
           <Button
             variant="contained"
-            onClick={() => handleSearch()}
+            onClick={() => {
+              setCurrentPage(1);
+              handleSearch();
+            }}
             disabled={loading}
             sx={{ 
               minWidth: 120,
@@ -351,9 +413,8 @@ const Search: React.FC = () => {
                 onChange={(e) => {
                   const newBorough = e.target.value;
                   setSelectedBorough(newBorough);
-                  if (searchQuery.trim()) {
-                    handleSearch({ borough: newBorough });
-                  }
+                  setCurrentPage(1);
+                  debouncedSearch({ borough: newBorough, page: 1 });
                 }}
                 label="Borough"
               >
@@ -377,9 +438,8 @@ const Search: React.FC = () => {
                     onChange={(e) => {
                       const newValue = e.target.checked;
                       setRentStabilized(newValue);
-                      if (searchQuery.trim()) {
-                        handleSearch({ rentStabilized: newValue });
-                      }
+                      setCurrentPage(1);
+                      debouncedSearch({ rentStabilized: newValue, page: 1 });
                     }}
                   />
                 }
@@ -392,9 +452,8 @@ const Search: React.FC = () => {
                     onChange={(e) => {
                       const newValue = e.target.checked;
                       setAffordableHousing(newValue);
-                      if (searchQuery.trim()) {
-                        handleSearch({ affordableHousing: newValue });
-                      }
+                      setCurrentPage(1);
+                      debouncedSearch({ affordableHousing: newValue, page: 1 });
                     }}
                   />
                 }
@@ -410,9 +469,8 @@ const Search: React.FC = () => {
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setRiskLevel(newValue);
-                  if (searchQuery.trim()) {
-                    handleSearch({ riskLevel: newValue });
-                  }
+                  setCurrentPage(1);
+                  debouncedSearch({ riskLevel: newValue, page: 1 });
                 }}
                 label="Risk Level"
               >
@@ -435,9 +493,8 @@ const Search: React.FC = () => {
                   onChange={(e) => {
                     const newValue = e.target.value;
                     setViolationClass(newValue);
-                    if (searchQuery.trim()) {
-                      handleSearch({ violationClass: newValue });
-                    }
+                    setCurrentPage(1);
+                    debouncedSearch({ violationClass: newValue, page: 1 });
                   }}
                   label="Violation Class"
                 >
@@ -454,9 +511,8 @@ const Search: React.FC = () => {
                   onChange={(e) => {
                     const newValue = e.target.value;
                     setRentImpairing(newValue);
-                    if (searchQuery.trim()) {
-                      handleSearch({ rentImpairing: newValue });
-                    }
+                    setCurrentPage(1);
+                    debouncedSearch({ rentImpairing: newValue, page: 1 });
                   }}
                   label="Rent Impairing"
                 >
@@ -475,9 +531,8 @@ const Search: React.FC = () => {
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setComplaintCategory(newValue);
-                  if (searchQuery.trim()) {
-                    handleSearch({ complaintCategory: newValue });
-                  }
+                  setCurrentPage(1);
+                  debouncedSearch({ complaintCategory: newValue, page: 1 });
                 }}
                 label="Complaint Category"
               >
@@ -498,9 +553,8 @@ const Search: React.FC = () => {
                 onChange={(e) => {
                   const newValue = e.target.value;
                   setRecentActivity(newValue);
-                  if (searchQuery.trim()) {
-                    handleSearch({ recentActivity: newValue });
-                  }
+                  setCurrentPage(1);
+                  debouncedSearch({ recentActivity: newValue, page: 1 });
                 }}
                 label="Recent Activity"
               >
@@ -537,6 +591,7 @@ const Search: React.FC = () => {
           )}
           
           {searchResults.length > 0 && !loading && (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
               <Typography variant="h6">
                 Showing {searchResults.length} of {totalResults} results
@@ -549,10 +604,8 @@ const Search: React.FC = () => {
                   onChange={(e) => {
                     const newSortBy = e.target.value;
                     setSortBy(newSortBy);
-                    // Trigger new search with updated sort
-                    if (searchQuery.trim()) {
-                      handleSearch({ sortBy: newSortBy });
-                    }
+                    setCurrentPage(1);
+                    debouncedSearch({ sortBy: newSortBy, page: 1 });
                   }}
                 >
                   <MenuItem value="Most Relevant">Most Relevant</MenuItem>
@@ -561,6 +614,8 @@ const Search: React.FC = () => {
                 </Select>
               </FormControl>
             </Box>
+            
+            </>
           )}
 
           {/* Search Results */}
@@ -610,7 +665,7 @@ const Search: React.FC = () => {
                         Units
                       </Typography>
                       <Typography variant="h6">
-                        {building.units || "N/A"}
+                        {building.units ? building.units.toLocaleString() : "N/A"}
                       </Typography>
                     </Box>
                     <Box sx={{ minWidth: "120px" }}>
@@ -672,6 +727,113 @@ const Search: React.FC = () => {
               </Card>
             ))}
           </Box>
+
+          {/* Pagination - Show after results */}
+          {searchResults.length > 0 && totalResults > resultsPerPage && !loading && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 2, mt: 4, mb: 2, flexWrap: "wrap" }}>
+              <Button
+                variant="outlined"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                sx={{
+                  borderColor: "#FF6B35",
+                  color: "#FF6B35",
+                  minWidth: 100,
+                  "&:hover": {
+                    borderColor: "#E55A2B",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                  "&:disabled": {
+                    borderColor: "rgba(0, 0, 0, 0.12)",
+                    color: "rgba(0, 0, 0, 0.26)",
+                  },
+                }}
+              >
+                Previous
+              </Button>
+              
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body1" sx={{ color: "#4A5568", fontWeight: 500 }}>
+                  Page
+                </Typography>
+                <TextField
+                  type="number"
+                  value={currentPage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow typing, but don't search yet
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue >= 1) {
+                      setCurrentPage(numValue);
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const newPage = parseInt(e.target.value);
+                    const maxPage = Math.ceil(totalResults / resultsPerPage);
+                    let pageToUse = newPage;
+                    if (!newPage || newPage < 1) {
+                      pageToUse = 1;
+                      setCurrentPage(1);
+                    } else if (newPage > maxPage) {
+                      pageToUse = maxPage;
+                      setCurrentPage(maxPage);
+                    }
+                    if (searchQuery.trim()) {
+                      handlePageChange(pageToUse);
+                    }
+                  }}
+                  inputProps={{
+                    min: 1,
+                    max: Math.ceil(totalResults / resultsPerPage),
+                    style: { textAlign: "center", padding: "8px", width: "60px" }
+                  }}
+                  sx={{
+                    width: 80,
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": {
+                        borderColor: "rgba(255, 107, 53, 0.3)",
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "rgba(255, 107, 53, 0.5)",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#FF6B35",
+                      },
+                    },
+                  }}
+                />
+                <Typography variant="body1" sx={{ color: "#4A5568", fontWeight: 500 }}>
+                  of {Math.ceil(totalResults / resultsPerPage)}
+                </Typography>
+              </Box>
+              
+              <Button
+                variant="outlined"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= Math.ceil(totalResults / resultsPerPage)}
+                sx={{
+                  borderColor: "#FF6B35",
+                  color: "#FF6B35",
+                  minWidth: 100,
+                  "&:hover": {
+                    borderColor: "#E55A2B",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                  "&:disabled": {
+                    borderColor: "rgba(0, 0, 0, 0.12)",
+                    color: "rgba(0, 0, 0, 0.26)",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          )}
 
           {searchResults.length === 0 && !loading && !error && (
             <Box sx={{ textAlign: "center", py: 8 }}>
