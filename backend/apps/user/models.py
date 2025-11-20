@@ -72,10 +72,31 @@ class CustomUser(AbstractUser):
         """Validate that role-specific fields are filled based on role"""
         from django.core.exceptions import ValidationError
 
+        # Only validate if this is a new instance (no pk) or if we're explicitly setting role-specific fields
+        # This allows partial updates (e.g., updating username) without requiring tenant_type to be re-sent
         if self.role == "tenant" and not self.tenant_type:
+            # Check if this is an existing user with tenant_type already set
+            if self.pk:
+                # For existing users, check if tenant_type is already in the database
+                try:
+                    existing_user = CustomUser.objects.get(pk=self.pk)
+                    if existing_user.tenant_type:
+                        # User already has tenant_type, allow update without it
+                        return
+                except CustomUser.DoesNotExist:
+                    pass
             raise ValidationError("Tenant type is required for tenant users")
 
         if self.role == "landlord" and not self.landlord_type:
+            # Check if this is an existing user with landlord_type already set
+            if self.pk:
+                try:
+                    existing_user = CustomUser.objects.get(pk=self.pk)
+                    if existing_user.landlord_type:
+                        # User already has landlord_type, allow update without it
+                        return
+                except CustomUser.DoesNotExist:
+                    pass
             raise ValidationError("Landlord type is required for landlord users")
 
         # Organization name required for certain landlord types
@@ -84,6 +105,15 @@ class CustomUser(AbstractUser):
             and self.landlord_type in ["property_management", "corporate_landlord"]
             and not self.organization_name
         ):
+            # Check if this is an existing user with organization_name already set
+            if self.pk:
+                try:
+                    existing_user = CustomUser.objects.get(pk=self.pk)
+                    if existing_user.organization_name:
+                        # User already has organization_name, allow update without it
+                        return
+                except CustomUser.DoesNotExist:
+                    pass
             raise ValidationError(
                 "Organization name is required for this landlord type"
             )

@@ -222,7 +222,7 @@ export default function Home() {
             </Typography>
                   <Button 
                     component={Link}
-                    to="/search?risk_level=High Risk"
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#FF6B35',
@@ -274,7 +274,7 @@ export default function Home() {
             </Typography>
                   <Button 
                     component={Link}
-                    to="/search?violation_class=ANY"
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#EF4444',
@@ -326,7 +326,7 @@ export default function Home() {
                   </Typography>
                   <Button 
                     component={Link}
-                    to="/search?affordable_housing=true&rent_stabilized=true"
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#22C55E',
