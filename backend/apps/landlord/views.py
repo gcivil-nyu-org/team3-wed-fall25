@@ -601,8 +601,6 @@ def landlord_apply_get(request):
         country = data.get("country")
         agree_terms = data.get("agreeTerms")
         # Optional fields from form
-        name = data.get("name")
-        email = data.get("email")
         landlord_type = data.get("landlordType")
         organization_name = data.get("organizationName")
         hpd_registration = data.get("hpdRegistration")
@@ -658,32 +656,37 @@ def landlord_apply_get(request):
             # Optionally update user profile with landlord information if provided
             # Only update fields that are not already set
             from django.contrib.auth import get_user_model
+
             User = get_user_model()
             try:
                 user = User.objects.get(id=user_id)
                 update_fields = []
-                
+
                 if landlord_type and not user.landlord_type:
                     user.landlord_type = landlord_type
-                    update_fields.append('landlord_type')
-                
+                    update_fields.append("landlord_type")
+
                 if organization_name and not user.organization_name:
                     user.organization_name = organization_name
-                    update_fields.append('organization_name')
-                
+                    update_fields.append("organization_name")
+
                 if hpd_registration and not user.hpd_registration_number:
                     user.hpd_registration_number = hpd_registration
-                    update_fields.append('hpd_registration_number')
-                
+                    update_fields.append("hpd_registration_number")
+
                 if business_phone and not user.business_phone:
                     user.business_phone = business_phone
-                    update_fields.append('business_phone')
-                
+                    update_fields.append("business_phone")
+
                 if update_fields:
                     user.save(update_fields=update_fields)
-                    print(f"[LandlordApplyView] Updated user profile fields: {update_fields}")
+                    print(
+                        f"[LandlordApplyView] Updated user profile fields: {update_fields}"
+                    )
             except User.DoesNotExist:
-                print(f"[LandlordApplyView] User {user_id} not found for profile update")
+                print(
+                    f"[LandlordApplyView] User {user_id} not found for profile update"
+                )
             except Exception as e:
                 print(f"[LandlordApplyView] Error updating user profile: {e}")
                 # Don't fail the application if profile update fails

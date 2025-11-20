@@ -167,15 +167,17 @@ class UsersListView(APIView):
         """
         try:
             current_user_id = request.user.id
-            
+
             # Get all users except the current user
-            users = CustomUser.objects.exclude(id=current_user_id).filter(
-                is_active=True
-            ).order_by('first_name', 'last_name', 'email')
-            
+            users = (
+                CustomUser.objects.exclude(id=current_user_id)
+                .filter(is_active=True)
+                .order_by("first_name", "last_name", "email")
+            )
+
             # Serialize users
             serializer = UserSerializer(users, many=True)
-            
+
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
