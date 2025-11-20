@@ -315,7 +315,7 @@ export default function BuildingDetail() {
           </Box>
           <Button
             startIcon={<ArrowBack />}
-            onClick={() => navigate("/landlord")}
+            onClick={() => navigate("/landlord/dashboard")}
             variant="outlined"
           >
             Back to Portfolio
