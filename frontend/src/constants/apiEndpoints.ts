@@ -2,7 +2,7 @@
 
 export const API_ENDPOINTS = {
   AUTH: {
-    PROFILE: '/auth/profile',
+    PROFILE: '/auth/profile/',
     LOGIN: '/auth/login/',
     REGISTER: '/auth/signup/',
     VERIFY_EMAIL: '/auth/verify-email/',
