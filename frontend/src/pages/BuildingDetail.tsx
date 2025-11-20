@@ -282,7 +282,7 @@ export default function BuildingDetail() {
         <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
           <Link
             color="inherit"
-            onClick={() => navigate("/landlord")} // Consistent with your button
+            onClick={() => navigate("/landlord/dashboard")} // Consistent with your button
             sx={{
               cursor: "pointer",
               display: "flex",
