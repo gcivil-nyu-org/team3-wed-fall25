@@ -45,6 +45,7 @@ urlpatterns = [
     path("api/landlord/", include("apps.landlord.urls")),
     path("api/neighborhood/", include("apps.neighborhood.urls")),
     path("api/dummy/", include("apps.dummy.urls")),
+    path("api/admin/", include("apps.admin.urls")),
     re_path(
         r"^(?!(api(?:/|$)|admin(?:/|$))).*$",
         TemplateView.as_view(template_name="index.html"),

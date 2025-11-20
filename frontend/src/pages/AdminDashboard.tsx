@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   Box,
@@ -18,6 +18,9 @@ import {
   TableRow,
   IconButton,
   LinearProgress,
+  CircularProgress,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 import {
   People,
@@ -33,103 +36,116 @@ import {
   TrendingUp,
   HealthAndSafety,
 } from "@mui/icons-material";
+import {
+  fetchAdminStats,
+  fetchModerationQueue,
+  fetchActivityLogs,
+  fetchWeeklyStats,
+  fetchPlatformHealth,
+  approveReview,
+  removeReview,
+  type AdminStats,
+  type ModerationQueueItem,
+  type ActivityLog,
+  type WeeklyStats,
+  type PlatformHealth,
+} from "../api/admin";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  
+  // State management
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [moderationQueue, setModerationQueue] = useState<ModerationQueueItem[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+  const [platformHealth, setPlatformHealth] = useState<PlatformHealth | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     // Check if admin is authenticated
     const isAuthenticated = sessionStorage.getItem("admin_authenticated") === "true";
     if (!isAuthenticated) {
       navigate("/admin/login");
+      return;
     }
+    loadDashboardData();
   }, [navigate]);
-  // Mock data - replace with real API calls
-  const stats = {
-    totalUsers: 1247,
-    totalReviews: 3421,
-    pendingReports: 23,
-    buildingsTracked: 15689,
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [statsData, queueData, logsData, weeklyData, healthData] = await Promise.all([
+        fetchAdminStats(),
+        fetchModerationQueue(),
+        fetchActivityLogs(50),
+        fetchWeeklyStats(),
+        fetchPlatformHealth(),
+      ]);
+      setStats(statsData);
+      setModerationQueue(queueData);
+      setActivityLogs(logsData);
+      setWeeklyStats(weeklyData);
+      setPlatformHealth(healthData);
+    } catch (err) {
+      console.error("Error loading dashboard data:", err);
+      setError(err instanceof Error ? err.message : "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const moderationQueue = [
-    {
-      id: 1,
-      type: "review",
-      content: "This building has serious maintenance issues...",
-      author: "user@example.com",
-      reportedBy: 5,
-      createdAt: "2025-10-29T10:30:00Z",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "review",
-      content: "Great landlord! Very responsive...",
-      author: "user2@example.com",
-      reportedBy: 1,
-      createdAt: "2025-10-29T09:15:00Z",
-      status: "pending",
-    },
-    {
-      id: 3,
-      type: "user",
-      content: "User reported for spam",
-      author: "spammer@example.com",
-      reportedBy: 12,
-      createdAt: "2025-10-28T16:45:00Z",
-      status: "pending",
-    },
-  ];
-
-  const activityLogs = [
-    {
-      id: 1,
-      action: "Approved review",
-      admin: "admin@housingtransparency.com",
-      target: "Review #4521",
-      timestamp: "2025-10-29T13:15:00Z",
-    },
-    {
-      id: 2,
-      action: "Removed review",
-      admin: "admin@housingtransparency.com",
-      target: "Review #4503",
-      timestamp: "2025-10-29T12:30:00Z",
-    },
-    {
-      id: 3,
-      action: "Banned user",
-      admin: "admin2@housingtransparency.com",
-      target: "user@spam.com",
-      timestamp: "2025-10-29T11:20:00Z",
-    },
-  ];
-
-  const weeklyStats = {
-    reviewsApproved: 145,
-    reviewsRemoved: 12,
-    usersBanned: 3,
-    reportsResolved: 89,
+  const handleApprove = async (id: number) => {
+    try {
+      await approveReview(id);
+      setSnackbar({ open: true, message: "Review approved successfully", severity: "success" });
+      // Refresh moderation queue and stats
+      const [queueData, statsData] = await Promise.all([
+        fetchModerationQueue(),
+        fetchAdminStats(),
+      ]);
+      setModerationQueue(queueData);
+      setStats(statsData);
+      // Refresh activity logs
+      const logsData = await fetchActivityLogs(50);
+      setActivityLogs(logsData);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Failed to approve review", severity: "error" });
+    }
   };
 
-  const platformHealth = {
-    apiStatus: "healthy",
-    dbStatus: "healthy",
-    emailService: "healthy",
-    storageUsage: 65,
+  const handleRemove = async (id: number) => {
+    try {
+      await removeReview(id);
+      setSnackbar({ open: true, message: "Review removed successfully", severity: "success" });
+      // Refresh moderation queue and stats
+      const [queueData, statsData] = await Promise.all([
+        fetchModerationQueue(),
+        fetchAdminStats(),
+      ]);
+      setModerationQueue(queueData);
+      setStats(statsData);
+      // Refresh activity logs
+      const logsData = await fetchActivityLogs(50);
+      setActivityLogs(logsData);
+    } catch (err) {
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : "Failed to remove review", severity: "error" });
+    }
   };
 
-  const handleApprove = (_id: number) => {
-    // TODO: Implement approve action
-  };
-
-  const handleRemove = (_id: number) => {
-    // TODO: Implement remove action
-  };
-
-  const handleReview = (_id: number) => {
-    // TODO: Navigate to detail view
+  const handleReview = (id: number) => {
+    // Navigate to review detail or show in modal
+    const item = moderationQueue.find((q) => q.id === id);
+    if (item?.bbl) {
+      navigate(`/building/${item.bbl}`);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -149,8 +165,40 @@ export default function AdminDashboard() {
     return new Date(dateString).toLocaleString();
   };
 
+  if (loading) {
+    return (
+      <Container maxWidth="xl" sx={{ pt: { xs: 10, md: 12 }, pb: 6, display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <CircularProgress />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container maxWidth="xl" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button variant="contained" onClick={loadDashboardData}>
+          Retry
+        </Button>
+      </Container>
+    );
+  }
+
   return (
     <Container maxWidth="xl" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+      
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
           Admin Dashboard
@@ -169,7 +217,7 @@ export default function AdminDashboard() {
                 <People sx={{ fontSize: 40, color: "#FF6B35" }} />
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                    {stats.totalUsers.toLocaleString()}
+                    {stats?.totalUsers.toLocaleString() || 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Total Users
@@ -187,7 +235,7 @@ export default function AdminDashboard() {
                 <RateReview sx={{ fontSize: 40, color: "#22C55E" }} />
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                    {stats.totalReviews.toLocaleString()}
+                    {stats?.totalReviews.toLocaleString() || 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Total Reviews
@@ -205,7 +253,7 @@ export default function AdminDashboard() {
                 <Warning sx={{ fontSize: 40, color: "#EF4444" }} />
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                    {stats.pendingReports}
+                    {stats?.pendingReports || 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Pending Reports
@@ -223,7 +271,7 @@ export default function AdminDashboard() {
                 <Business sx={{ fontSize: 40, color: "#3B82F6" }} />
                 <Box>
                   <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                    {stats.buildingsTracked.toLocaleString()}
+                    {stats?.buildingsTracked.toLocaleString() || 0}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Buildings Tracked
@@ -248,7 +296,7 @@ export default function AdminDashboard() {
           >
             Export Reports
           </Button>
-          <Button variant="outlined" startIcon={<Refresh />}>
+          <Button variant="outlined" startIcon={<Refresh />} onClick={loadDashboardData}>
             Refresh Data
           </Button>
           <Button variant="outlined" startIcon={<TrendingUp />}>
@@ -394,7 +442,7 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Reviews Approved</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {weeklyStats.reviewsApproved}
+                      {weeklyStats?.reviewsApproved || 0}
                     </Typography>
                   </Box>
                 </Box>
@@ -408,7 +456,7 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Reviews Removed</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {weeklyStats.reviewsRemoved}
+                      {weeklyStats?.reviewsRemoved || 0}
                     </Typography>
                   </Box>
                 </Box>
@@ -422,7 +470,7 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Users Banned</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {weeklyStats.usersBanned}
+                      {weeklyStats?.usersBanned || 0}
                     </Typography>
                   </Box>
                 </Box>
@@ -436,7 +484,7 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Reports Resolved</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {weeklyStats.reportsResolved}
+                      {weeklyStats?.reportsResolved || 0}
                     </Typography>
                   </Box>
                 </Box>
@@ -459,8 +507,8 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">API Status</Typography>
                     <Chip
-                      label={platformHealth.apiStatus}
-                      color={getStatusColor(platformHealth.apiStatus) as any}
+                      label={platformHealth?.apiStatus || "unknown"}
+                      color={getStatusColor(platformHealth?.apiStatus || "unknown") as any}
                       size="small"
                     />
                   </Box>
@@ -475,8 +523,8 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Database Status</Typography>
                     <Chip
-                      label={platformHealth.dbStatus}
-                      color={getStatusColor(platformHealth.dbStatus) as any}
+                      label={platformHealth?.dbStatus || "unknown"}
+                      color={getStatusColor(platformHealth?.dbStatus || "unknown") as any}
                       size="small"
                     />
                   </Box>
@@ -491,9 +539,9 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Email Service</Typography>
                     <Chip
-                      label={platformHealth.emailService}
+                      label={platformHealth?.emailService || "unknown"}
                       color={
-                        getStatusColor(platformHealth.emailService) as any
+                        getStatusColor(platformHealth?.emailService || "unknown") as any
                       }
                       size="small"
                     />
@@ -509,12 +557,12 @@ export default function AdminDashboard() {
                   >
                     <Typography variant="body2">Storage Usage</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {platformHealth.storageUsage}%
+                      {platformHealth?.storageUsage || 0}%
                     </Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
-                    value={platformHealth.storageUsage}
+                    value={platformHealth?.storageUsage || 0}
                     sx={{ mt: 1 }}
                   />
                 </Box>
