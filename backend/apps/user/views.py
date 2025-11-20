@@ -82,11 +82,29 @@ class ProfileView(APIView):
 
     def patch(self, request):
         """Update user profile"""
-        serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            serializer = UserSerializer(request.user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            # Return validation errors in a format that the error middleware will handle
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Handle database integrity errors (e.g., unique constraint violations)
+            error_message = str(e)
+            if (
+                "unique constraint" in error_message.lower()
+                or "duplicate key" in error_message.lower()
+            ):
+                if "username" in error_message.lower():
+                    return Response(
+                        {"username": ["A user with this username already exists."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            return Response(
+                {"detail": f"Error updating profile: {error_message}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # Alias for backward compatibility with tests

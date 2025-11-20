@@ -113,7 +113,15 @@ export default function Profile() {
         window.location.reload();
       }, 1000);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to update profile");
+      const errorMessage = 
+        err.response?.data?.error_message || 
+        err.response?.data?.error || 
+        err.response?.data?.detail ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        err.message || 
+        "Failed to update profile";
+      setError(errorMessage);
+      console.error("Profile update error:", err.response?.data || err);
     } finally {
       setSaving(false);
     }
