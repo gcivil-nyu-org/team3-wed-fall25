@@ -69,20 +69,22 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
+    email = serializers.CharField(
+        required=True
+    )  # Changed to CharField to accept both email and username
     password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        email = attrs.get("email")
+        email_or_username = attrs.get("email")
         password = attrs.get("password")
 
-        if not email:
+        if not email_or_username:
             raise serializers.ValidationError({"email": "This field is required."})
         if not password:
             raise serializers.ValidationError({"password": "This field is required."})
 
-        # Authenticate using email
-        user = authenticate(username=email, password=password)
+        # Authenticate using email or username (EmailBackend supports both)
+        user = authenticate(username=email_or_username, password=password)
 
         if not user:
             raise serializers.ValidationError("Invalid credentials")
