@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 from .models import CustomUser
+
+User = get_user_model()
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -86,7 +90,21 @@ class LoginSerializer(serializers.Serializer):
         user = authenticate(username=email_or_username, password=password)
 
         if not user:
-            raise serializers.ValidationError("Invalid credentials")
+            # Check if user exists but is inactive or password is wrong
+            try:
+                existing_user = User.objects.get(
+                    Q(email=email_or_username) | Q(username=email_or_username)
+                )
+                if not existing_user.is_active:
+                    raise serializers.ValidationError(
+                        "No active account found with the given credentials"
+                    )
+                # If user exists and is active but password is wrong
+                raise serializers.ValidationError("Invalid credentials")
+            except User.DoesNotExist:
+                raise serializers.ValidationError("Invalid credentials")
+            except serializers.ValidationError:
+                raise
 
         if not user.is_verified:
             raise serializers.ValidationError(
