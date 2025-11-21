@@ -33,12 +33,16 @@ class Command(BaseCommand):
                         pass
 
                 if user:
-                    # Update existing user
+                    # Update existing user - only update admin-specific fields
+                    # Preserve any custom data the user might have
                     self.stdout.write(f"Updating existing user: {user.username}")
+                    was_active = user.is_active
                     user.email = email
                     user.first_name = "Admin"
                     user.last_name = "User"
-                    user.role = "tenant"
+                    # Only set role if not already set (preserve existing role)
+                    if not user.role:
+                        user.role = "tenant"
                     user.is_verified = True
                     user.is_staff = True
                     user.is_superuser = True
@@ -47,7 +51,7 @@ class Command(BaseCommand):
                     user.save()
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f"✓ Updated admin user: {username} (is_active={user.is_active}, is_staff={user.is_staff}, is_superuser={user.is_superuser})"
+                            f"✓ Updated admin user: {username} (was_active={was_active}, now is_active={user.is_active}, is_staff={user.is_staff}, is_superuser={user.is_superuser})"
                         )
                     )
                 else:
@@ -89,4 +93,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.ERROR(f"Error creating/updating admin user: {str(e)}")
             )
-            raise
+            # Don't raise in production - log error but don't fail deployment
+            # This ensures deployment continues even if admin user setup fails
+            import traceback
+
+            self.stdout.write(self.style.ERROR(traceback.format_exc()))

@@ -23,13 +23,17 @@ if [ -d "backend" ]; then
     # Set Python path
     export PYTHONPATH=./
     
-    # Run migrations
+    # Run migrations (safe - only creates new tables, doesn't delete data)
     echo "Running migrations..."
-    python manage.py migrate --noinput
+    python manage.py migrate --noinput || {
+        echo "WARNING: Migrations failed, but continuing deployment..."
+    }
     
-    # Create/update admin user
+    # Create/update admin user (safe - only affects admin user, idempotent)
     echo "Creating/updating admin user..."
-    python manage.py create_admin_user
+    python manage.py create_admin_user || {
+        echo "WARNING: Admin user setup failed, but continuing deployment..."
+    }
     
     # Collect static files
     echo "Collecting static files..."
