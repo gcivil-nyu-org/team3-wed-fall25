@@ -44,6 +44,7 @@ urlpatterns = [
     path("api/community/", include("apps.community.urls")),
     path("api/landlord/", include("apps.landlord.urls")),
     path("api/neighborhood/", include("apps.neighborhood.urls")),
+    path("api/admin/", include("apps.admin.urls")),
     path("api/dummy/", include("apps.dummy.urls")),
     re_path(
         r"^(?!(api(?:/|$)|admin(?:/|$))).*$",

@@ -11,11 +11,7 @@ import {
 } from "@mui/material";
 import { AdminPanelSettings, Lock } from "@mui/icons-material";
 import { COLORS } from "../constants";
-
-const ADMIN_CREDENTIALS = {
-  username: "admin",
-  password: "test1234",
-};
+import { loginUser } from "../api/auth/authApi";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -29,18 +25,34 @@ export default function AdminLogin() {
     setError(null);
     setLoading(true);
 
-    // Simple authentication check
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      // Store admin session
-      sessionStorage.setItem("admin_authenticated", "true");
-      sessionStorage.setItem("admin_username", username);
-      
-      // Redirect to admin dashboard
-      setTimeout(() => {
+    try {
+      // Use JWT authentication - send username as email (EmailBackend supports both)
+      const response = await loginUser({
+        email: username, // Send username as email field
+        password: password,
+      });
+
+      // Store JWT tokens
+      if (response.data.access && response.data.refresh) {
+        sessionStorage.setItem("access_token", response.data.access);
+        sessionStorage.setItem("refresh_token", response.data.refresh);
+        sessionStorage.setItem("admin_authenticated", "true");
+        sessionStorage.setItem("admin_username", username);
+
+        // Redirect to admin dashboard
         navigate("/admin/dashboard");
-      }, 500);
-    } else {
-      setError("Invalid username or password");
+      } else {
+        setError("Invalid response from server");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      const errorMessage =
+        err.response?.data?.error_message ||
+        err.response?.data?.non_field_errors?.[0] ||
+        err.message ||
+        "Invalid username or password";
+      setError(errorMessage);
       setLoading(false);
     }
   };

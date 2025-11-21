@@ -91,6 +91,7 @@ INSTALLED_APPS = [
     "apps.building",
     "apps.community",
     "apps.neighborhood",
+    "apps.admin",
 ]
 
 MIDDLEWARE = [
