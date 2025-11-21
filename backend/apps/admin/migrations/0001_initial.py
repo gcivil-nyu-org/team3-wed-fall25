@@ -10,6 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
+        ("user", "0001_initial"),  # Explicit dependency on user app
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
