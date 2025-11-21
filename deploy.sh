@@ -25,8 +25,12 @@ if [ -d "backend" ]; then
     
     # Run migrations (safe - only creates new tables, doesn't delete data)
     echo "Running migrations..."
-    python manage.py migrate --noinput || {
-        echo "WARNING: Migrations failed, but continuing deployment..."
+    # Use --fake-initial to handle cases where tables exist but migrations aren't recorded
+    python manage.py migrate --noinput --fake-initial || {
+        echo "WARNING: Migrations failed, trying without --fake-initial..."
+        python manage.py migrate --noinput || {
+            echo "WARNING: Migrations failed, but continuing deployment..."
+        }
     }
     
     # Create/update admin user (safe - only affects admin user, idempotent)
