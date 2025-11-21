@@ -69,7 +69,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.CharField(required=True)  # Changed to CharField to accept username or email
+    # Changed to CharField to accept username or email
+    email = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
     def validate(self, attrs):

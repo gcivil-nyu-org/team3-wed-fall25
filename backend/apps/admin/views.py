@@ -117,18 +117,22 @@ def moderation_queue(request):
             queue_items = []
             for review in flagged_reviews:
                 author_email = review.get("email") or review.get("username") or "Unknown"
+                body_content = review.get("body", "")
+                content = (
+                    body_content[:100] + "..." if len(body_content) > 100 else body_content
+                )
                 queue_items.append(
                     {
                         "id": review["id"],
                         "type": "review",
-                        "content": review.get("body", "")[:100] + "..."
-                        if len(review.get("body", "")) > 100
-                        else review.get("body", ""),
+                        "content": content,
                         "author": author_email,
                         "reportedBy": 1 if review.get("flagged") else 0,
-                        "createdAt": review["created_at"].isoformat()
-                        if review.get("created_at")
-                        else None,
+                        "createdAt": (
+                            review["created_at"].isoformat()
+                            if review.get("created_at")
+                            else None
+                        ),
                         "status": "pending",
                     }
                 )
@@ -169,12 +173,13 @@ def approve_review(request, review_id):
             )
 
             # Log the action
+            review_title = review.get("title", "N/A") if review else "N/A"
             AdminActivityLog.objects.create(
                 admin_user=admin_user,
                 action="approved_review",
                 target_type="review",
                 target_id=review_id,
-                target_description=f"Review #{review_id}: {review.get('title', 'N/A') if review else 'N/A'}",
+                target_description=f"Review #{review_id}: {review_title}",
             )
 
         return Response(
@@ -215,12 +220,13 @@ def remove_review(request, review_id):
             )
 
             # Log the action
+            review_title = review.get("title", "N/A") if review else "N/A"
             AdminActivityLog.objects.create(
                 admin_user=admin_user,
                 action="removed_review",
                 target_type="review",
                 target_id=review_id,
-                target_description=f"Review #{review_id}: {review.get('title', 'N/A') if review else 'N/A'}",
+                target_description=f"Review #{review_id}: {review_title}",
             )
 
         return Response(

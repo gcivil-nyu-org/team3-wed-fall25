@@ -39,4 +39,3 @@ class AdminActivityLog(models.Model):
 
     def __str__(self):
         return f"{self.get_action_display()} - {self.target_description} by {self.admin_user}"
-
