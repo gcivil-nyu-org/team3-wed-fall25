@@ -28,8 +28,8 @@ def admin_stats(request):
             # Total reviews (non-deleted)
             total_reviews = db.query_one(
                 """
-                SELECT COUNT(*) as count 
-                FROM community_reviews 
+                SELECT COUNT(*) as count
+                FROM community_reviews
                 WHERE deleted_at IS NULL
                 """
             )
@@ -40,8 +40,8 @@ def admin_stats(request):
             try:
                 pending_reports = db.query_one(
                     """
-                    SELECT COUNT(*) as count 
-                    FROM community_reviews 
+                    SELECT COUNT(*) as count
+                    FROM community_reviews
                     WHERE flagged = TRUE AND deleted_at IS NULL
                     """
                 )
@@ -55,8 +55,8 @@ def admin_stats(request):
             # Buildings tracked (distinct BBLs in reviews)
             buildings_tracked = db.query_one(
                 """
-                SELECT COUNT(DISTINCT bbl) as count 
-                FROM community_reviews 
+                SELECT COUNT(DISTINCT bbl) as count
+                FROM community_reviews
                 WHERE deleted_at IS NULL
                 """
             )
@@ -91,7 +91,7 @@ def moderation_queue(request):
             try:
                 flagged_reviews = db.query_all(
                     """
-                    SELECT 
+                    SELECT
                         cr.id,
                         cr.user_id,
                         cr.bbl,
@@ -119,7 +119,9 @@ def moderation_queue(request):
                 author_email = review.get("email") or review.get("username") or "Unknown"
                 body_content = review.get("body", "")
                 content = (
-                    body_content[:100] + "..." if len(body_content) > 100 else body_content
+                    body_content[:100] + "..."
+                    if len(body_content) > 100
+                    else body_content
                 )
                 queue_items.append(
                     {
@@ -155,8 +157,8 @@ def approve_review(request, review_id):
             # Unflag the review
             db.execute(
                 """
-                UPDATE community_reviews 
-                SET flagged = FALSE 
+                UPDATE community_reviews
+                SET flagged = FALSE
                 WHERE id = %s AND deleted_at IS NULL
                 """,
                 (review_id,),
@@ -165,8 +167,8 @@ def approve_review(request, review_id):
             # Get review details for logging
             review = db.query_one(
                 """
-                SELECT id, title, body 
-                FROM community_reviews 
+                SELECT id, title, body
+                FROM community_reviews
                 WHERE id = %s
                 """,
                 (review_id,),
@@ -202,7 +204,7 @@ def remove_review(request, review_id):
             # Soft delete the review
             db.execute(
                 """
-                UPDATE community_reviews 
+                UPDATE community_reviews
                 SET deleted_at = NOW(), flagged = FALSE
                 WHERE id = %s
                 """,
@@ -212,8 +214,8 @@ def remove_review(request, review_id):
             # Get review details for logging
             review = db.query_one(
                 """
-                SELECT id, title, body 
-                FROM community_reviews 
+                SELECT id, title, body
+                FROM community_reviews
                 WHERE id = %s
                 """,
                 (review_id,),
