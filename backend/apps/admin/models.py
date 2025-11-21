@@ -33,7 +33,9 @@ class AdminActivityLog(models.Model):
             models.Index(
                 fields=["admin_user", "-created_at"], name="idx_admin_logs_user"
             ),
-            models.Index(fields=["action", "-created_at"], name="idx_admin_logs_action"),
+            models.Index(
+                fields=["action", "-created_at"], name="idx_admin_logs_action"
+            ),
         ]
         ordering = ["-created_at"]
 

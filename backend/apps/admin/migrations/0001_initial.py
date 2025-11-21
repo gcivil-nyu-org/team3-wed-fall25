@@ -56,9 +56,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="adminactivitylog",
-            index=models.Index(
-                fields=["-created_at"], name="idx_admin_logs_created"
-            ),
+            index=models.Index(fields=["-created_at"], name="idx_admin_logs_created"),
         ),
         migrations.AddIndex(
             model_name="adminactivitylog",

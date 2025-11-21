@@ -116,7 +116,9 @@ def moderation_queue(request):
             # For now, we'll use 1 if flagged=True
             queue_items = []
             for review in flagged_reviews:
-                author_email = review.get("email") or review.get("username") or "Unknown"
+                author_email = (
+                    review.get("email") or review.get("username") or "Unknown"
+                )
                 body_content = review.get("body", "")
                 content = (
                     body_content[:100] + "..."

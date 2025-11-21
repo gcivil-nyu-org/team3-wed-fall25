@@ -36,10 +36,6 @@ class Command(BaseCommand):
         user.save()
 
         if created:
-            self.stdout.write(
-                self.style.SUCCESS(f"✓ Created admin user: {username}")
-            )
+            self.stdout.write(self.style.SUCCESS(f"✓ Created admin user: {username}"))
         else:
-            self.stdout.write(
-                self.style.SUCCESS(f"✓ Updated admin user: {username}")
-            )
+            self.stdout.write(self.style.SUCCESS(f"✓ Updated admin user: {username}"))
