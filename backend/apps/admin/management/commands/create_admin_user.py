@@ -26,13 +26,15 @@ class Command(BaseCommand):
                 "role": "tenant",  # Role doesn't matter for admin dashboard access
                 "is_verified": True,
                 "is_staff": True,
+                "is_active": True,
             },
         )
 
-        # Always update password to ensure it's correct
+        # Always update password and ensure user is active
         user.set_password(password)
         user.is_verified = True
         user.is_staff = True
+        user.is_active = True
         user.save()
 
         if created:

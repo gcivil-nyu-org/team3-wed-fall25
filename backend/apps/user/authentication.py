@@ -12,9 +12,9 @@ class EmailBackend(ModelBackend):
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         try:
-            # Try to find user by email
+            # Try to find user by email or username
             user = User.objects.get(Q(email=username) | Q(username=username))
-            if user.check_password(password):
+            if user.check_password(password) and user.is_active:
                 return user
         except User.DoesNotExist:
             return None
