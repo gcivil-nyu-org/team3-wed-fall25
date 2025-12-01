@@ -7,5 +7,6 @@ import Community from "./Community";
 import Message from "./Message";
 import Profile from "./Profile";
 import Landlords from "./Landlords";
+import PublicReviews from "./PublicReviews";
 
-export { Home, Search, SignIn, SignUp, Building, Community, Message, Profile, Landlords };
+export { Home, Search, SignIn, SignUp, Building, Community, Message, Profile, Landlords, PublicReviews };

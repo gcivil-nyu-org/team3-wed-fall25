@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from "react";
-import { useNavigate } from "react-router";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Box,
   Container,
@@ -30,6 +30,7 @@ import {
   Clear,
 } from "@mui/icons-material";
 import { searchBuildings } from "../api/index.js";
+import { useAuth } from "../hooks";
 
 // Temporarily inline the BuildingSearchResult type to resolve export issue
 interface BuildingSearchResult {
@@ -48,6 +49,8 @@ interface BuildingSearchResult {
 
 const Search: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BuildingSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,8 +72,10 @@ const Search: React.FC = () => {
   const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const boroughs = ["All Boroughs", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
+  const initializedFromUrl = useRef(false);
 
   const handleSearch = async (customFilters?: {
+    query?: string;
     sortBy?: string;
     borough?: string;
     rentStabilized?: boolean;
@@ -87,25 +92,7 @@ const Search: React.FC = () => {
     
     try {
       // Use the main search query (address, zip code, BBL, or borough)
-      const query = searchQuery.trim();
-      
-      // Check if any filters are active
-      const hasActiveFilters = 
-        selectedBorough !== "All Boroughs" ||
-        rentStabilized ||
-        affordableHousing ||
-        riskLevel !== "Any" ||
-        violationClass !== "Any" ||
-        rentImpairing !== "Any" ||
-        complaintCategory !== "Any" ||
-        recentActivity !== "Any";
-      
-      // Allow empty query if filters are provided
-      if (!query && !hasActiveFilters) {
-        setError("Please enter a search term (address, zip code, BBL, or borough) or select at least one filter.");
-        setLoading(false);
-        return;
-      }
+      const query = (customFilters?.query !== undefined ? customFilters.query : searchQuery).trim();
       
       // Use custom filter values if provided, otherwise use state
       const currentBorough = customFilters?.borough !== undefined ? customFilters.borough : selectedBorough;
@@ -119,12 +106,34 @@ const Search: React.FC = () => {
       const currentSortBy = customFilters?.sortBy !== undefined ? customFilters.sortBy : sortBy;
       const pageToUse = customFilters?.page !== undefined ? customFilters.page : currentPage;
       
+      // Check if any filters are active using the current values (custom or state)
+      const hasActiveFilters = 
+        currentBorough !== "All Boroughs" ||
+        currentRentStabilized ||
+        currentAffordableHousing ||
+        currentRiskLevel !== "Any" ||
+        currentViolationClass !== "Any" ||
+        currentRentImpairing !== "Any" ||
+        currentComplaintCategory !== "Any" ||
+        currentRecentActivity !== "Any";
+      
+      // Allow empty query if filters are provided
+      if (!query && !hasActiveFilters) {
+        setError("Please enter a search term (address, zip code, BBL, or borough) or select at least one filter.");
+        setLoading(false);
+        return;
+      }
+      
       // Build search parameters for the new endpoint
       const searchParams: any = {
-        query: query,
         limit: resultsPerPage,
         page: pageToUse,
       };
+      
+      // Only add query if it's not empty
+      if (query) {
+        searchParams.query = query;
+      }
       
       // Add borough filter if selected
       if (currentBorough !== "All Boroughs") {
@@ -250,6 +259,44 @@ const Search: React.FC = () => {
     }, 500); // 500ms debounce
   }, [searchQuery, selectedBorough, rentStabilized, affordableHousing, riskLevel, violationClass, rentImpairing, complaintCategory, recentActivity, sortBy]);
 
+  // Read URL parameters on mount and when they change
+  useEffect(() => {
+    if (initializedFromUrl.current) return;
+    
+    const query = searchParams.get("q") || "";
+    const borough = searchParams.get("borough") || "All Boroughs";
+    const riskLevelParam = searchParams.get("risk_level") || "Any";
+    const violationClassParam = searchParams.get("violation_class") || "Any";
+    const rentStabilizedParam = searchParams.get("rent_stabilized");
+    const affordableHousingParam = searchParams.get("affordable_housing");
+
+    setSearchQuery(query);
+    setSelectedBorough(borough);
+    setRiskLevel(riskLevelParam);
+    setViolationClass(violationClassParam);
+    setRentStabilized(rentStabilizedParam === "true");
+    setAffordableHousing(affordableHousingParam === "true");
+
+    // Trigger search if there's a query or filters
+    if (query || riskLevelParam !== "Any" || violationClassParam !== "Any" || 
+        rentStabilizedParam === "true" || affordableHousingParam === "true" || borough !== "All Boroughs") {
+      initializedFromUrl.current = true;
+      // Use a small delay to ensure state is updated
+      setTimeout(() => {
+        handleSearch({
+          query: query,
+          borough: borough,
+          riskLevel: riskLevelParam,
+          violationClass: violationClassParam,
+          rentStabilized: rentStabilizedParam === "true",
+          affordableHousing: affordableHousingParam === "true",
+        });
+      }, 100);
+    } else {
+      initializedFromUrl.current = true;
+    }
+  }, [searchParams]);
+
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case "High Risk": return "error";
@@ -269,6 +316,12 @@ const Search: React.FC = () => {
   };
 
   const handleViewDetails = (bbl: string) => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page if not authenticated
+      navigate("/signin");
+      return;
+    }
     navigate(`/building/${bbl}`);
   };
 

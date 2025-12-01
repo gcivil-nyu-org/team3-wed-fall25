@@ -1,6 +1,8 @@
 import { Button, Dialog, DialogContent, DialogTitle } from "@mui/material";
 import { type BuildingData } from "../../api";
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "../../hooks";
 import ReviewForm from "./ReviewForm";
 
 const ReviewCreateButton = ({
@@ -10,10 +12,20 @@ const ReviewCreateButton = ({
   bbl: BuildingData["bbl"];
   onSuccess(): void;
 }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [showDialog, setShowDialog] = useState<boolean>(false);
 
   const handleCloseDialog = () => setShowDialog(false);
-  const handleOpenDialog = () => setShowDialog(true);
+  const handleOpenDialog = () => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page if not authenticated
+      navigate("/signin");
+      return;
+    }
+    setShowDialog(true);
+  };
 
   return (
     <>

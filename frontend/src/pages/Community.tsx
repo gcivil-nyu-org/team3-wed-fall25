@@ -72,7 +72,7 @@ const Community: React.FC = () => {
               <Box sx={{ p: 4, textAlign: "center" }}>
                 <StarBorder sx={{ fontSize: 48, color: "#bbb", mb: 1 }} />
                 <Typography variant="h6" color="text.secondary">
-                  Share your experience about buildings you've lived in.
+                  Please log in to view reviews.
                 </Typography>
               </Box>
             )}

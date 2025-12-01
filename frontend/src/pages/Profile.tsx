@@ -11,6 +11,16 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Snackbar,
 } from "@mui/material";
 import {
   Person as PersonIcon,
@@ -23,12 +33,18 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "../hooks";
 import { COLORS } from "../constants";
+import { updateProfile } from "../api/auth/authApi";
 import type { User } from "../types";
 
 export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUsername, setEditUsername] = useState("");
+  const [editTenantType, setEditTenantType] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const { user: authUser, logout, loading: authLoading } = useAuth();
@@ -65,7 +81,57 @@ export default function Profile() {
   };
 
   const handleEditProfile = () => {
-    // Navigate to edit profile page (to be implemented)
+    if (user) {
+      setEditUsername(user.username || "");
+      setEditTenantType(user.tenant_type || "");
+      setEditDialogOpen(true);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      const updateData: Partial<User> = {
+        username: editUsername,
+      };
+      
+      // Only include tenant_type if user is a tenant
+      if (user.role === "tenant") {
+        updateData.tenant_type = editTenantType as "student" | "working_professional" | "other";
+      }
+
+      const updatedUser = await updateProfile(updateData);
+      setUser(updatedUser);
+      setEditDialogOpen(false);
+      setSuccessMessage("Profile updated successfully!");
+      
+      // Reload the page to refresh auth context
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: any) {
+      const errorMessage = 
+        err.response?.data?.error_message || 
+        err.response?.data?.error || 
+        err.response?.data?.detail ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        err.message || 
+        "Failed to update profile";
+      setError(errorMessage);
+      console.error("Profile update error:", err.response?.data || err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    if (!saving) {
+      setEditDialogOpen(false);
+      setError(null);
+    }
   };
 
   const getRoleDisplayName = (role: string) => {
@@ -336,6 +402,69 @@ export default function Profile() {
           </Box>
         </CardContent>
       </Card>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={editDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Profile</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+            <TextField
+              label="Username"
+              value={editUsername}
+              onChange={(e) => setEditUsername(e.target.value)}
+              fullWidth
+              required
+            />
+            {user?.role === "tenant" && (
+              <FormControl fullWidth>
+                <InputLabel>Tenant Type</InputLabel>
+                <Select
+                  value={editTenantType}
+                  label="Tenant Type"
+                  onChange={(e) => setEditTenantType(e.target.value)}
+                >
+                  <MenuItem value="student">Student</MenuItem>
+                  <MenuItem value="working_professional">Working Professional</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+            {error && (
+              <Alert severity="error" sx={{ mt: 1 }}>
+                {error}
+              </Alert>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveProfile}
+            variant="contained"
+            disabled={saving || !editUsername.trim()}
+            sx={{
+              backgroundColor: COLORS.PRIMARY,
+              "&:hover": { backgroundColor: COLORS.PRIMARY_HOVER },
+            }}
+          >
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={() => setSuccessMessage(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={() => setSuccessMessage(null)} severity="success" sx={{ width: "100%" }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

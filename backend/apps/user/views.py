@@ -71,7 +71,7 @@ class LoginView(APIView):
 
 
 class ProfileView(APIView):
-    """Get current user profile"""
+    """Get and update current user profile"""
 
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserSerializer
@@ -79,6 +79,32 @@ class ProfileView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
+
+    def patch(self, request):
+        """Update user profile"""
+        try:
+            serializer = UserSerializer(request.user, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            # Return validation errors in a format that the error middleware will handle
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Handle database integrity errors (e.g., unique constraint violations)
+            error_message = str(e)
+            if (
+                "unique constraint" in error_message.lower()
+                or "duplicate key" in error_message.lower()
+            ):
+                if "username" in error_message.lower():
+                    return Response(
+                        {"username": ["A user with this username already exists."]},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            return Response(
+                {"detail": f"Error updating profile: {error_message}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # Alias for backward compatibility with tests
@@ -143,3 +169,36 @@ class ResendVerificationView(APIView):
             )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UsersListView(APIView):
+    """Get all users (tenants and landlords) excluding the logged-in user"""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        """
+        Returns all users except the logged-in user.
+        Includes:
+        - All tenants
+        - All landlords (including those associated with buildings)
+        """
+        try:
+            current_user_id = request.user.id
+
+            # Get all users except the current user
+            users = (
+                CustomUser.objects.exclude(id=current_user_id)
+                .filter(is_active=True)
+                .order_by("first_name", "last_name", "email")
+            )
+
+            # Serialize users
+            serializer = UserSerializer(users, many=True)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": f"Error fetching users: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

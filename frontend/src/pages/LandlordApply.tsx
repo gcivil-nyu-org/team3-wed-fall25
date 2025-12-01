@@ -16,12 +16,18 @@ import {
 import { useState, type FormEvent, useEffect } from "react"; // Use type-only import
 import * as landlordApi from "../api/landlord";
 import { useParams, useNavigate } from "react-router";
+import { LANDLORD_TYPES } from "../constants";
+import type { LandlordType } from "../types";
 
 interface FormData {
   name: string;
   email: string;
   bbl: string;
   country: string;
+  landlordType: LandlordType;
+  organizationName: string;
+  hpdRegistration: string;
+  businessPhone: string;
   agreeTerms: boolean;
 }
 
@@ -32,8 +38,15 @@ export default function LandlordApply() {
     email: "",
     bbl: "",
     country: "",
+    landlordType: "individual_owner",
+    organizationName: "",
+    hpdRegistration: "",
+    businessPhone: "",
     agreeTerms: false,
   });
+  const [errors, setErrors] = useState<{
+    organizationName?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -82,12 +95,30 @@ export default function LandlordApply() {
     }));
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: { organizationName?: string } = {};
+    
+    // Validate organization name if required
+    const showOrganizationField = formData.landlordType === 'property_management' || formData.landlordType === 'corporate_landlord';
+    if (showOrganizationField && !formData.organizationName.trim()) {
+      newErrors.organizationName = "Organization name is required for this landlord type";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
-      // Call the API method
+      // Call the API method with all fields
       await landlordApi.submitApplication(formData);
 
       // Show success message
@@ -101,10 +132,15 @@ export default function LandlordApply() {
       setFormData({
         name: "",
         email: "",
-        bbl: bbl ||"",
+        bbl: bbl || "",
         country: "",
+        landlordType: "individual_owner",
+        organizationName: "",
+        hpdRegistration: "",
+        businessPhone: "",
         agreeTerms: false,
       });
+      setErrors({});
     } catch (error) {
       // Show error message
       setSnackbar({
@@ -194,6 +230,63 @@ export default function LandlordApply() {
             <MenuItem value="Other">Other</MenuItem>
           </Select>
         </FormControl>
+        
+        {/* Landlord Type */}
+        <FormControl fullWidth margin="normal" required>
+          <InputLabel id="landlord-type-label">Type of Landlord</InputLabel>
+          <Select
+            labelId="landlord-type-label"
+            name="landlordType"
+            value={formData.landlordType}
+            onChange={handleSelectChange}
+            label="Type of Landlord"
+          >
+            {LANDLORD_TYPES.map((type) => (
+              <MenuItem key={type} value={type}>
+                {type === 'individual_owner' ? 'Individual Owner' :
+                 type === 'property_management' ? 'Property Management Company' :
+                 type === 'real_estate_agent' ? 'Real Estate Agent' :
+                 'Corporate Landlord'}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        {/* Organization Name - conditional */}
+        {(formData.landlordType === 'property_management' || formData.landlordType === 'corporate_landlord') && (
+          <TextField
+            label="Organization / Company Name"
+            name="organizationName"
+            value={formData.organizationName}
+            onChange={handleInputChange}
+            required
+            margin="normal"
+            error={!!errors.organizationName}
+            helperText={errors.organizationName}
+          />
+        )}
+
+        {/* HPD Registration */}
+        <TextField
+          label="HPD Registration / License Number"
+          name="hpdRegistration"
+          value={formData.hpdRegistration}
+          onChange={handleInputChange}
+          margin="normal"
+          placeholder="Optional"
+        />
+
+        {/* Business Phone */}
+        <TextField
+          label="Business Phone Number"
+          name="businessPhone"
+          value={formData.businessPhone}
+          onChange={handleInputChange}
+          type="tel"
+          margin="normal"
+          placeholder="Optional"
+        />
+
         <FormControlLabel
           control={
             <Checkbox

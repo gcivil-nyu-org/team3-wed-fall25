@@ -127,7 +127,33 @@ class UserSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-        read_only_fields = ("id", "created_at", "updated_at", "is_verified")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "is_verified",
+            "email",
+            "role",
+        )
+
+    def validate_tenant_type(self, value):
+        """Validate tenant_type only if user is a tenant"""
+        if value and self.instance and self.instance.role != "tenant":
+            raise serializers.ValidationError(
+                "Tenant type can only be set for tenant users."
+            )
+        return value
+
+    def update(self, instance, validated_data):
+        """Update user instance"""
+        # Update fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # Save the instance
+        # The model's clean() method is now lenient for updates (allows partial updates)
+        instance.save()
+        return instance
 
 
 # Alias for backward compatibility with tests
