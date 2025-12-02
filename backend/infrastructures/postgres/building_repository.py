@@ -1074,3 +1074,27 @@ class BuildingRepository:
                 return "Moderate Risk"
             else:  # Remaining 58% Low Risk
                 return "Low Risk"
+
+    def get_pluto_by_bbl(self, bbl: str) -> Optional[Dict[str, Any]]:
+        with self.client_factory() as db:
+            pluto_row = db.query_one(
+                """
+                SELECT
+                    bbl, borough, block, lot, borocode, plutomapid,
+                    address, zipcode,
+                    latitude, longitude,
+                    xcoord, ycoord,
+                    cd, council, schooldist, policeprct, firecomp,
+                    lotarea, bldgarea, comarea, resarea, officearea,
+                    retailarea, garagearea, strgearea, factryarea, otherarea,
+                    numbldgs, numfloors, unitsres, unitstotal,
+                    lotfront, lotdepth, bldgfront, bldgdepth,
+                    yearbuilt, yearalter1, yearalter2,
+                    ownertype, ownername,
+                    assessland, assesstot, exempttot
+                FROM building_pluto
+                WHERE bbl = %s
+                """,
+                (bbl,),
+            )
+            return pluto_row
