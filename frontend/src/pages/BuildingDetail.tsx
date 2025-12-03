@@ -44,6 +44,7 @@ import {
   fetchViolationsByBBL,
   fetchComplaintsByBBL,
   fetchBuildingStats,
+  fetchPlutoByBBL,
 } from "../api/landlord";
 
 interface TabPanelProps {
@@ -139,6 +140,7 @@ export default function BuildingDetail() {
   const [complaints, setComplaints] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [buildingInfo, setBuildingInfo] = useState<any>(null);
+  const [pluto, setPlutoData] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [editValues, setEditValues] = useState<{ averageRent: string; occupancyRate: string }>({
     averageRent: "",
@@ -160,10 +162,16 @@ export default function BuildingDetail() {
 
       try {
         // Use real API calls
-        const [violationsData, complaintsData, statsData] = await Promise.all([
+        const [
+          violationsData,
+          complaintsData,
+          statsData,
+          plutoData,
+        ] = await Promise.all([
           fetchViolationsByBBL(bbl),
           fetchComplaintsByBBL(bbl),
           fetchBuildingStats(bbl),
+          fetchPlutoByBBL(bbl),
         ]);
 
         if (!mounted) return;
@@ -171,24 +179,28 @@ export default function BuildingDetail() {
         setViolations(violationsData);
         setComplaints(complaintsData);
         console.log(statsData);
+        console.log(plutoData);
+        
+        
         setStats(statsData);
+    
+        // Normalize the PLUTO response (handle `{ data: ... }` wrappers) and store unwrapped row
+        const plutoObj = plutoData ? (plutoData.data ?? plutoData) : null;
+        setPlutoData(plutoObj);
+        console.log("pluto fetched:", plutoObj);
 
-        // Try to get building info from the first violation or complaint
-        // const firstRecord = violationsData[0] || complaintsData[0];
-        if (statsData && statsData.address) {
-          setBuildingInfo({
-            address: 
-              statsData.address || "Address not available",
-              // `${firstRecord.house_number || ""} ${firstRecord.street_name || ""}`.trim() ||
-              // "Address not available",
-            bbl: bbl,
-          });
-        } else {
-          setBuildingInfo({
-            address: "Building details not available",
-            bbl: bbl,
-          });
-        }
+        setBuildingInfo({
+          address: plutoObj?.address || "N/A",
+          bbl: bbl,
+          year_built: plutoObj?.yearbuilt ?? undefined,
+          building_class: plutoObj?.bldgclass ?? undefined,
+          total_units: plutoObj?.unitstotal ?? plutoObj?.unitsres ?? undefined,
+          stories: plutoObj?.numfloors ?? undefined,
+          lot_area: plutoObj?.lotarea ?? undefined,
+          owner: plutoObj?.ownername ?? undefined,
+          zipcode: plutoObj?.zipcode ?? undefined,
+          pluto: plutoObj,
+        });
       } catch (err) {
         console.error("Failed to load building data:", err);
         if (!mounted) return;
@@ -213,6 +225,11 @@ export default function BuildingDetail() {
       mounted = false;
     };
   }, [bbl]);
+
+  // Debug: log when pluto state actually changes (setState is async)
+  useEffect(() => {
+    console.log("pluto state changed:", pluto);
+  }, [pluto]);
 
   // Initialize editable fields when stats or buildingInfo load
   useEffect(() => {

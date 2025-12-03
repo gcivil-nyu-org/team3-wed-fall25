@@ -166,7 +166,9 @@ class PlutoCrawer(DataCrawler):
         except Exception as e:
             print(f"[PlutoCrawer] Fetch failed: {e}")
 
-        print(f"[PlutoCrawer] fetched {len(rows)} rows (offset={offset}, limit={limit})")
+        print(
+            f"[PlutoCrawer] fetched {len(rows)} rows (offset={offset}, limit={limit})"
+        )
         return rows
 
     def load(self, rows: List[Dict[str, Any]]) -> None:
@@ -186,6 +188,7 @@ class PlutoCrawer(DataCrawler):
             except DatabaseError as e:
                 print(f"[PlutoCrawer] Insert failed: {e}")
                 raise
+
 
 if __name__ == "__main__":
     # crawler = PlutoCrawer()

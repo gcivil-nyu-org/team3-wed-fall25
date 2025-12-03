@@ -76,6 +76,49 @@ export interface BuildingStatsDTO {
   total_complaints: number;
   open_complaints: number;
   eviction_filings: number;
+  // Landlord-entered metadata
+  average_rent?: number | null;
+  occupancy_rate?: number | null;
+  // PLUTO / canonical fields
+  year_built?: number | null;
+  building_class?: string | null;
+  total_units?: number | null;
+  stories?: number | null;
+  lot_area?: number | null;
+  owner?: string | null;
+  zipcode?: string | null;
+  // Raw PLUTO row if needed
+  pluto?: any | null;
+}
+
+// PLUTO DTO: represents a row from the `building_pluto` table
+export interface PlutoDTO {
+  bbl: string;
+  borough?: string | null;
+  block?: string | null;
+  lot?: string | null;
+  borocode?: string | null;
+  plutomapid?: string | null;
+  address?: string | null;
+  zipcode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  xcoord?: number | null;
+  ycoord?: number | null;
+  cd?: string | null;
+  council?: string | null;
+  lotarea?: number | null;
+  bldgarea?: number | null;
+  resarea?: number | null;
+  numfloors?: number | null;
+  unitsres?: number | null;
+  unitstotal?: number | null;
+  yearbuilt?: number | null;
+  yearalter1?: number | null;
+  ownername?: string | null;
+  bldgclass?: string | null;
+  assessland?: number | null;
+  assesstot?: number | null;
 }
 
 export interface LandlordStatsDTO {
@@ -296,6 +339,30 @@ export async function fetchBuildingStats(
       open_complaints: 2,
       eviction_filings: 1,
     };
+  }
+}
+
+export async function fetchPlutoByBBL(bbl: string): Promise<PlutoDTO | null> {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      throw new Error("No authentication token found. Please log in.");
+    }
+
+    const resp = await axios.get(`/landlord/building/${bbl}/pluto/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = resp.data as any;
+    if (data && typeof data === "object" && data.data) {
+      return data.data as PlutoDTO;
+    }
+    return data as PlutoDTO | null;
+  } catch (error) {
+    console.error("fetchPlutoByBBL: error", error);
+    return null;
   }
 }
 
