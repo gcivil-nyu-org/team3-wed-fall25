@@ -356,8 +356,16 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
 
             # Test with additional parameters
             additional_endpoints = [
-                "/api/neighborhood/stats/?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9&data_type=violations",
-                "/api/neighborhood/heatmap/?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9&data_type=evictions",
+                (
+                    "/api/neighborhood/stats/"
+                    "?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9"
+                    "&data_type=violations"
+                ),
+                (
+                    "/api/neighborhood/heatmap/"
+                    "?min_lat=40.7&max_lat=40.8&min_lng=-74.0&max_lng=-73.9"
+                    "&data_type=evictions"
+                ),
                 "/api/neighborhood/borough-summary/?borough=Manhattan",
                 "/api/neighborhood/trends/?bbl=1013510030&days_back=30",
             ]
@@ -381,8 +389,14 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
                 "/api/neighborhood/stats/",  # Missing parameters
                 "/api/neighborhood/heatmap/",  # Missing parameters
                 "/api/neighborhood/trends/",  # Missing parameters
-                "/api/neighborhood/stats/?min_lat=invalid&max_lat=40.8&min_lng=-74.0&max_lng=-73.9",  # Invalid lat
-                "/api/neighborhood/heatmap/?min_lat=40.7&max_lat=40.8&min_lng=invalid&max_lng=-73.9",  # Invalid lng
+                (
+                    "/api/neighborhood/stats/"
+                    "?min_lat=invalid&max_lat=40.8&min_lng=-74.0&max_lng=-73.9"
+                ),  # Invalid lat
+                (
+                    "/api/neighborhood/heatmap/"
+                    "?min_lat=40.7&max_lat=40.8&min_lng=invalid&max_lng=-73.9"
+                ),  # Invalid lng
                 "/api/neighborhood/trends/?bbl=invalid",  # Invalid bbl
             ]
 
@@ -402,8 +416,14 @@ class NeighborhoodViewsHelperFunctionTests(TestCase):
 
             # Test edge cases
             edge_cases = [
-                "/api/neighborhood/stats/?min_lat=0&max_lat=0&min_lng=0&max_lng=0",  # Zero coordinates
-                "/api/neighborhood/heatmap/?min_lat=-90&max_lat=90&min_lng=-180&max_lng=180",  # Global bounds
+                (
+                    "/api/neighborhood/stats/"
+                    "?min_lat=0&max_lat=0&min_lng=0&max_lng=0"
+                ),  # Zero coordinates
+                (
+                    "/api/neighborhood/heatmap/"
+                    "?min_lat=-90&max_lat=90&min_lng=-180&max_lng=180"
+                ),  # Global bounds
                 "/api/neighborhood/borough-summary/?borough=",  # Empty borough
                 "/api/neighborhood/trends/?bbl=0000000000",  # Zero BBL
             ]

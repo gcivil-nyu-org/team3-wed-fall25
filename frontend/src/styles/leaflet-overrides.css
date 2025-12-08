@@ -1,0 +1,11 @@
+/* Override Leaflet's z-index to ensure navigation bar stays on top */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 900 !important;
+}
+
+/* Ensure popups are still above map controls but below navigation */
+.leaflet-popup-pane {
+  z-index: 950 !important;
+}
+

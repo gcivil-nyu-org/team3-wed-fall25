@@ -20,6 +20,7 @@ import RemoveFavoritesButton from "../components/RemoveFavoritesButton";
 // Temporarily inline the BuildingData type to resolve export issue
 interface BuildingData {
   bbl: string;
+  unified_address?: string; // Address from building_locations (unified source)
   registration: {
     bbl: string;
     bin: number;
@@ -35,7 +36,7 @@ interface BuildingData {
     registration_end_date: string;
     registration_id: number;
     building_id: number;
-  };
+  } | null;
   rent_stabilized: {
     bbl: string;
     borough: string;
@@ -45,7 +46,7 @@ interface BuildingData {
     city: string;
     status: string;
     source_year: number;
-  };
+  } | null;
   contacts: Array<{
     registration_contact_id: number;
     registration_id: number;
@@ -150,7 +151,8 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
   const { favorites, refresh: refreshFavorites } = useFavorites();
 
   const favorite = favorites.find((favorite) => favorite.bbl === building.bbl);
-
+  
+  const navigate = useNavigate();
   return (
     <Paper
       elevation={0}
@@ -183,7 +185,19 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontFamily: '"Montserrat", "Roboto", sans-serif',
             }}
           >
-            {registration.house_number} {registration.street_name}
+            {(() => {
+              // Use unified_address if available (from building_locations)
+              if (building.unified_address && building.unified_address !== 'Address not available') {
+                return building.unified_address;
+              }
+              // Fallback to house_number + street_name from registration
+              if (registration) {
+                const addr = `${registration.house_number || ''} ${registration.street_name || ''}`.trim();
+                if (addr) return addr;
+              }
+              // Last resort: check if building has any address data
+              return 'Building Address';
+            })()}
           </Typography>
           <Typography
             variant="h6"
@@ -193,7 +207,9 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontWeight: 500,
             }}
           >
-            {registration.boro}, NY {registration.zip}
+            {registration 
+              ? `${registration.boro || 'NYC'}, NY ${registration.zip || ''}`.trim()
+              : 'New York, NY'}
           </Typography>
           <Typography
             variant="body2"
@@ -202,10 +218,24 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontSize: "0.9rem",
             }}
           >
-            BBL: {registration.bbl} | BIN: {registration.bin}
+            BBL: {building.bbl}{registration ? ` | BIN: ${registration.bin}` : ''}
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+          <Button
+            variant="contained"
+            onClick={() => navigate(`/landlord/apply/${registration?.bbl || building.bbl}`)}
+            sx={{
+              backgroundColor: "#FF6B35",
+              color: "white",
+              fontWeight: 600,
+              "&:hover": {
+                backgroundColor: "#E55A2B",
+              },
+            }}
+          >
+            Apply as Landlord
+          </Button>
           {favorite ? (
             <RemoveFavoritesButton
               id={favorite.id}
@@ -213,22 +243,23 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
             />
           ) : (
             <AddFavoritesButton
-              bbl={registration.bbl}
+              bbl={building.bbl}
               onSuccess={refreshFavorites}
             />
           )}
 
-          {rent_stabilized.status === "RENT_STABILIZED" && (
-            <Chip
-              label="Rent Stabilized"
-              sx={{
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                color: "#3B82F6",
-                border: "1px solid rgba(59, 130, 246, 0.2)",
-                fontWeight: 600,
-              }}
-            />
-          )}
+          {rent_stabilized !== null &&
+            rent_stabilized.status === "RENT_STABILIZED" && (
+              <Chip
+                label="Rent Stabilized"
+                sx={{
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
+                  color: "#3B82F6",
+                  border: "1px solid rgba(59, 130, 246, 0.2)",
+                  fontWeight: 600,
+                }}
+              />
+            )}
           <Chip
             label={`${counts.violations} Violations`}
             sx={{
@@ -415,6 +446,8 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
                 >
+                  {building.registration ? (
+                    <>
                   <Typography variant="body2" sx={{ color: "#4A5568" }}>
                     <strong style={{ color: "#2D3748" }}>
                       Registration ID:
@@ -443,6 +476,12 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                     </strong>{" "}
                     {building.registration.community_board}
                   </Typography>
+                    </>
+                  ) : (
+                    <Typography variant="body2" sx={{ color: "#6B7280", fontStyle: "italic" }}>
+                      No registration information available
+                    </Typography>
+                  )}
                 </Box>
               </Paper>
               <Paper
@@ -469,14 +508,20 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 <Box
                   sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}
                 >
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>Status:</strong>{" "}
-                    {building.rent_stabilized.status}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>Source Year:</strong>{" "}
-                    {building.rent_stabilized.source_year}
-                  </Typography>
+                  {building.rent_stabilized !== null && (
+                    <>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>Status:</strong>{" "}
+                        {building.rent_stabilized.status}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Source Year:
+                        </strong>{" "}
+                        {building.rent_stabilized.source_year}
+                      </Typography>
+                    </>
+                  )}
                 </Box>
               </Paper>
             </Box>
@@ -656,7 +701,7 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
         );
 
       case "reviews":
-        return <ReviewTab />;
+        return <ReviewTab bbl={building.bbl} />;
 
       default:
         return null;

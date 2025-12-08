@@ -845,6 +845,163 @@ class DummyViewsMethodCoverageTests(TestCase):
         except Exception as e:
             self.skipTest(f"Dummy views edge cases test failed: {e}")
 
+    def test_dummy_item_list_create_get_database_error(self):
+        """Test DummyItemListCreateView GET with database error"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+        from common.exceptions.db_error import DatabaseError
+
+        client = APIClient()
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.query_all.side_effect = DatabaseError("DB error")
+            response = client.get("/api/dummy/items/")
+            self.assertEqual(response.status_code, 500)
+
+    def test_dummy_item_list_create_post_database_error(self):
+        """Test DummyItemListCreateView POST with database error"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+        from common.exceptions.db_error import DatabaseError
+
+        client = APIClient()
+        data = {"title": "Test Item"}
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.execute.side_effect = DatabaseError("DB error")
+            response = client.post("/api/dummy/items/", data)
+            self.assertEqual(response.status_code, 500)
+
+    def test_dummy_item_detail_get_not_found(self):
+        """Test DummyItemDetailView GET with item not found"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+
+        client = APIClient()
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.query_one.return_value = None
+            response = client.get("/api/dummy/items/99999/")
+            self.assertEqual(response.status_code, 404)
+
+    def test_dummy_item_detail_get_database_error(self):
+        """Test DummyItemDetailView GET with database error"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+        from common.exceptions.db_error import DatabaseError
+
+        client = APIClient()
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.query_one.side_effect = DatabaseError("DB error")
+            response = client.get("/api/dummy/items/1/")
+            self.assertEqual(response.status_code, 500)
+
+    def test_dummy_item_detail_put_not_found(self):
+        """Test DummyItemDetailView PUT with item not found"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+
+        client = APIClient()
+        data = {"title": "Updated Title"}
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.exists.return_value = False
+            response = client.put("/api/dummy/items/99999/", data)
+            self.assertEqual(response.status_code, 404)
+
+    def test_dummy_item_detail_put_database_error(self):
+        """Test DummyItemDetailView PUT with database error"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+        from common.exceptions.db_error import DatabaseError
+
+        client = APIClient()
+        data = {"title": "Updated Title"}
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.exists.return_value = True
+            mock_client.execute.side_effect = DatabaseError("DB error")
+            response = client.put("/api/dummy/items/1/", data)
+            self.assertEqual(response.status_code, 500)
+
+    def test_dummy_item_detail_patch_no_fields(self):
+        """Test DummyItemDetailView PATCH with no fields to update"""
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        data = {}
+        response = client.patch("/api/dummy/items/1/", data)
+        self.assertEqual(response.status_code, 400)
+
+    def test_dummy_item_detail_patch_not_found(self):
+        """Test DummyItemDetailView PATCH with item not found"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+
+        client = APIClient()
+        data = {"title": "Updated"}
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.exists.return_value = False
+            response = client.patch("/api/dummy/items/99999/", data)
+            self.assertEqual(response.status_code, 404)
+
+    def test_dummy_item_detail_delete_not_found(self):
+        """Test DummyItemDetailView DELETE with item not found"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+
+        client = APIClient()
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.execute.return_value = 0
+            response = client.delete("/api/dummy/items/99999/")
+            self.assertEqual(response.status_code, 404)
+
+    def test_dummy_item_detail_delete_database_error(self):
+        """Test DummyItemDetailView DELETE with database error"""
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+        from common.exceptions.db_error import DatabaseError
+
+        client = APIClient()
+        with patch("apps.dummy.views.PostgresClient") as mock_db:
+            mock_client = mock_db.return_value.__enter__.return_value
+            mock_client.execute.side_effect = DatabaseError("DB error")
+            response = client.delete("/api/dummy/items/1/")
+            self.assertEqual(response.status_code, 500)
+
+    def test_row_to_item_helper(self):
+        """Test _row_to_item helper function"""
+        from apps.dummy.views import _row_to_item
+
+        row = {
+            "id": 1,
+            "title": "Test",
+            "detail": "Detail",
+            "created_at": "2024-01-01",
+            "updated_at": "2024-01-01",
+        }
+        result = _row_to_item(row)
+        self.assertEqual(result["id"], 1)
+        self.assertEqual(result["title"], "Test")
+        self.assertEqual(result["detail"], "Detail")
+
+    def test_row_to_item_helper_no_detail(self):
+        """Test _row_to_item helper function with no detail"""
+        from apps.dummy.views import _row_to_item
+
+        row = {
+            "id": 1,
+            "title": "Test",
+            "detail": None,
+            "created_at": "2024-01-01",
+            "updated_at": "2024-01-01",
+        }
+        result = _row_to_item(row)
+        self.assertEqual(result["detail"], "")
+
     def test_dummy_views_comprehensive_coverage_final(self):
         """Test comprehensive coverage of dummy views - final push"""
         try:

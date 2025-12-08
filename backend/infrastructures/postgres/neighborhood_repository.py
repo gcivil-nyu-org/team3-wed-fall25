@@ -224,6 +224,7 @@ class NeighborhoodRepository:
         data_type: str = "violations",
         borough: Optional[str] = None,
         limit: int = 50000,
+        time_range: Optional[str] = None,  # "all", "6months", "1year", "3years"
     ) -> List[HeatmapPoint]:
         """
         Get heatmap data points for visualization.
@@ -240,15 +241,15 @@ class NeighborhoodRepository:
         with self.client_factory() as db:
             if data_type == "violations":
                 return self._get_violations_heatmap(
-                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit, time_range
                 )
             elif data_type == "evictions":
                 return self._get_evictions_heatmap(
-                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit, time_range
                 )
             elif data_type == "complaints":
                 return self._get_complaints_heatmap(
-                    db, min_lat, max_lat, min_lng, max_lng, borough, limit
+                    db, min_lat, max_lat, min_lng, max_lng, borough, limit, time_range
                 )
             else:
                 return []
@@ -262,16 +263,37 @@ class NeighborhoodRepository:
         max_lng: float,
         borough: Optional[str] = None,
         limit: int = 50000,
+        time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get violations heatmap data - optimized to use all data points"""
-        # Build query with optional borough filter
-        query = """
+        """
+        Get violations heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
+        # Calculate date threshold based on time range
+        date_filter = ""
+        date_params = []
+        if time_range and time_range != "all":
+            if time_range == "6months":
+                date_threshold = datetime.now() - timedelta(days=6 * 30)
+            elif time_range == "1year":
+                date_threshold = datetime.now() - timedelta(days=365)
+            elif time_range == "3years":
+                date_threshold = datetime.now() - timedelta(days=3 * 365)
+            else:
+                date_threshold = None
+
+            if date_threshold:
+                date_filter = " AND v.nov_issued_date >= %s"
+                date_params = [date_threshold]
+
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
+        query = f"""
             SELECT 
-                e.bbl,
-                e.latitude,
-                e.longitude,
-                e.eviction_address as address,
-                e.borough,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
                 COALESCE(v.violation_count, 0) as count,
                 -- More granular intensity calculation using all data
                 CASE 
@@ -282,32 +304,200 @@ class NeighborhoodRepository:
                     WHEN COALESCE(v.violation_count, 0) <= 20 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions e
+            FROM building_locations bl
+            -- Count violations (same logic as search)
             LEFT JOIN (
                 SELECT 
                     bbl,
                     COUNT(*) as violation_count
                 FROM building_violations
-                WHERE violation_status = 'Open'
+                WHERE UPPER(violation_status) = 'OPEN'{date_filter}
                 GROUP BY bbl
-            ) v ON e.bbl = v.bbl
-            WHERE e.latitude IS NOT NULL 
-                AND e.longitude IS NOT NULL
-                AND e.latitude BETWEEN %s AND %s
-                AND e.longitude BETWEEN %s AND %s
+            ) v ON bl.bbl = v.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (violations count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
         if borough and borough != "All Boroughs":
-            query += " AND e.borough = %s"
-            query += " ORDER BY COALESCE(v.violation_count, 0) DESC LIMIT %s"
-            rows = db.query_all(
-                query, (min_lat, max_lat, min_lng, max_lng, borough, limit)
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
+            query += " ORDER BY RANDOM() LIMIT %s"
+            params = tuple(
+                date_params + [min_lat, max_lat, min_lng, max_lng, borough, limit]
             )
+            rows = db.query_all(query, params)
         else:
-            query += " ORDER BY COALESCE(v.violation_count, 0) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, limit))
+            query += " ORDER BY RANDOM() LIMIT %s"
+            params = tuple(date_params + [min_lat, max_lat, min_lng, max_lng, limit])
+            rows = db.query_all(query, params)
         return [as_heatmap_point({**row, "data_type": "violations"}) for row in rows]
+
+    def get_filtered_violations_points(
+        self,
+        min_lat: float,
+        max_lat: float,
+        min_lng: float,
+        max_lng: float,
+        borough: Optional[str] = None,
+        limit: int = 1000000,
+        # Status filters
+        min_open_violations: Optional[int] = None,
+        max_open_violations: Optional[int] = None,
+        min_closed_violations: Optional[int] = None,
+        max_closed_violations: Optional[int] = None,
+        # Class filters
+        min_class_a: Optional[int] = None,
+        max_class_a: Optional[int] = None,
+        min_class_b: Optional[int] = None,
+        max_class_b: Optional[int] = None,
+        min_class_c: Optional[int] = None,
+        max_class_c: Optional[int] = None,
+        # Response time filter (days between inspection and approval)
+        max_response_days: Optional[
+            int
+        ] = None,  # Show buildings that fix issues within X days
+    ) -> List[HeatmapPoint]:
+        """
+        Get violation points with advanced filtering options.
+        Returns buildings that match the specified criteria.
+        """
+        with self.client_factory() as db:
+            # Build the main query with aggregations using a subquery
+            query = """
+                SELECT 
+                    result.bbl,
+                    result.latitude,
+                    result.longitude,
+                    result.address,
+                    result.borough,
+                    result.count,
+                    result.open_violations,
+                    result.closed_violations,
+                    result.class_a_count,
+                    result.class_b_count,
+                    result.class_c_count,
+                    result.avg_response_days,
+                    CASE 
+                        WHEN result.count = 0 THEN 0.0
+                        WHEN result.count <= 2 THEN 0.2
+                        WHEN result.count <= 5 THEN 0.4
+                        WHEN result.count <= 10 THEN 0.6
+                        WHEN result.count <= 20 THEN 0.8
+                        ELSE 1.0
+                    END as intensity
+                FROM (
+                    SELECT 
+                        e.bbl,
+                        e.latitude,
+                        e.longitude,
+                        e.eviction_address as address,
+                        e.borough,
+                        -- Count totals
+                        COALESCE(v.total_count, 0) as count,
+                        -- Status counts
+                        COALESCE(v.open_count, 0) as open_violations,
+                        COALESCE(v.closed_count, 0) as closed_violations,
+                        -- Class counts
+                        COALESCE(v.class_a_count, 0) as class_a_count,
+                        COALESCE(v.class_b_count, 0) as class_b_count,
+                        COALESCE(v.class_c_count, 0) as class_c_count,
+                        -- Response time metrics (average days from inspection to approval for closed violations)
+                        v.avg_response_days
+                    FROM building_evictions e
+                    LEFT JOIN (
+                        SELECT 
+                            bbl,
+                            COUNT(*) as total_count,
+                            SUM(CASE WHEN violation_status = 'Open' THEN 1 ELSE 0 END) as open_count,
+                            SUM(CASE WHEN violation_status IN ('Close', 'Closed') THEN 1 ELSE 0 END) as closed_count,
+                            SUM(CASE WHEN class = 'A' THEN 1 ELSE 0 END) as class_a_count,
+                            SUM(CASE WHEN class = 'B' THEN 1 ELSE 0 END) as class_b_count,
+                            SUM(CASE WHEN class = 'C' THEN 1 ELSE 0 END) as class_c_count,
+                            -- Calculate average response time (inspection_date to approved_date) for closed violations
+                            AVG(
+                                CASE 
+                                    WHEN violation_status IN ('Close', 'Closed') 
+                                        AND inspection_date IS NOT NULL 
+                                        AND approved_date IS NOT NULL
+                                    THEN EXTRACT(EPOCH FROM (approved_date - inspection_date)) / 86400.0
+                                    ELSE NULL
+                                END
+                            ) as avg_response_days
+                        FROM building_violations
+                        GROUP BY bbl
+                    ) v ON e.bbl = v.bbl
+                    WHERE e.latitude IS NOT NULL 
+                        AND e.longitude IS NOT NULL
+                        AND e.latitude BETWEEN %s AND %s
+                        AND e.longitude BETWEEN %s AND %s
+            """
+
+            params = [min_lat, max_lat, min_lng, max_lng]
+
+            # Add borough filter
+            if borough and borough != "All Boroughs":
+                query += " AND e.borough = %s"
+                params.append(borough)
+
+            # Build WHERE conditions for the outer query
+            where_clauses = []
+
+            # Add status filters
+            if min_open_violations is not None:
+                where_clauses.append("result.open_violations >= %s")
+                params.append(min_open_violations)
+            if max_open_violations is not None:
+                where_clauses.append("result.open_violations <= %s")
+                params.append(max_open_violations)
+            if min_closed_violations is not None:
+                where_clauses.append("result.closed_violations >= %s")
+                params.append(min_closed_violations)
+            if max_closed_violations is not None:
+                where_clauses.append("result.closed_violations <= %s")
+                params.append(max_closed_violations)
+
+            # Add class filters
+            if min_class_a is not None:
+                where_clauses.append("result.class_a_count >= %s")
+                params.append(min_class_a)
+            if max_class_a is not None:
+                where_clauses.append("result.class_a_count <= %s")
+                params.append(max_class_a)
+            if min_class_b is not None:
+                where_clauses.append("result.class_b_count >= %s")
+                params.append(min_class_b)
+            if max_class_b is not None:
+                where_clauses.append("result.class_b_count <= %s")
+                params.append(max_class_b)
+            if min_class_c is not None:
+                where_clauses.append("result.class_c_count >= %s")
+                params.append(min_class_c)
+            if max_class_c is not None:
+                where_clauses.append("result.class_c_count <= %s")
+                params.append(max_class_c)
+
+            # Add response time filter (buildings that fix issues fast)
+            if max_response_days is not None:
+                where_clauses.append(
+                    "(COALESCE(result.avg_response_days, 999999) <= %s OR result.avg_response_days IS NULL)"
+                )
+                params.append(max_response_days)
+
+            query += ") as result"
+
+            # Add WHERE clause if we have filters
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+
+            query += " ORDER BY RANDOM() LIMIT %s"
+            params.append(limit)
+
+            rows = db.query_all(query, tuple(params))
+            return [
+                as_heatmap_point({**row, "data_type": "violations"}) for row in rows
+            ]
 
     def _get_evictions_heatmap(
         self,
@@ -318,49 +508,82 @@ class NeighborhoodRepository:
         max_lng: float,
         borough: Optional[str] = None,
         limit: int = 50000,
+        time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get evictions heatmap data - optimized to use all data points"""
-        three_years_ago = datetime.now() - timedelta(days=3 * 365)
+        """
+        Get evictions heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
+        # Calculate date threshold based on time range (default to 3 years if not specified)
+        if time_range and time_range != "all":
+            if time_range == "6months":
+                date_threshold = datetime.now() - timedelta(days=6 * 30)
+            elif time_range == "1year":
+                date_threshold = datetime.now() - timedelta(days=365)
+            elif time_range == "3years":
+                date_threshold = datetime.now() - timedelta(days=3 * 365)
+            else:
+                date_threshold = datetime.now() - timedelta(days=3 * 365)
+        else:
+            # Default to 3 years for evictions (or all time if "all" is explicitly selected)
+            date_threshold = (
+                None
+                if time_range == "all"
+                else datetime.now() - timedelta(days=3 * 365)
+            )
 
-        # Build query with optional borough filter
-        query = """
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
+        # Build date filter for evictions subquery
+        evictions_where = "executed_date >= (CURRENT_DATE - INTERVAL '3 years')::date"
+        date_params = []
+        if date_threshold:
+            evictions_where += " AND executed_date >= %s"
+            date_params.append(date_threshold)
+
+        query = f"""
             SELECT 
-                bbl,
-                latitude,
-                longitude,
-                eviction_address as address,
-                borough,
-                COUNT(*) as count,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
+                COALESCE(ev.eviction_count, 0) as count,
                 -- More granular intensity calculation
                 CASE 
-                    WHEN COUNT(*) = 0 THEN 0.0
-                    WHEN COUNT(*) = 1 THEN 0.2
-                    WHEN COUNT(*) = 2 THEN 0.4
-                    WHEN COUNT(*) <= 4 THEN 0.6
-                    WHEN COUNT(*) <= 8 THEN 0.8
+                    WHEN COALESCE(ev.eviction_count, 0) = 0 THEN 0.0
+                    WHEN COALESCE(ev.eviction_count, 0) = 1 THEN 0.2
+                    WHEN COALESCE(ev.eviction_count, 0) = 2 THEN 0.4
+                    WHEN COALESCE(ev.eviction_count, 0) <= 4 THEN 0.6
+                    WHEN COALESCE(ev.eviction_count, 0) <= 8 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions
-            WHERE latitude IS NOT NULL 
-                AND longitude IS NOT NULL
-                AND latitude BETWEEN %s AND %s
-                AND longitude BETWEEN %s AND %s
-                AND executed_date >= %s
+            FROM building_locations bl
+            -- Count evictions (same logic as search - last 3 years)
+            LEFT JOIN (
+                SELECT 
+                    bbl,
+                    COUNT(*) as eviction_count
+                FROM building_evictions
+                WHERE {evictions_where}
+                GROUP BY bbl
+            ) ev ON bl.bbl = ev.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (eviction count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
+        base_params = date_params + [min_lat, max_lat, min_lng, max_lng]
         if borough and borough != "All Boroughs":
-            query += " AND borough = %s"
-            query += " GROUP BY bbl, latitude, longitude, eviction_address, borough ORDER BY COUNT(*) DESC LIMIT %s"
-            rows = db.query_all(
-                query,
-                (min_lat, max_lat, min_lng, max_lng, three_years_ago, borough, limit),
-            )
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
+            query += " ORDER BY RANDOM() LIMIT %s"
+            params = tuple(base_params + [borough, limit])
+            rows = db.query_all(query, params)
         else:
-            query += " GROUP BY bbl, latitude, longitude, eviction_address, borough ORDER BY COUNT(*) DESC LIMIT %s"
-            rows = db.query_all(
-                query, (min_lat, max_lat, min_lng, max_lng, three_years_ago, limit)
-            )
+            query += " ORDER BY RANDOM() LIMIT %s"
+            params = tuple(base_params + [limit])
+            rows = db.query_all(query, params)
         return [as_heatmap_point({**row, "data_type": "evictions"}) for row in rows]
 
     def _get_complaints_heatmap(
@@ -372,16 +595,37 @@ class NeighborhoodRepository:
         max_lng: float,
         borough: Optional[str] = None,
         limit: int = 50000,
+        time_range: Optional[str] = None,
     ) -> List[HeatmapPoint]:
-        """Get complaints heatmap data - optimized to use all data points"""
-        # Build query with optional borough filter
-        query = """
+        """
+        Get complaints heatmap data - UNIFIED with search logic.
+        Uses building_registrations as base to match search results.
+        """
+        # Calculate date threshold based on time range
+        date_filter = ""
+        date_params = []
+        if time_range and time_range != "all":
+            if time_range == "6months":
+                date_threshold = datetime.now() - timedelta(days=6 * 30)
+            elif time_range == "1year":
+                date_threshold = datetime.now() - timedelta(days=365)
+            elif time_range == "3years":
+                date_threshold = datetime.now() - timedelta(days=3 * 365)
+            else:
+                date_threshold = None
+
+            if date_threshold:
+                date_filter = " AND c.complaint_status_date >= %s"
+                date_params = [date_threshold]
+
+        # UNIFIED QUERY: Use building_locations table (single source of truth)
+        query = f"""
             SELECT 
-                e.bbl,
-                e.latitude,
-                e.longitude,
-                e.eviction_address as address,
-                e.borough,
+                bl.bbl,
+                bl.latitude,
+                bl.longitude,
+                bl.address,
+                bl.borough,
                 COALESCE(c.complaint_count, 0) as count,
                 -- More granular intensity calculation
                 CASE 
@@ -392,31 +636,32 @@ class NeighborhoodRepository:
                     WHEN COALESCE(c.complaint_count, 0) <= 15 THEN 0.8
                     ELSE 1.0
                 END as intensity
-            FROM building_evictions e
+            FROM building_locations bl
+            -- Count complaints (same logic as search)
             LEFT JOIN (
                 SELECT 
                     bbl,
                     COUNT(*) as complaint_count
                 FROM building_complaints
-                WHERE complaint_status = 'Open'
+                WHERE 1=1{date_filter}
                 GROUP BY bbl
-            ) c ON e.bbl = c.bbl
-            WHERE e.latitude IS NOT NULL 
-                AND e.longitude IS NOT NULL
-                AND e.latitude BETWEEN %s AND %s
-                AND e.longitude BETWEEN %s AND %s
+            ) c ON bl.bbl = c.bbl
+            WHERE bl.has_location = TRUE
+                AND bl.latitude BETWEEN %s AND %s
+                AND bl.longitude BETWEEN %s AND %s
+                -- Show ALL buildings with location (complaint count is for intensity, not filtering)
         """
 
         # Add borough filter if specified
+        params_list = date_params + [min_lat, max_lat, min_lng, max_lng]
         if borough and borough != "All Boroughs":
-            query += " AND e.borough = %s"
-            query += " ORDER BY COALESCE(c.complaint_count, 0) DESC LIMIT %s"
-            rows = db.query_all(
-                query, (min_lat, max_lat, min_lng, max_lng, borough, limit)
-            )
-        else:
-            query += " ORDER BY COALESCE(c.complaint_count, 0) DESC LIMIT %s"
-            rows = db.query_all(query, (min_lat, max_lat, min_lng, max_lng, limit))
+            query += " AND UPPER(bl.borough) = UPPER(%s)"
+            params_list.append(borough)
+
+        query += " ORDER BY RANDOM() LIMIT %s"
+        params_list.append(limit)
+
+        rows = db.query_all(query, tuple(params_list))
         return [as_heatmap_point({**row, "data_type": "complaints"}) for row in rows]
 
     def get_borough_summary(self, borough: str = None) -> List[NeighborhoodSummary]:

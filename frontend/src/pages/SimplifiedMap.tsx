@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Box,
   Typography,
   Paper,
-  Chip,
   Button,
   IconButton,
   Drawer,
-  TextField,
   Stack,
   Card,
   CardContent,
@@ -18,6 +16,7 @@ import {
   Container,
   Select,
   MenuItem,
+  Slider,
 } from "@mui/material";
 import {
   Map as MapIcon,
@@ -27,24 +26,33 @@ import {
   Home,
   Warning,
   Info,
-  TrendingUp,
+  Palette,
 } from "@mui/icons-material";
-import OptimizedHeatmap from "../components/OptimizedHeatmap";
-import HeatmapLegend from "../components/HeatmapLegend";
-import { fetchHeatmapData, fetchBoroughSummary, type HeatmapPoint, type BoroughSummary } from "../api/index.js";
+import { useNavigate } from "react-router";
+import { MapContainer, TileLayer } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import "../styles/leaflet-overrides.css";
+import TrueHeatmap from "../components/TrueHeatmap";
+import PointsLayer from "../components/PointsLayer";
+import { fetchHeatmapData, fetchBoroughSummary, fetchFilteredViolations, type HeatmapPoint, type BoroughSummary } from "../api/index.js";
+
+// Fix for default markers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 // Types
 type MapMode = "heat" | "points";
-type HeatmapMode = "default" | "risk" | "inequality";
 type DatasetToggle = "violations" | "evictions" | "complaints";
 
 interface MapState {
   mode: MapMode;
-  heatmapMode: HeatmapMode;
   filters: {
-    violations: boolean;
-    evictions: boolean;
-    complaints: boolean;
+    dataType: DatasetToggle; // Only one can be selected
     borough: string;
   };
   timeWindows: {
@@ -53,19 +61,38 @@ interface MapState {
     complaintsYears: number;
   };
   advanced: {
-    boroughs: string[];
-    riskThreshold: number;
+    // Heatmap filters
+    countThreshold: number; // Minimum count to show (1-50)
+    timeRange: "all" | "6months" | "1year" | "3years"; // Time range filter
+    
+    // Points filters
+    minViolations: number;
+    maxViolations: number;
+    minComplaints: number;
+    maxComplaints: number;
+    minEvictions: number;
+    maxEvictions: number;
+    rentStabilizedOnly: boolean; // Show only rent stabilized buildings
+    affordableHousingOnly: boolean; // Show only affordable housing buildings
+    // Violation-specific filters (only for violations data type in points mode)
+    minOpenViolations: number;
+    maxOpenViolations: number;
+    minClosedViolations: number;
+    maxClosedViolations: number;
+    minClassA: number;
+    maxClassA: number;
+    minClassB: number;
+    maxClassB: number;
+    minClassC: number;
+    maxClassC: number;
   };
 }
 
 // Default state
 const DEFAULT_STATE: MapState = {
   mode: "heat",
-  heatmapMode: "default",
   filters: {
-    violations: true, // Start with violations active
-    evictions: false,
-    complaints: false,
+    dataType: "violations", // Start with violations
     borough: "All Boroughs",
   },
   timeWindows: {
@@ -74,17 +101,37 @@ const DEFAULT_STATE: MapState = {
     complaintsYears: 3,
   },
   advanced: {
-    boroughs: [],
-    riskThreshold: 0,
+    // Heatmap filters
+    countThreshold: 1, // Minimum count (default: show all)
+    timeRange: "all", // Default: all time
+    
+    // Points filters
+    minViolations: 0,
+    maxViolations: 2000,
+    minComplaints: 0,
+    maxComplaints: 2000,
+    minEvictions: 0,
+    maxEvictions: 2000,
+    rentStabilizedOnly: false,
+    affordableHousingOnly: false,
+    // Violation-specific filters
+    minOpenViolations: 0,
+    maxOpenViolations: 2000,
+    minClosedViolations: 0,
+    maxClosedViolations: 2000,
+    minClassA: 0,
+    maxClassA: 2000,
+    minClassB: 0,
+    maxClassB: 2000,
+    minClassC: 0,
+    maxClassC: 2000,
   },
 };
 
 // Mode Switcher Component
 const ModeSwitcher: React.FC<{
   mode: MapMode;
-  heatmapMode: HeatmapMode;
   onChange: (mode: MapMode) => void;
-  onHeatmapModeChange: (heatmapMode: HeatmapMode) => void;
 }> = ({ mode, onChange }) => {
   return (
     <Paper sx={{ 
@@ -130,47 +177,6 @@ const ModeSwitcher: React.FC<{
   );
 };
 
-// Heatmap Mode Selector Component
-const HeatmapModeSelector: React.FC<{
-  heatmapMode: HeatmapMode;
-  onChange: (heatmapMode: HeatmapMode) => void;
-}> = ({ heatmapMode, onChange }) => {
-  const modes = [
-    { value: "default", label: "Default", icon: <BubbleChart /> },
-    { value: "risk", label: "Risk", icon: <Warning /> },
-    { value: "inequality", label: "Inequality", icon: <TrendingUp /> },
-  ];
-
-  return (
-    <Paper sx={{ 
-      display: "flex", 
-      borderRadius: 3, 
-      overflow: "hidden",
-      boxShadow: "0 4px 12px rgba(255, 107, 53, 0.1)",
-      border: "1px solid rgba(255, 107, 53, 0.1)"
-    }}>
-      {modes.map(({ value, label, icon }) => (
-        <Button
-          key={value}
-          variant={heatmapMode === value ? "contained" : "text"}
-          onClick={() => onChange(value as HeatmapMode)}
-          sx={{ 
-            borderRadius: 0,
-            px: 3,
-            background: heatmapMode === value ? "#FF6B35" : "transparent",
-            color: heatmapMode === value ? "white" : "#4A5568",
-            "&:hover": {
-              background: heatmapMode === value ? "#E55A2B" : "rgba(255, 107, 53, 0.05)"
-            }
-          }}
-          startIcon={icon}
-        >
-          {label}
-        </Button>
-      ))}
-    </Paper>
-  );
-};
 
 // Filter Bar Component
 const FilterBar: React.FC<{
@@ -180,7 +186,7 @@ const FilterBar: React.FC<{
   legendOpen: boolean;
   onToggleLegend: () => void;
 }> = ({ state, onUpdate, onOpenAdvanced, legendOpen, onToggleLegend }) => {
-  const datasetToggles: { key: DatasetToggle; label: string; icon: React.ReactNode }[] = [
+  const datasetOptions: { key: DatasetToggle; label: string; icon: React.ReactNode }[] = [
     { key: "violations", label: "Violations", icon: <Warning /> },
     { key: "evictions", label: "Evictions", icon: <Home /> },
     { key: "complaints", label: "Complaints", icon: <Info /> },
@@ -197,30 +203,32 @@ const FilterBar: React.FC<{
       border: "1px solid rgba(255, 107, 53, 0.1)"
     }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
-        {/* Dataset Toggles */}
+        {/* Data Type Selection - Exclusive (Radio buttons) */}
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          {datasetToggles.map(({ key, label }) => (
-            <Chip
+          {datasetOptions.map(({ key, label, icon }) => (
+            <Button
               key={key}
-              label={label}
-              variant={state.filters[key] ? "filled" : "outlined"}
-              color={state.filters[key] ? "primary" : "default"}
+              variant={state.filters.dataType === key ? "contained" : "outlined"}
               onClick={() => onUpdate({
-                filters: { ...state.filters, [key]: !state.filters[key] }
+                filters: { ...state.filters, dataType: key }
               })}
+              startIcon={icon}
               sx={{ 
-                background: state.filters[key] ? "#FF6B35" : "rgba(255,255,255,0.8)",
-                color: state.filters[key] ? "white" : "#374151",
-                borderColor: state.filters[key] ? "#E55A2B" : "rgba(255, 107, 53, 0.2)",
+                background: state.filters.dataType === key ? "#FF6B35" : "rgba(255,255,255,0.8)",
+                color: state.filters.dataType === key ? "white" : "#374151",
+                borderColor: state.filters.dataType === key ? "#E55A2B" : "rgba(255, 107, 53, 0.2)",
                 fontWeight: 500,
                 "&:hover": {
-                  background: state.filters[key] ? "#E55A2B" : "rgba(255, 107, 53, 0.1)",
+                  background: state.filters.dataType === key ? "#E55A2B" : "rgba(255, 107, 53, 0.1)",
+                  borderColor: state.filters.dataType === key ? "#E55A2B" : "rgba(255, 107, 53, 0.4)",
                   transform: "translateY(-1px)",
                   boxShadow: "0 4px 12px rgba(255, 107, 53, 0.2)"
                 },
                 transition: "all 0.2s ease-in-out"
               }}
-            />
+            >
+              {label}
+            </Button>
           ))}
         </Box>
 
@@ -257,10 +265,11 @@ const FilterBar: React.FC<{
           </Select>
         </Box>
 
-        {/* Legend Toggle Button */}
+        {/* Legend Toggle Button - Only show for heatmap mode */}
+        {state.mode === "heat" && (
         <Button
           variant="outlined"
-          startIcon={<Info />}
+            startIcon={<Palette />}
           onClick={onToggleLegend}
           sx={{ 
             background: legendOpen ? "#FF6B35" : "rgba(255,255,255,0.8)",
@@ -278,6 +287,7 @@ const FilterBar: React.FC<{
         >
           Legend
         </Button>
+        )}
 
         {/* Advanced Filters Button */}
         <Button
@@ -320,31 +330,352 @@ const AdvancedFiltersDrawer: React.FC<{
         </Box>
 
         <Stack spacing={3}>
-
-          {/* Risk Threshold */}
+          {state.mode === "heat" ? (
+            <>
+              {/* HEATMAP FILTERS */}
           <Box>
-            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600, color: "#374151" }}>
-              Risk Threshold: {(state.advanced.riskThreshold * 100).toFixed(0)}%
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                  Count Threshold
             </Typography>
-            <TextField
-              fullWidth
+                <Typography variant="body2" sx={{ mb: 2, color: "#6B7280", fontSize: "12px" }}>
+                  Show buildings with ≥ {state.advanced.countThreshold} {state.filters.dataType}
+                </Typography>
+                <Box sx={{ px: 1 }}>
+                  <input
               type="range"
-              inputProps={{ min: 0, max: 1, step: 0.1 }}
-              value={state.advanced.riskThreshold}
+                    min="1"
+                    max="50"
+                    value={state.advanced.countThreshold}
               onChange={(e) => onUpdate({ 
-                advanced: { ...state.advanced, riskThreshold: parseFloat(e.target.value) } 
+                      advanced: { ...state.advanced, countThreshold: parseInt(e.target.value) }
+                    })}
+                    style={{
+                      width: "100%",
+                      accentColor: "#FF6B35",
+                    }}
+                  />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", mt: 0.5 }}>
+                    <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "10px" }}>1</Typography>
+                    <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "10px" }}>50</Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </>
+          ) : (
+            <>
+              {/* POINTS FILTERS */}
+              {/* Filter Buttons at Top */}
+              <Box sx={{ mb: 3 }}>
+                <Stack spacing={2}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#374151" }}>
+                      Rent Stabilized Only
+                    </Typography>
+                    <Button
+                      variant={state.advanced.rentStabilizedOnly ? "contained" : "outlined"}
+                      onClick={() => onUpdate({
+                        advanced: { ...state.advanced, rentStabilizedOnly: !state.advanced.rentStabilizedOnly }
+                      })}
+                      size="small"
+                      sx={{
+                        minWidth: 80,
+                        backgroundColor: state.advanced.rentStabilizedOnly ? "#FF6B35" : "transparent",
+                        color: state.advanced.rentStabilizedOnly ? "white" : "#FF6B35",
+                        borderColor: "#FF6B35",
+                        "&:hover": {
+                          backgroundColor: state.advanced.rentStabilizedOnly ? "#E55A2B" : "rgba(255, 107, 53, 0.1)",
+                        }
+                      }}
+                    >
+                      {state.advanced.rentStabilizedOnly ? "ON" : "OFF"}
+                    </Button>
+                  </Box>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#374151" }}>
+                      Affordable Housing Only
+                    </Typography>
+                    <Button
+                      variant={state.advanced.affordableHousingOnly ? "contained" : "outlined"}
+                      onClick={() => onUpdate({
+                        advanced: { ...state.advanced, affordableHousingOnly: !state.advanced.affordableHousingOnly }
               })}
-            />
+                      size="small"
+                      sx={{
+                        minWidth: 80,
+                        backgroundColor: state.advanced.affordableHousingOnly ? "#FF6B35" : "transparent",
+                        color: state.advanced.affordableHousingOnly ? "white" : "#FF6B35",
+                        borderColor: "#FF6B35",
+                        "&:hover": {
+                          backgroundColor: state.advanced.affordableHousingOnly ? "#E55A2B" : "rgba(255, 107, 53, 0.1)",
+                        }
+                      }}
+                    >
+                      {state.advanced.affordableHousingOnly ? "ON" : "OFF"}
+                    </Button>
+                  </Box>
+                </Stack>
           </Box>
+
+              {/* Range Sliders */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                  Violations Range
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                  {state.advanced.minViolations} - {state.advanced.maxViolations} violations
+                </Typography>
+                <Slider
+                  value={[state.advanced.minViolations, state.advanced.maxViolations]}
+                  onChange={(_, newValue) => {
+                    const [min, max] = newValue as number[];
+                    onUpdate({ advanced: { ...state.advanced, minViolations: min, maxViolations: max } });
+                  }}
+                  min={0}
+                  max={2000}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#FF6B35",
+                    "& .MuiSlider-thumb": {
+                      backgroundColor: "#FF6B35",
+                    },
+                    "& .MuiSlider-track": {
+                      backgroundColor: "#FF6B35",
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                  Complaints Range
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                  {state.advanced.minComplaints} - {state.advanced.maxComplaints} complaints
+                </Typography>
+                <Slider
+                  value={[state.advanced.minComplaints, state.advanced.maxComplaints]}
+                  onChange={(_, newValue) => {
+                    const [min, max] = newValue as number[];
+                    onUpdate({ advanced: { ...state.advanced, minComplaints: min, maxComplaints: max } });
+                  }}
+                  min={0}
+                  max={2000}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#FF6B35",
+                    "& .MuiSlider-thumb": {
+                      backgroundColor: "#FF6B35",
+                    },
+                    "& .MuiSlider-track": {
+                      backgroundColor: "#FF6B35",
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                  Evictions Range
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                  {state.advanced.minEvictions} - {state.advanced.maxEvictions} evictions
+                </Typography>
+                <Slider
+                  value={[state.advanced.minEvictions, state.advanced.maxEvictions]}
+                  onChange={(_, newValue) => {
+                    const [min, max] = newValue as number[];
+                    onUpdate({ advanced: { ...state.advanced, minEvictions: min, maxEvictions: max } });
+                  }}
+                  min={0}
+                  max={2000}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#FF6B35",
+                    "& .MuiSlider-thumb": {
+                      backgroundColor: "#FF6B35",
+                    },
+                    "& .MuiSlider-track": {
+                      backgroundColor: "#FF6B35",
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Violation-specific filters (only show when violations data type is selected) */}
+              {state.filters.dataType === "violations" && (
+                <>
+                  <Box sx={{ mb: 3, mt: 3, pt: 3, borderTop: "1px solid #E5E7EB" }}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 700, color: "#2D3748" }}>
+                      Violation Status Filters
+                    </Typography>
+                    
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                        Open Violations Range
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                        {state.advanced.minOpenViolations} - {state.advanced.maxOpenViolations} open violations
+                      </Typography>
+                      <Slider
+                        value={[state.advanced.minOpenViolations, state.advanced.maxOpenViolations]}
+                        onChange={(_, newValue) => {
+                          const [min, max] = newValue as number[];
+                          onUpdate({ advanced: { ...state.advanced, minOpenViolations: min, maxOpenViolations: max } });
+                        }}
+                        min={0}
+                        max={2000}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: "#FF6B35",
+                          "& .MuiSlider-thumb": {
+                            backgroundColor: "#FF6B35",
+                          },
+                          "& .MuiSlider-track": {
+                            backgroundColor: "#FF6B35",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                        Closed Violations Range
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                        {state.advanced.minClosedViolations} - {state.advanced.maxClosedViolations} closed violations
+                      </Typography>
+                      <Slider
+                        value={[state.advanced.minClosedViolations, state.advanced.maxClosedViolations]}
+                        onChange={(_, newValue) => {
+                          const [min, max] = newValue as number[];
+                          onUpdate({ advanced: { ...state.advanced, minClosedViolations: min, maxClosedViolations: max } });
+                        }}
+                        min={0}
+                        max={2000}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: "#FF6B35",
+                          "& .MuiSlider-thumb": {
+                            backgroundColor: "#FF6B35",
+                          },
+                          "& .MuiSlider-track": {
+                            backgroundColor: "#FF6B35",
+                          },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ mb: 3, pt: 3, borderTop: "1px solid #E5E7EB" }}>
+                    <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 700, color: "#2D3748" }}>
+                      Violation Class Filters
+                    </Typography>
+                    
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                        Class A Violations Range
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                        {state.advanced.minClassA} - {state.advanced.maxClassA} class A violations
+                      </Typography>
+                      <Slider
+                        value={[state.advanced.minClassA, state.advanced.maxClassA]}
+                        onChange={(_, newValue) => {
+                          const [min, max] = newValue as number[];
+                          onUpdate({ advanced: { ...state.advanced, minClassA: min, maxClassA: max } });
+                        }}
+                        min={0}
+                        max={2000}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: "#FF6B35",
+                          "& .MuiSlider-thumb": {
+                            backgroundColor: "#FF6B35",
+                          },
+                          "& .MuiSlider-track": {
+                            backgroundColor: "#FF6B35",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                        Class B Violations Range
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                        {state.advanced.minClassB} - {state.advanced.maxClassB} class B violations
+                      </Typography>
+                      <Slider
+                        value={[state.advanced.minClassB, state.advanced.maxClassB]}
+                        onChange={(_, newValue) => {
+                          const [min, max] = newValue as number[];
+                          onUpdate({ advanced: { ...state.advanced, minClassB: min, maxClassB: max } });
+                        }}
+                        min={0}
+                        max={2000}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: "#FF6B35",
+                          "& .MuiSlider-thumb": {
+                            backgroundColor: "#FF6B35",
+                          },
+                          "& .MuiSlider-track": {
+                            backgroundColor: "#FF6B35",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: "#374151" }}>
+                        Class C Violations Range
+                      </Typography>
+                      <Typography variant="body2" sx={{ mb: 1, color: "#6B7280", fontSize: "12px" }}>
+                        {state.advanced.minClassC} - {state.advanced.maxClassC} class C violations
+                      </Typography>
+                      <Slider
+                        value={[state.advanced.minClassC, state.advanced.maxClassC]}
+                        onChange={(_, newValue) => {
+                          const [min, max] = newValue as number[];
+                          onUpdate({ advanced: { ...state.advanced, minClassC: min, maxClassC: max } });
+                        }}
+                        min={0}
+                        max={2000}
+                        valueLabelDisplay="auto"
+                        sx={{
+                          color: "#FF6B35",
+                          "& .MuiSlider-thumb": {
+                            backgroundColor: "#FF6B35",
+                          },
+                          "& .MuiSlider-track": {
+                            backgroundColor: "#FF6B35",
+                          },
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </>
+              )}
+            </>
+          )}
 
           {/* Reset All */}
           <Button
             variant="outlined"
             fullWidth
             onClick={() => onUpdate(DEFAULT_STATE)}
-            sx={{ mt: 2 }}
+            sx={{ 
+              mt: 2,
+              borderColor: "#FF6B35",
+              color: "#FF6B35",
+              "&:hover": {
+                borderColor: "#E55A2B",
+                backgroundColor: "rgba(255, 107, 53, 0.05)",
+              }
+            }}
           >
-            Reset All
+            Reset All Filters
           </Button>
         </Stack>
       </Box>
@@ -578,6 +909,8 @@ const StatsPanel: React.FC<{
 const SimplifiedMap: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+  const navigate = useNavigate();
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [state, setState] = useState<MapState>(DEFAULT_STATE);
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
@@ -586,36 +919,83 @@ const SimplifiedMap: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [legendOpen, setLegendOpen] = useState(true);
+  const [rentStabilizedBBLs, setRentStabilizedBBLs] = useState<Set<string>>(new Set());
+  const [affordableHousingBBLs, setAffordableHousingBBLs] = useState<Set<string>>(new Set());
 
-  // Load data efficiently
+  // Load data efficiently with debouncing and viewport-based fetching
   useEffect(() => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
     const loadData = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        // Determine which data type to fetch based on active filters
-        let dataType = "violations";
-        if (state.filters.evictions && !state.filters.violations) dataType = "evictions";
-        if (state.filters.complaints && !state.filters.violations && !state.filters.evictions) dataType = "complaints";
+        // Use selected data type
+        const dataType = state.filters.dataType;
         
-        // If no filters are active, default to violations
-        if (!state.filters.violations && !state.filters.evictions && !state.filters.complaints) {
-          dataType = "violations";
-        }
-        
-        console.log("Loading data for:", dataType, "borough:", state.filters.borough);
-        
-        // Fetch data with NYC bounds
-        const [heatmapResponse, boroughResponse] = await Promise.all([
-          fetchHeatmapData({
-            min_lat: 40.4,  // Full NYC bounds
+        // Always use full NYC bounds - same logic as new map
+        // Static heatmap works best with all data
+        const bounds = {
+          min_lat: 40.4,
             max_lat: 41.0,
             min_lng: -74.5,
             max_lng: -73.5,
-            data_type: dataType as "violations" | "evictions" | "complaints",
+        };
+        
+        // Get ALL data points - no limit for heatmap
+        // Backend will return all available data
+        const limit = 1000000; // Very high limit to get all data
+        
+        // Check if we should use filtered violations endpoint
+        // Use it when in points mode, violations data type, and any violation-specific filters are active
+        const useFilteredViolations = state.mode === "points" && 
+          dataType === "violations" && (
+            state.advanced.minOpenViolations > 0 || 
+            state.advanced.maxOpenViolations < 2000 ||
+            state.advanced.minClosedViolations > 0 || 
+            state.advanced.maxClosedViolations < 2000 ||
+            state.advanced.minClassA > 0 || 
+            state.advanced.maxClassA < 2000 ||
+            state.advanced.minClassB > 0 || 
+            state.advanced.maxClassB < 2000 ||
+            state.advanced.minClassC > 0 || 
+            state.advanced.maxClassC < 2000
+          );
+        
+        const [heatmapResponse, boroughResponse] = await Promise.all([
+          useFilteredViolations
+            ? fetchFilteredViolations({
+                min_lat: bounds.min_lat,
+                max_lat: bounds.max_lat,
+                min_lng: bounds.min_lng,
+                max_lng: bounds.max_lng,
             borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
-            limit: 50000, // Limit for performance
+                limit: limit,
+                // Only send filters if they're not at default values
+                min_open_violations: state.advanced.minOpenViolations > 0 ? state.advanced.minOpenViolations : undefined,
+                max_open_violations: state.advanced.maxOpenViolations < 2000 ? state.advanced.maxOpenViolations : undefined,
+                min_closed_violations: state.advanced.minClosedViolations > 0 ? state.advanced.minClosedViolations : undefined,
+                max_closed_violations: state.advanced.maxClosedViolations < 2000 ? state.advanced.maxClosedViolations : undefined,
+                min_class_a: state.advanced.minClassA > 0 ? state.advanced.minClassA : undefined,
+                max_class_a: state.advanced.maxClassA < 2000 ? state.advanced.maxClassA : undefined,
+                min_class_b: state.advanced.minClassB > 0 ? state.advanced.minClassB : undefined,
+                max_class_b: state.advanced.maxClassB < 2000 ? state.advanced.maxClassB : undefined,
+                min_class_c: state.advanced.minClassC > 0 ? state.advanced.minClassC : undefined,
+                max_class_c: state.advanced.maxClassC < 2000 ? state.advanced.maxClassC : undefined,
+              })
+            : fetchHeatmapData({
+                min_lat: bounds.min_lat,
+                max_lat: bounds.max_lat,
+                min_lng: bounds.min_lng,
+                max_lng: bounds.max_lng,
+                data_type: dataType,
+                borough: state.filters.borough !== "All Boroughs" ? state.filters.borough : undefined,
+                limit: limit,
+                time_range: undefined,  // Time range removed from heatmap for now
           }),
           fetchBoroughSummary()
         ]);
@@ -624,31 +1004,117 @@ const SimplifiedMap: React.FC = () => {
         const heatmapData = Array.isArray(heatmapResponse?.data) ? heatmapResponse.data : [];
         const boroughData = Array.isArray(boroughResponse?.data) ? boroughResponse.data : [];
         
-        // Validate and normalize data
-        const validatedHeatmapData = heatmapData.filter(point => {
-          if (!point || !point.bbl || !point.borough) return false;
-          
+        // Simple validation - same as new map
+        const validatedData = heatmapData
+          .filter(point => {
+            if (!point || !point.bbl) return false;
           const lat = typeof point.latitude === 'string' ? parseFloat(point.latitude) : point.latitude;
           const lng = typeof point.longitude === 'string' ? parseFloat(point.longitude) : point.longitude;
-          const intensity = typeof point.intensity === 'string' ? parseFloat(point.intensity) : point.intensity;
-          const count = typeof point.count === 'string' ? parseInt(point.count) : point.count;
-          
-          return !isNaN(lat) && !isNaN(lng) && !isNaN(intensity) && !isNaN(count) &&
-                 lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
-        }).map(point => ({
+            return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+          })
+          .map(point => ({
           ...point,
           latitude: typeof point.latitude === 'string' ? parseFloat(point.latitude) : point.latitude,
           longitude: typeof point.longitude === 'string' ? parseFloat(point.longitude) : point.longitude,
-          intensity: typeof point.intensity === 'string' ? parseFloat(point.intensity) : point.intensity,
-          count: typeof point.count === 'string' ? parseInt(point.count) : point.count,
+            intensity: typeof point.intensity === 'string' ? parseFloat(point.intensity) : point.intensity || 0,
+            count: typeof point.count === 'string' ? parseInt(point.count) : point.count || 0,
         }));
         
-        setHeatmapData(validatedHeatmapData);
-        setBoroughSummary(boroughData);
+        // Apply advanced filters
+        let filteredData = validatedData;
         
-        console.log(`Loaded ${validatedHeatmapData.length} data points`);
+        // HEATMAP FILTERS: Apply count threshold
+        if (state.mode === "heat" && state.advanced.countThreshold > 1) {
+          filteredData = validatedData.filter(point => (point.count || 0) >= state.advanced.countThreshold);
+        }
+        
+        // POINTS FILTERS: Apply min/max ranges and rent stabilized
+        if (state.mode === "points") {
+          // If we used filtered violations endpoint, the backend already applied violation-specific filters
+          // We still need to apply the general violations range filter if it's not at default
+          if (state.filters.dataType === "violations" && useFilteredViolations) {
+            // Data already filtered by backend for open/closed/class filters
+            // Only apply general violations range if it's not at default
+            if (state.advanced.minViolations > 0 || state.advanced.maxViolations < 2000) {
+              const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
+              const effectiveMax = Math.max(state.advanced.maxViolations, maxCountInData);
+              filteredData = validatedData.filter(point => {
+                const count = point.count || 0;
+                const matches = count >= state.advanced.minViolations && count <= effectiveMax;
+                return matches;
+              });
+            } else {
+              // Data already filtered by backend, just use as-is
+              filteredData = validatedData;
+            }
+          } else if (state.filters.dataType === "violations") {
+            // Not using filtered violations endpoint, apply general range filter
+            const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
+            const effectiveMax = Math.max(state.advanced.maxViolations, maxCountInData);
+            filteredData = validatedData.filter(point => {
+              const count = point.count || 0;
+              const matches = count >= state.advanced.minViolations && count <= effectiveMax;
+              return matches;
+            });
+          } else if (state.filters.dataType === "complaints") {
+            const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
+            const effectiveMax = Math.max(state.advanced.maxComplaints, maxCountInData);
+            filteredData = validatedData.filter(point => {
+              const count = point.count || 0;
+              const matches = count >= state.advanced.minComplaints && count <= effectiveMax;
+              return matches;
+            });
+          } else if (state.filters.dataType === "evictions") {
+            const maxCountInData = Math.max(...validatedData.map(p => p.count || 0), 0);
+            const effectiveMax = Math.max(state.advanced.maxEvictions, maxCountInData);
+            filteredData = validatedData.filter(point => {
+              const count = point.count || 0;
+              const matches = count >= state.advanced.minEvictions && count <= effectiveMax;
+              return matches;
+            });
+          }
+          
+          // Apply building type filters (rent stabilized and/or affordable housing)
+          // If both are enabled, show buildings that match BOTH (intersection)
+          // If only one is enabled, show buildings that match that one
+          if (state.advanced.rentStabilizedOnly || state.advanced.affordableHousingOnly) {
+            if (state.advanced.rentStabilizedOnly && state.advanced.affordableHousingOnly) {
+              // Both enabled: show buildings that are BOTH rent stabilized AND affordable housing
+              if (rentStabilizedBBLs.size > 0 && affordableHousingBBLs.size > 0) {
+                filteredData = filteredData.filter(point => {
+                  const pointBbl = String(point.bbl || '');
+                  return rentStabilizedBBLs.has(pointBbl) && affordableHousingBBLs.has(pointBbl);
+                });
+              } else {
+                filteredData = [];
+              }
+            } else if (state.advanced.rentStabilizedOnly) {
+              // Only rent stabilized enabled
+              if (rentStabilizedBBLs.size > 0) {
+                filteredData = filteredData.filter(point => {
+                  const pointBbl = String(point.bbl || '');
+                  return rentStabilizedBBLs.has(pointBbl);
+                });
+              } else {
+                filteredData = [];
+              }
+            } else if (state.advanced.affordableHousingOnly) {
+              // Only affordable housing enabled
+              if (affordableHousingBBLs.size > 0) {
+                filteredData = filteredData.filter(point => {
+                  const pointBbl = String(point.bbl || '');
+                  return affordableHousingBBLs.has(pointBbl);
+                });
+              } else {
+                filteredData = [];
+              }
+            }
+          }
+        }
+        
+        setHeatmapData(filteredData);
+        setBoroughSummary(boroughData);
       } catch (err) {
-        console.error("Failed to load data:", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         setError(`Failed to load data: ${errorMessage}`);
         setHeatmapData([]);
@@ -658,12 +1124,63 @@ const SimplifiedMap: React.FC = () => {
       }
     };
 
-    loadData();
-  }, [state.filters, state.advanced.boroughs]);
+    // Debounce data loading to avoid excessive API calls
+    debounceTimerRef.current = setTimeout(loadData, 300);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [state.filters, state.advanced, state.mode]); // Re-fetch when filters or advanced options change
+
+  // Fetch rent stabilized and affordable housing BBLs for points mode filtering
+  // Fetch when in points mode (so it's ready when user toggles the filter)
+  useEffect(() => {
+    const fetchFilterBBLs = async () => {
+      if (state.mode === "points") {
+        try {
+          // Fetch rent stabilized buildings
+          const rentStabilizedResponse = await fetch('/api/neighborhood/rent-stabilized-bbls/');
+          const rentStabilizedData = await rentStabilizedResponse.json();
+                if (rentStabilizedData.result && Array.isArray(rentStabilizedData.data)) {
+                  const bbls = new Set<string>(rentStabilizedData.data.map((bbl: any) => String(bbl)));
+                  setRentStabilizedBBLs(bbls);
+                } else {
+                  setRentStabilizedBBLs(new Set());
+                }
+                
+                // Fetch affordable housing buildings
+                const affordableResponse = await fetch('/api/neighborhood/affordable-housing-bbls/');
+                const affordableData = await affordableResponse.json();
+                if (affordableData.result && Array.isArray(affordableData.data)) {
+                  const bbls = new Set<string>(affordableData.data.map((bbl: any) => String(bbl)));
+                  setAffordableHousingBBLs(bbls);
+                } else {
+                  setAffordableHousingBBLs(new Set());
+                }
+              } catch (err) {
+          setRentStabilizedBBLs(new Set());
+          setAffordableHousingBBLs(new Set());
+        }
+      } else {
+        // Clear BBLs when not in points mode
+        setRentStabilizedBBLs(new Set());
+        setAffordableHousingBBLs(new Set());
+      }
+    };
+
+    fetchFilterBBLs();
+  }, [state.mode]);
 
   const handleStateUpdate = useCallback((updates: Partial<MapState>) => {
     setState(prev => ({ ...prev, ...updates }));
   }, []);
+
+
+  const handleBuildingClick = useCallback((bbl: string) => {
+    navigate(`/building/${bbl}`);
+  }, [navigate]);
 
   return (
     <Box sx={{ 
@@ -748,20 +1265,8 @@ const SimplifiedMap: React.FC = () => {
             <Box sx={{ width: 360, flexShrink: 0, maxHeight: "100%", overflow: "auto" }}>
               <ModeSwitcher 
                 mode={state.mode} 
-                heatmapMode={state.heatmapMode}
                 onChange={(mode) => handleStateUpdate({ mode })} 
-                onHeatmapModeChange={(heatmapMode) => handleStateUpdate({ heatmapMode })}
               />
-              
-              {/* Show heatmap mode selector when in heatmap mode */}
-              {state.mode === "heat" && (
-                <Box sx={{ mt: 2 }}>
-                  <HeatmapModeSelector 
-                    heatmapMode={state.heatmapMode}
-                    onChange={(heatmapMode) => handleStateUpdate({ heatmapMode })}
-                  />
-                </Box>
-              )}
               
               <FilterBar 
                 state={state} 
@@ -771,7 +1276,16 @@ const SimplifiedMap: React.FC = () => {
                 onToggleLegend={() => setLegendOpen(!legendOpen)}
               />
               
-              <StatsPanel heatmapData={heatmapData} boroughSummary={boroughSummary} activeFilters={state.filters} selectedBorough={state.filters.borough} />
+              <StatsPanel 
+                heatmapData={heatmapData} 
+                boroughSummary={boroughSummary} 
+                activeFilters={{ 
+                  violations: state.filters.dataType === "violations",
+                  evictions: state.filters.dataType === "evictions",
+                  complaints: state.filters.dataType === "complaints"
+                }} 
+                selectedBorough={state.filters.borough} 
+              />
             </Box>
           )}
 
@@ -787,20 +1301,8 @@ const SimplifiedMap: React.FC = () => {
             }}>
               <ModeSwitcher 
                 mode={state.mode} 
-                heatmapMode={state.heatmapMode}
                 onChange={(mode) => handleStateUpdate({ mode })} 
-                onHeatmapModeChange={(heatmapMode) => handleStateUpdate({ heatmapMode })}
               />
-              
-              {/* Show heatmap mode selector when in heatmap mode */}
-              {state.mode === "heat" && (
-                <Box sx={{ mt: 2 }}>
-                  <HeatmapModeSelector 
-                    heatmapMode={state.heatmapMode}
-                    onChange={(heatmapMode) => handleStateUpdate({ heatmapMode })}
-                  />
-                </Box>
-              )}
               <FilterBar 
                 state={state} 
                 onUpdate={handleStateUpdate}
@@ -813,26 +1315,155 @@ const SimplifiedMap: React.FC = () => {
 
           {/* Map Area */}
           <Box sx={{ flex: 1, position: "relative", borderRadius: 4, overflow: "hidden" }}>
-            <OptimizedHeatmap
-              data={heatmapData}
-              dataType={state.filters.violations ? "violations" : 
-                       state.filters.evictions ? "evictions" : "complaints"}
-              mode={state.mode}
-              heatmapMode={state.heatmapMode}
-              riskThreshold={state.advanced.riskThreshold}
-            />
-            
-            {/* Legend */}
-            {state.mode === "heat" && (
-              <HeatmapLegend
-                mode={state.heatmapMode}
-                dataType={state.filters.violations ? "violations" : 
-                         state.filters.evictions ? "evictions" : "complaints"}
-                isOpen={legendOpen}
-                onClose={() => setLegendOpen(false)}
-                data={heatmapData}
-                selectedBorough={state.filters.borough}
+            <MapContainer
+              center={[40.7128, -74.0060]} // NYC coordinates
+              zoom={11}
+              minZoom={10}
+              maxZoom={18}
+              style={{ height: "100%", width: "100%" }}
+              zoomControl={true}
+              scrollWheelZoom={true}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
+              {state.mode === "heat" ? (
+                <TrueHeatmap
+              data={heatmapData}
+                  dataType={state.filters.dataType}
+                  onBuildingClick={handleBuildingClick}
+                />
+              ) : (
+                <PointsLayer
+                  data={heatmapData}
+                  dataType={state.filters.dataType}
+                  onBuildingClick={handleBuildingClick}
+                  minViolations={state.advanced.minViolations}
+                  maxViolations={state.advanced.maxViolations}
+                  minComplaints={state.advanced.minComplaints}
+                  maxComplaints={state.advanced.maxComplaints}
+                  minEvictions={state.advanced.minEvictions}
+                  maxEvictions={state.advanced.maxEvictions}
+                  rentStabilizedOnly={state.advanced.rentStabilizedOnly}
+                  rentStabilizedBBLs={rentStabilizedBBLs}
+            />
+              )}
+            </MapContainer>
+            
+            {/* Simple Legend - Only show for heatmap mode */}
+            {state.mode === "heat" && (
+              <Paper
+                sx={{
+                  position: "absolute",
+                  bottom: 20,
+                  left: 20,
+                  width: 200,
+                  zIndex: 1000,
+                  background: "rgba(255, 255, 255, 0.95)",
+                  backdropFilter: "blur(5px)",
+                  borderRadius: 2,
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                  p: 2,
+                  display: legendOpen ? "block" : "none",
+                }}
+              >
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Palette sx={{ color: "#6B7280", fontSize: 18 }} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, color: "#2D3748" }}>
+                    Color Scale
+                  </Typography>
+                </Box>
+                <IconButton size="small" onClick={() => setLegendOpen(false)}>
+                  <Close fontSize="small" />
+                </IconButton>
+              </Box>
+
+              <Stack spacing={1.5}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(59, 82, 139, 0.7)",
+                      border: "2px solid rgba(59, 82, 139, 1)",
+                      boxShadow: "0 2px 4px rgba(59, 82, 139, 0.3)",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: "#4A5568", fontSize: "11px" }}>
+                    Low - Few issues
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(33, 144, 140, 0.7)",
+                      border: "2px solid rgba(33, 144, 140, 1)",
+                      boxShadow: "0 2px 4px rgba(33, 144, 140, 0.3)",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: "#4A5568", fontSize: "11px" }}>
+                    Medium - Moderate
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(92, 200, 99, 0.75)",
+                      border: "2px solid rgba(92, 200, 99, 1)",
+                      boxShadow: "0 2px 4px rgba(92, 200, 99, 0.3)",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: "#4A5568", fontSize: "11px" }}>
+                    High - Significant
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(253, 231, 37, 0.8)",
+                      border: "2px solid rgba(253, 231, 37, 1)",
+                      boxShadow: "0 2px 4px rgba(253, 231, 37, 0.3)",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: "#4A5568", fontSize: "11px" }}>
+                    Very High
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255, 152, 0, 0.85)",
+                      border: "2px solid rgba(255, 152, 0, 1)",
+                      boxShadow: "0 2px 4px rgba(255, 152, 0, 0.4)",
+                    }}
+                  />
+                  <Typography variant="caption" sx={{ color: "#4A5568", fontSize: "11px" }}>
+                    Critical
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid #E2E8F0" }}>
+                <Typography variant="caption" sx={{ color: "#6B7280", fontSize: "10px" }}>
+                  Showing: <strong>{state.filters.dataType.toUpperCase()}</strong>
+                </Typography>
+              </Box>
+            </Paper>
             )}
             
             {/* Loading Indicator */}
@@ -878,7 +1509,16 @@ const SimplifiedMap: React.FC = () => {
         {/* Mobile: Stats Panel */}
         {isMobile && (
           <Box sx={{ mt: 3 }}>
-            <StatsPanel heatmapData={heatmapData} boroughSummary={boroughSummary} activeFilters={state.filters} selectedBorough={state.filters.borough} />
+            <StatsPanel 
+              heatmapData={heatmapData} 
+              boroughSummary={boroughSummary} 
+              activeFilters={{
+                violations: state.filters.dataType === "violations",
+                evictions: state.filters.dataType === "evictions",
+                complaints: state.filters.dataType === "complaints"
+              }} 
+              selectedBorough={state.filters.borough} 
+            />
           </Box>
         )}
 

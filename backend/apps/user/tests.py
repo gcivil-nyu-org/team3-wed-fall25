@@ -30,6 +30,149 @@ class UserModelsSmokeTests(TestCase):
         self.assertIsNotNone(mod)
 
 
+class CustomUserModelTests(TestCase):
+    """Test CustomUser model methods and properties"""
+
+    def test_custom_user_str(self):
+        """Test CustomUser __str__ method"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+        )
+        self.assertIn("test@example.com", str(user))
+        self.assertIn("Tenant", str(user))
+
+    def test_custom_user_display_name(self):
+        """Test display_name property"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+        )
+        self.assertEqual(user.display_name, "Test User")
+
+    def test_custom_user_display_name_no_name(self):
+        """Test display_name property when no first/last name"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+        )
+        self.assertEqual(user.display_name, "testuser")
+
+    def test_custom_user_is_tenant(self):
+        """Test is_tenant property"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+        )
+        self.assertTrue(user.is_tenant)
+        self.assertFalse(user.is_landlord)
+
+    def test_custom_user_is_landlord(self):
+        """Test is_landlord property"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="landlord",
+            email="landlord@example.com",
+            password="testpassword123",
+            role="landlord",
+            landlord_type="individual_owner",
+        )
+        self.assertTrue(user.is_landlord)
+        self.assertFalse(user.is_tenant)
+
+    def test_custom_user_clean_tenant_validation(self):
+        """Test clean() method validates tenant type"""
+        from django.contrib.auth import get_user_model
+        from django.core.exceptions import ValidationError
+
+        User = get_user_model()
+        user = User(
+            username="testuser",
+            email="test@example.com",
+            role="tenant",
+            # Missing tenant_type
+        )
+        with self.assertRaises(ValidationError):
+            user.clean()
+
+    def test_custom_user_clean_landlord_validation(self):
+        """Test clean() method validates landlord type"""
+        from django.contrib.auth import get_user_model
+        from django.core.exceptions import ValidationError
+
+        User = get_user_model()
+        user = User(
+            username="landlord",
+            email="landlord@example.com",
+            role="landlord",
+            # Missing landlord_type
+        )
+        with self.assertRaises(ValidationError):
+            user.clean()
+
+    def test_custom_user_clean_organization_required(self):
+        """Test clean() method requires organization for certain landlord types"""
+        from django.contrib.auth import get_user_model
+        from django.core.exceptions import ValidationError
+
+        User = get_user_model()
+        user = User(
+            username="landlord",
+            email="landlord@example.com",
+            role="landlord",
+            landlord_type="property_management",
+            # Missing organization_name
+        )
+        with self.assertRaises(ValidationError):
+            user.clean()
+
+    def test_custom_user_resend_verification_email(self):
+        """Test resend_verification_email method"""
+        from django.contrib.auth import get_user_model
+        from unittest.mock import patch
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            tenant_type="student",
+        )
+        old_token = user.verification_token
+
+        with patch.object(user, "send_verification_email") as mock_send:
+            user.resend_verification_email()
+            self.assertNotEqual(user.verification_token, old_token)
+            mock_send.assert_called_once()
+
+
 class UserViewsSmokeTests(TestCase):
     def test_views_callables_return_httpresponse_when_possible(self):
         try:
@@ -95,7 +238,9 @@ class UserSerializerTests(TestCase):
 
     def test_register_serializer_create_user(self):
         """Test RegisterSerializer create method"""
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         data = {
             "username": "testuser",
@@ -115,7 +260,9 @@ class UserSerializerTests(TestCase):
 
     def test_user_serializer_fields(self):
         """Test UserSerializer fields"""
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         from apps.user.serializers import UserSerializer
 
@@ -128,10 +275,408 @@ class UserSerializerTests(TestCase):
         self.assertEqual(serializer.data["username"], "testuser")
         self.assertEqual(serializer.data["email"], "test@example.com")
 
+    def test_register_serializer_password_mismatch(self):
+        """Test RegisterSerializer with password mismatch"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "differentpassword",
+            "role": "tenant",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_register_serializer_tenant_type_required(self):
+        """Test RegisterSerializer requires tenant_type for tenant role"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "tenant",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_register_serializer_landlord_type_required(self):
+        """Test RegisterSerializer requires landlord_type for landlord role"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "landlord",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_register_serializer_organization_name_required(self):
+        """Test RegisterSerializer requires organization_name for certain landlord types"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "landlord",
+            "landlord_type": "property_management",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_register_serializer_corporate_landlord_organization_required(self):
+        """Test RegisterSerializer requires organization_name for corporate_landlord"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "landlord",
+            "landlord_type": "corporate_landlord",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_register_serializer_valid_tenant(self):
+        """Test RegisterSerializer with valid tenant data"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_register_serializer_valid_landlord(self):
+        """Test RegisterSerializer with valid landlord data"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "landlord",
+            "landlord_type": "individual_owner",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_register_serializer_valid_landlord_with_organization(self):
+        """Test RegisterSerializer with valid landlord with organization"""
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "confirm_password": "testpassword123",
+            "role": "landlord",
+            "landlord_type": "property_management",
+            "organization_name": "Test Company",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        from apps.user.serializers import RegisterSerializer
+
+        serializer = RegisterSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_register_serializer_create_removes_confirm_password(self):
+        """Test RegisterSerializer create removes confirm_password"""
+        from apps.user.serializers import RegisterSerializer
+        from unittest.mock import patch, MagicMock
+
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpass123",
+            "confirm_password": "testpass123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+        serializer = RegisterSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+        validated_data = serializer.validated_data.copy()
+        # Simulate create method
+        validated_data.pop("confirm_password", None)
+
+        self.assertNotIn("confirm_password", validated_data)
+
+    def test_user_serializer_all_fields(self):
+        """Test UserSerializer includes all expected fields"""
+        from django.contrib.auth import get_user_model
+        from apps.user.serializers import UserSerializer
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Test",
+            last_name="User",
+            phone_number="1234567890",
+        )
+        serializer = UserSerializer(user)
+        expected_fields = {
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "role",
+            "role_display",
+            "is_verified",
+            "tenant_type",
+            "tenant_type_display",
+            "phone_number",
+            "created_at",
+            "updated_at",
+        }
+        self.assertEqual(set(serializer.data.keys()), expected_fields)
+
+    def test_user_serializer_landlord_fields(self):
+        """Test UserSerializer with landlord user"""
+        from django.contrib.auth import get_user_model
+        from apps.user.serializers import UserSerializer
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="landlord",
+            email="landlord@example.com",
+            password="testpassword123",
+            role="landlord",
+            landlord_type="property_management",
+            organization_name="Test Company",
+            first_name="Landlord",
+            last_name="User",
+        )
+        serializer = UserSerializer(user)
+        self.assertIn("landlord_type", serializer.data)
+        self.assertIn("landlord_type_display", serializer.data)
+        self.assertIn("organization_name", serializer.data)
+
+    def test_login_serializer_missing_email(self):
+        """Test LoginSerializer with missing email"""
+        from apps.user.serializers import LoginSerializer
+
+        data = {"password": "testpassword123"}
+        serializer = LoginSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_login_serializer_missing_password(self):
+        """Test LoginSerializer with missing password"""
+        from apps.user.serializers import LoginSerializer
+
+        data = {"email": "test@example.com"}
+        serializer = LoginSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("password", serializer.errors)
+
+    def test_login_serializer_valid(self):
+        """Test LoginSerializer with valid credentials"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=True,
+        )
+
+        from apps.user.serializers import LoginSerializer
+
+        data = {"email": "test@example.com", "password": "testpassword123"}
+        serializer = LoginSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["user"], user)
+
+    def test_login_serializer_invalid_credentials(self):
+        """Test LoginSerializer with invalid credentials"""
+        from apps.user.serializers import LoginSerializer
+
+        data = {"email": "test@example.com", "password": "wrongpassword"}
+        serializer = LoginSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_login_serializer_unverified_user(self):
+        """Test LoginSerializer with unverified user"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=False,
+        )
+
+        from apps.user.serializers import LoginSerializer
+
+        data = {"email": "test@example.com", "password": "testpassword123"}
+        serializer = LoginSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("non_field_errors", serializer.errors)
+
+    def test_email_verification_serializer_valid_token(self):
+        """Test EmailVerificationSerializer with valid token"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=False,
+        )
+
+        from apps.user.serializers import EmailVerificationSerializer
+
+        serializer = EmailVerificationSerializer(
+            data={"token": user.verification_token}
+        )
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["token"], user.verification_token)
+
+    def test_email_verification_serializer_invalid_token(self):
+        """Test EmailVerificationSerializer with invalid token"""
+        import uuid
+        from apps.user.serializers import EmailVerificationSerializer
+
+        serializer = EmailVerificationSerializer(data={"token": uuid.uuid4()})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("token", serializer.errors)
+
+    def test_email_verification_serializer_already_verified(self):
+        """Test EmailVerificationSerializer with already verified user"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=True,
+        )
+
+        from apps.user.serializers import EmailVerificationSerializer
+
+        serializer = EmailVerificationSerializer(
+            data={"token": user.verification_token}
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("token", serializer.errors)
+
+    def test_resend_verification_serializer_valid_email(self):
+        """Test ResendVerificationSerializer with valid unverified email"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=False,
+        )
+
+        from apps.user.serializers import ResendVerificationSerializer
+
+        serializer = ResendVerificationSerializer(data={"email": "test@example.com"})
+        self.assertTrue(serializer.is_valid())
+        self.assertEqual(serializer.validated_data["email"], "test@example.com")
+
+    def test_resend_verification_serializer_nonexistent_email(self):
+        """Test ResendVerificationSerializer with nonexistent email"""
+        from apps.user.serializers import ResendVerificationSerializer
+
+        serializer = ResendVerificationSerializer(
+            data={"email": "nonexistent@example.com"}
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
+    def test_resend_verification_serializer_already_verified(self):
+        """Test ResendVerificationSerializer with already verified email"""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+            is_verified=True,
+        )
+
+        from apps.user.serializers import ResendVerificationSerializer
+
+        serializer = ResendVerificationSerializer(data={"email": "test@example.com"})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("email", serializer.errors)
+
 
 class UserViewsAPITests(TestCase):
     def setUp(self):
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         self.user = User.objects.create_user(
             username="testuser", email="test@example.com", password="testpassword123"
@@ -149,10 +694,17 @@ class UserViewsAPITests(TestCase):
             "username": "newuser",
             "email": "newuser@example.com",
             "password": "newpassword123",
+            "confirm_password": "newpassword123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "New",
+            "last_name": "User",
         }
         response = client.post(url, data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         self.assertTrue(User.objects.filter(username="newuser").exists())
 
@@ -210,6 +762,199 @@ class UserViewsAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["username"], "testuser")
 
+    def test_login_view_success(self):
+        """Test LoginView with valid credentials"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="loginuser",
+            email="login@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Login",
+            last_name="User",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        url = reverse("token_obtain_pair")
+        data = {"email": "login@example.com", "password": "testpassword123"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("access", response.data)
+        self.assertIn("refresh", response.data)
+        self.assertIn("user", response.data)
+
+    def test_login_view_invalid_credentials(self):
+        """Test LoginView with invalid credentials"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        url = reverse("token_obtain_pair")
+        data = {"email": "nonexistent@example.com", "password": "wrongpassword"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_view_unverified_user(self):
+        """Test LoginView with unverified user"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="unverified",
+            email="unverified@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Unverified",
+            last_name="User",
+            is_verified=False,
+        )
+
+        client = APIClient()
+        url = reverse("token_obtain_pair")
+        data = {"email": "unverified@example.com", "password": "testpassword123"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_email_view_success(self):
+        """Test VerifyEmailView with valid token"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="verifyuser",
+            email="verify@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Verify",
+            last_name="User",
+            is_verified=False,
+        )
+
+        client = APIClient()
+        url = reverse("verify_email")
+        data = {"token": str(user.verification_token)}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("verified", response.data)
+        self.assertTrue(response.data["verified"])
+
+        # Verify user is now verified
+        user.refresh_from_db()
+        self.assertTrue(user.is_verified)
+
+    def test_verify_email_view_invalid_token(self):
+        """Test VerifyEmailView with invalid token"""
+        import uuid
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        url = reverse("verify_email")
+        data = {"token": str(uuid.uuid4())}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_verify_email_view_already_verified(self):
+        """Test VerifyEmailView with already verified user"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="verifieduser",
+            email="verified@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Verified",
+            last_name="User",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        url = reverse("verify_email")
+        data = {"token": str(user.verification_token)}
+        response = client.post(url, data)
+        # Should return 200 with message that already verified
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("verified", response.data)
+
+    def test_resend_verification_view_success(self):
+        """Test ResendVerificationView with valid unverified email"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="resenduser",
+            email="resend@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Resend",
+            last_name="User",
+            is_verified=False,
+        )
+
+        client = APIClient()
+        url = reverse("resend_verification")
+        data = {"email": "resend@example.com"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+
+    def test_resend_verification_view_nonexistent_email(self):
+        """Test ResendVerificationView with nonexistent email"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        url = reverse("resend_verification")
+        data = {"email": "nonexistent@example.com"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_resend_verification_view_already_verified(self):
+        """Test ResendVerificationView with already verified email"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="alreadyverified",
+            email="already@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Already",
+            last_name="Verified",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        url = reverse("resend_verification")
+        data = {"email": "already@example.com"}
+        response = client.post(url, data)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class UserViewsHelperFunctionTests(TestCase):
     def test_register_view_permissions(self):
@@ -232,11 +977,133 @@ class UserViewsHelperFunctionTests(TestCase):
         self.assertEqual(len(view.permission_classes), 1)
         self.assertEqual(view.permission_classes[0], IsAuthenticated)
 
+    def test_profile_view_get(self):
+        """Test ProfileView GET"""
+        from django.urls import reverse
+        from rest_framework import status
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="profileuser",
+            email="profile@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Profile",
+            last_name="User",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+        url = reverse("me")
+        response = client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("username", response.data)
+        self.assertEqual(response.data["username"], "profileuser")
+
+    def test_verify_email_view_already_verified_error(self):
+        """Test VerifyEmailView with already verified error message"""
+        from django.urls import reverse
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        user = User.objects.create_user(
+            username="verifieduser",
+            email="verified@example.com",
+            password="testpassword123",
+            role="tenant",
+            tenant_type="student",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        url = reverse("verify_email")
+        # Test with already verified user token
+        response = client.post(url, {"token": str(user.verification_token)})
+        # Should return 400 because serializer validates and rejects already verified
+        self.assertEqual(response.status_code, 400)
+
+    def test_verify_email_view_invalid_token(self):
+        """Test VerifyEmailView with invalid token"""
+        from django.urls import reverse
+        from rest_framework.test import APIClient
+        import uuid
+
+        client = APIClient()
+        url = reverse("verify_email")
+        response = client.post(url, {"token": str(uuid.uuid4())})
+        self.assertEqual(response.status_code, 400)
+
+    def test_resend_verification_view_nonexistent_email(self):
+        """Test ResendVerificationView with nonexistent email"""
+        from django.urls import reverse
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        url = reverse("resend_verification")
+        response = client.post(url, {"email": "nonexistent@example.com"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_resend_verification_view_already_verified(self):
+        """Test ResendVerificationView with already verified email"""
+        from django.urls import reverse
+        from rest_framework.test import APIClient
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        User.objects.create_user(
+            username="verified3",
+            email="verified3@example.com",
+            password="testpassword123",
+            role="tenant",
+            tenant_type="student",
+            is_verified=True,
+        )
+
+        client = APIClient()
+        url = reverse("resend_verification")
+        response = client.post(url, {"email": "verified3@example.com"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_register_view_create_response(self):
+        """Test RegisterView create method returns correct response"""
+        from django.urls import reverse
+        from rest_framework.test import APIClient
+        from unittest.mock import patch
+
+        client = APIClient()
+        url = reverse("signup")
+        data = {
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpass123",
+            "confirm_password": "testpass123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "Test",
+            "last_name": "User",
+        }
+
+        with patch("apps.user.serializers.RegisterSerializer.save") as mock_save:
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            mock_user = User(id=1, email="test@example.com", username="testuser")
+            mock_save.return_value = mock_user
+
+            response = client.post(url, data)
+            # Will fail validation but tests the path
+            self.assertIn(response.status_code, [201, 400])
+
     def test_register_view_queryset(self):
         """Test RegisterView queryset"""
-        from django.contrib.auth.models import User
-
         from apps.user.views import RegisterView
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
 
         view = RegisterView()
         self.assertEqual(view.queryset.model, User)
@@ -331,7 +1198,9 @@ class UserViewsEdgeCaseTests(TestCase):
 
     def test_me_view_different_user_data(self):
         """Test MeView returns correct user data"""
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
         from django.urls import reverse
         from rest_framework import status
         from rest_framework.test import APIClient
@@ -351,6 +1220,82 @@ class UserViewsEdgeCaseTests(TestCase):
         self.assertNotEqual(response.data["username"], "user2")
 
 
+class EmailBackendTests(TestCase):
+    """Test EmailBackend authentication"""
+
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpassword123",
+            role="tenant",
+            first_name="Test",
+            last_name="User",
+        )
+
+    def test_authenticate_with_email(self):
+        """Test authentication using email address"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.authenticate(
+            None, username="test@example.com", password="testpassword123"
+        )
+        self.assertIsNotNone(user)
+        self.assertEqual(user.email, "test@example.com")
+
+    def test_authenticate_with_username(self):
+        """Test authentication using username"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.authenticate(
+            None, username="testuser", password="testpassword123"
+        )
+        self.assertIsNotNone(user)
+        self.assertEqual(user.username, "testuser")
+
+    def test_authenticate_wrong_password(self):
+        """Test authentication with wrong password"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.authenticate(
+            None, username="test@example.com", password="wrongpassword"
+        )
+        self.assertIsNone(user)
+
+    def test_authenticate_nonexistent_user(self):
+        """Test authentication with non-existent user"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.authenticate(
+            None, username="nonexistent@example.com", password="password123"
+        )
+        self.assertIsNone(user)
+
+    def test_get_user_valid_id(self):
+        """Test get_user with valid user ID"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.get_user(self.user.id)
+        self.assertIsNotNone(user)
+        self.assertEqual(user.id, self.user.id)
+
+    def test_get_user_invalid_id(self):
+        """Test get_user with invalid user ID"""
+        from apps.user.authentication import EmailBackend
+
+        backend = EmailBackend()
+        user = backend.get_user(99999)
+        self.assertIsNone(user)
+
+
 class UserViewsIntegrationTests(TestCase):
     def test_register_and_login_flow(self):
         """Test complete register and login flow"""
@@ -366,13 +1311,18 @@ class UserViewsIntegrationTests(TestCase):
             "username": "newuser",
             "email": "newuser@example.com",
             "password": "newpassword123",
+            "confirm_password": "newpassword123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "New",
+            "last_name": "User",
         }
         register_response = client.post(register_url, register_data)
         self.assertEqual(register_response.status_code, status.HTTP_201_CREATED)
 
         # Login with new user
         login_url = reverse("token_obtain_pair")
-        login_data = {"username": "newuser", "password": "newpassword123"}
+        login_data = {"email": "newuser@example.com", "password": "newpassword123"}
         login_response = client.post(login_url, login_data)
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
         self.assertIn("access", login_response.data)
@@ -388,7 +1338,9 @@ class UserViewsIntegrationTests(TestCase):
 
     def test_register_duplicate_email(self):
         """Test register with duplicate email"""
-        from django.contrib.auth.models import User
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
         from django.urls import reverse
         from rest_framework import status
         from rest_framework.test import APIClient

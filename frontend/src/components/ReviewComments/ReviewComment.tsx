@@ -21,7 +21,7 @@ const ReviewComment = ({
     </Typography>
 
     <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
-      <UserLabel username={comment.username} />
+      <UserLabel username={comment.username || 'Unknown'} userId={comment.user_id} />
       <DateLabel date={comment.updated_at} />
 
       <ReviewCommentDeleteButton

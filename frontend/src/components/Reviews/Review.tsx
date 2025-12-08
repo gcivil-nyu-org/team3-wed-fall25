@@ -5,16 +5,21 @@ import ReviewDeleteButton from "./ReviewDeleteButton";
 import ReviewUpdateButton from "./ReviewUpdateButton";
 import UserLabel from "../UserLabel";
 import DateLabel from "../DateLabel";
+import { useProfile } from "../../hooks/useProfile";
 
 const Review = ({
   bbl,
   review,
+  readonly,
   onStateChangesCallback,
 }: {
   bbl: BuildingData["bbl"];
   review: CommunityReview;
+  readonly?: boolean;
   onStateChangesCallback(): void;
 }) => {
+  const { user } = useProfile();
+
   return (
     <Paper key={review.id} sx={{ p: 2, mb: 2 }}>
       <Typography variant="subtitle1">{review.title}</Typography>
@@ -44,26 +49,34 @@ const Review = ({
             gap: 1,
           }}
         >
-          <UserLabel username={review.username} />
+          <UserLabel
+            username={review.username || 'Unknown'}
+            userId={review.user_id}
+            enableActions={user?.id !== review.user_id}
+          />
           <DateLabel date={review.updated_at} />
         </Box>
 
-        <Box>
-          <ReviewUpdateButton
-            bbl={bbl}
-            review={review}
-            onSuccess={onStateChangesCallback}
-          />
-          <ReviewDeleteButton
-            reviewId={review.id}
-            onSuccess={onStateChangesCallback}
-          />
-        </Box>
+        {!readonly && (
+          <Box>
+            <ReviewUpdateButton
+              bbl={bbl}
+              review={review}
+              onSuccess={onStateChangesCallback}
+            />
+            <ReviewDeleteButton
+              reviewId={review.id}
+              onSuccess={onStateChangesCallback}
+            />
+          </Box>
+        )}
       </Box>
 
-      <Paper sx={{ p: 1, mt: 2 }}>
-        <ReviewComments reviewId={review.id} />
-      </Paper>
+      {!readonly && (
+        <Paper sx={{ p: 1, mt: 2 }}>
+          <ReviewComments reviewId={review.id} />
+        </Paper>
+      )}
     </Paper>
   );
 };

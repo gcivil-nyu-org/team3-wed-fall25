@@ -1,12 +1,20 @@
 import { Box, Typography } from "@mui/material";
-import { useParams } from "react-router";
 import { useReview } from "../../hooks/useReview";
+import { useAuth } from "../../hooks";
 import Review from "./Review";
 import ReviewCreateButton from "./ReviewCreateButton";
+import type { BuildingData } from "../../api";
 
-const Reviews = () => {
-  const { bbl } = useParams<{ bbl: string }>();
-
+const Reviews = ({
+  bbl,
+  hideTitle,
+  readonly,
+}: {
+  bbl: BuildingData["bbl"];
+  hideTitle?: boolean;
+  readonly?: boolean;
+}) => {
+  const { user } = useAuth();
   const { reviews, refresh: refreshReviews } = useReview(bbl || "");
 
   return bbl ? (
@@ -15,14 +23,17 @@ const Reviews = () => {
         sx={{
           display: "flex",
           justifyContent: "space-between",
-          mb: 3,
         }}
       >
-        <Typography variant="h6" gutterBottom>
-          Reviews {reviews.length}
-        </Typography>
+        {!hideTitle && (
+          <Typography variant="h6" gutterBottom>
+            Reviews {reviews.length}
+          </Typography>
+        )}
 
-        <ReviewCreateButton bbl={bbl} onSuccess={refreshReviews} />
+        {!readonly && user && (
+          <ReviewCreateButton bbl={bbl} onSuccess={refreshReviews} />
+        )}
       </Box>
 
       {reviews.map((review) => (
@@ -30,6 +41,7 @@ const Reviews = () => {
           key={review.id}
           bbl={bbl}
           review={review}
+          readonly={readonly}
           onStateChangesCallback={refreshReviews}
         />
       ))}

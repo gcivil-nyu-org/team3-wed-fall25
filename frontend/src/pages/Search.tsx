@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   Box,
   Container,
@@ -30,6 +30,7 @@ import {
   Clear,
 } from "@mui/icons-material";
 import { searchBuildings } from "../api/index.js";
+import { useAuth } from "../hooks";
 
 // Temporarily inline the BuildingSearchResult type to resolve export issue
 interface BuildingSearchResult {
@@ -48,95 +49,155 @@ interface BuildingSearchResult {
 
 const Search: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<BuildingSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [totalResults, setTotalResults] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const resultsPerPage = 10;
   
-  // Filter states - only include filters that are actually available in the API
+  // Filter states
   const [selectedBorough, setSelectedBorough] = useState("All Boroughs");
   const [rentStabilized, setRentStabilized] = useState(false);
-  const [evictionsFilter, setEvictionsFilter] = useState("Any");
-  const [violationsFilter, setViolationsFilter] = useState("Any");
-  const [zipCode, setZipCode] = useState("");
+  const [affordableHousing, setAffordableHousing] = useState(false);
+  const [riskLevel, setRiskLevel] = useState("Any");
+  const [violationClass, setViolationClass] = useState("Any");
+  const [rentImpairing, setRentImpairing] = useState("Any");
+  const [complaintCategory, setComplaintCategory] = useState("Any");
+  const [recentActivity, setRecentActivity] = useState("Any");
+  const [sortBy, setSortBy] = useState("Most Relevant");
+  const filterDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const boroughs = ["All Boroughs", "Manhattan", "Brooklyn", "Queens", "Bronx", "Staten Island"];
+  const initializedFromUrl = useRef(false);
 
-  const handleSearch = async () => {
+  const handleSearch = async (customFilters?: {
+    query?: string;
+    sortBy?: string;
+    borough?: string;
+    rentStabilized?: boolean;
+    affordableHousing?: boolean;
+    riskLevel?: string;
+    violationClass?: string;
+    rentImpairing?: string;
+    complaintCategory?: string;
+    recentActivity?: string;
+    page?: number;
+  }) => {
     setLoading(true);
     setError(null);
     
     try {
-      // Convert filter values to API parameters
-      const searchParams: any = {};
+      // Use the main search query (address, zip code, BBL, or borough)
+      const query = (customFilters?.query !== undefined ? customFilters.query : searchQuery).trim();
       
-      if (searchQuery.trim()) {
-        searchParams.query = searchQuery.trim();
+      // Use custom filter values if provided, otherwise use state
+      const currentBorough = customFilters?.borough !== undefined ? customFilters.borough : selectedBorough;
+      const currentRentStabilized = customFilters?.rentStabilized !== undefined ? customFilters.rentStabilized : rentStabilized;
+      const currentAffordableHousing = customFilters?.affordableHousing !== undefined ? customFilters.affordableHousing : affordableHousing;
+      const currentRiskLevel = customFilters?.riskLevel !== undefined ? customFilters.riskLevel : riskLevel;
+      const currentViolationClass = customFilters?.violationClass !== undefined ? customFilters.violationClass : violationClass;
+      const currentRentImpairing = customFilters?.rentImpairing !== undefined ? customFilters.rentImpairing : rentImpairing;
+      const currentComplaintCategory = customFilters?.complaintCategory !== undefined ? customFilters.complaintCategory : complaintCategory;
+      const currentRecentActivity = customFilters?.recentActivity !== undefined ? customFilters.recentActivity : recentActivity;
+      const currentSortBy = customFilters?.sortBy !== undefined ? customFilters.sortBy : sortBy;
+      const pageToUse = customFilters?.page !== undefined ? customFilters.page : currentPage;
+      
+      // Check if any filters are active using the current values (custom or state)
+      const hasActiveFilters = 
+        currentBorough !== "All Boroughs" ||
+        currentRentStabilized ||
+        currentAffordableHousing ||
+        currentRiskLevel !== "Any" ||
+        currentViolationClass !== "Any" ||
+        currentRentImpairing !== "Any" ||
+        currentComplaintCategory !== "Any" ||
+        currentRecentActivity !== "Any";
+      
+      // Allow empty query if filters are provided
+      if (!query && !hasActiveFilters) {
+        setError("Please enter a search term (address, zip code, BBL, or borough) or select at least one filter.");
+        setLoading(false);
+        return;
       }
       
-      if (selectedBorough !== "All Boroughs") {
-        searchParams.borough = selectedBorough;
+      // Build search parameters for the new endpoint
+      const searchParams: any = {
+        limit: resultsPerPage,
+        page: pageToUse,
+      };
+      
+      // Only add query if it's not empty
+      if (query) {
+        searchParams.query = query;
       }
       
-      if (rentStabilized) {
-        searchParams.rentStabilized = true;
+      // Add borough filter if selected
+      if (currentBorough !== "All Boroughs") {
+        searchParams.borough = currentBorough;
       }
       
-      if (zipCode.trim()) {
-        searchParams.zipCode = zipCode.trim();
+      // Add rent stabilized filter
+      if (currentRentStabilized) {
+        searchParams.rent_stabilized = "true";
       }
       
-      // Convert evictions filter to min/max values
-      if (evictionsFilter !== "Any") {
-        switch (evictionsFilter) {
-          case "0":
-            searchParams.evictionsMin = 0;
-            searchParams.evictionsMax = 0;
-            break;
-          case "1-2":
-            searchParams.evictionsMin = 1;
-            searchParams.evictionsMax = 2;
-            break;
-          case "3-5":
-            searchParams.evictionsMin = 3;
-            searchParams.evictionsMax = 5;
-            break;
-          case "6+":
-            searchParams.evictionsMin = 6;
-            break;
+      // Add affordable housing filter
+      if (currentAffordableHousing) {
+        searchParams.affordable_housing = "true";
+      }
+      
+      // Add risk level filter
+      if (currentRiskLevel !== "Any") {
+        searchParams.risk_level = currentRiskLevel;
+      }
+      
+      // Add violation class filter
+      if (currentViolationClass !== "Any") {
+        searchParams.violation_class = currentViolationClass;
+      }
+      
+      // Add rent impairing filter
+      if (currentRentImpairing === "Yes") {
+        searchParams.rent_impairing = "true";
+      } else if (currentRentImpairing === "No") {
+        searchParams.rent_impairing = "false";
+      }
+      
+      // Add complaint category filter
+      if (currentComplaintCategory !== "Any") {
+        searchParams.complaint_category = currentComplaintCategory;
+      }
+      
+      // Add recent activity filter
+      if (currentRecentActivity !== "Any") {
+        const daysMap: Record<string, number> = {
+          "30": 30,
+          "90": 90,
+          "180": 180,
+        };
+        if (daysMap[currentRecentActivity]) {
+          searchParams.recent_activity_days = daysMap[currentRecentActivity].toString();
         }
       }
       
-      // Convert violations filter to min/max values
-      if (violationsFilter !== "Any") {
-        switch (violationsFilter) {
-          case "0":
-            searchParams.violationsMin = 0;
-            searchParams.violationsMax = 0;
-            break;
-          case "1-5":
-            searchParams.violationsMin = 1;
-            searchParams.violationsMax = 5;
-            break;
-          case "6-10":
-            searchParams.violationsMin = 6;
-            searchParams.violationsMax = 10;
-            break;
-          case "11+":
-            searchParams.violationsMin = 11;
-            break;
-        }
+      // Add sort by parameter
+      if (currentSortBy) {
+        searchParams.sort_by = currentSortBy;
       }
       
-      console.log("Searching with params:", searchParams);
       const response = await searchBuildings(searchParams);
-      console.log("Search response:", response);
-      setSearchResults(response.data);
-      setTotalResults(response.total);
+      setSearchResults(response.data || []);
+      setTotalResults(response.total || 0);
+      // Update current page from response if provided
+      if (response.page) {
+        setCurrentPage(response.page);
+      }
     } catch (err) {
       setError("Failed to search buildings. Please try again.");
-      console.error("Search error:", err);
     } finally {
       setLoading(false);
     }
@@ -145,10 +206,96 @@ const Search: React.FC = () => {
   const handleClearFilters = () => {
     setSelectedBorough("All Boroughs");
     setRentStabilized(false);
-    setEvictionsFilter("Any");
-    setViolationsFilter("Any");
-    setZipCode("");
+    setAffordableHousing(false);
+    setRiskLevel("Any");
+    setViolationClass("Any");
+    setRentImpairing("Any");
+    setComplaintCategory("Any");
+    setRecentActivity("Any");
+    setCurrentPage(1);
+    // Trigger search if there's a query with cleared filter values
+    if (searchQuery.trim()) {
+      handleSearch({
+        borough: "All Boroughs",
+        rentStabilized: false,
+        affordableHousing: false,
+        riskLevel: "Any",
+        violationClass: "Any",
+        rentImpairing: "Any",
+        complaintCategory: "Any",
+        recentActivity: "Any",
+      });
+    }
   };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    if (searchQuery.trim()) {
+      handleSearch({ page: newPage });
+    }
+  };
+
+  // Debounced search function for filter changes
+  // Note: This uses handleSearch which is defined above, so we need to include all dependencies
+  const debouncedSearch = useCallback((filters: any) => {
+    if (filterDebounceRef.current) {
+      clearTimeout(filterDebounceRef.current);
+    }
+    filterDebounceRef.current = setTimeout(() => {
+      // Allow search even without query if filters are active
+      const hasActiveFilters = 
+        filters?.borough !== undefined && filters.borough !== "All Boroughs" ||
+        filters?.rentStabilized !== undefined ||
+        filters?.affordableHousing !== undefined ||
+        filters?.riskLevel !== undefined && filters.riskLevel !== "Any" ||
+        filters?.violationClass !== undefined && filters.violationClass !== "Any" ||
+        filters?.rentImpairing !== undefined && filters.rentImpairing !== "Any" ||
+        filters?.complaintCategory !== undefined && filters.complaintCategory !== "Any" ||
+        filters?.recentActivity !== undefined && filters.recentActivity !== "Any";
+      
+      if (searchQuery.trim() || hasActiveFilters) {
+        handleSearch(filters);
+      }
+    }, 500); // 500ms debounce
+  }, [searchQuery, selectedBorough, rentStabilized, affordableHousing, riskLevel, violationClass, rentImpairing, complaintCategory, recentActivity, sortBy]);
+
+  // Read URL parameters on mount and when they change
+  useEffect(() => {
+    if (initializedFromUrl.current) return;
+    
+    const query = searchParams.get("q") || "";
+    const borough = searchParams.get("borough") || "All Boroughs";
+    const riskLevelParam = searchParams.get("risk_level") || "Any";
+    const violationClassParam = searchParams.get("violation_class") || "Any";
+    const rentStabilizedParam = searchParams.get("rent_stabilized");
+    const affordableHousingParam = searchParams.get("affordable_housing");
+
+    setSearchQuery(query);
+    setSelectedBorough(borough);
+    setRiskLevel(riskLevelParam);
+    setViolationClass(violationClassParam);
+    setRentStabilized(rentStabilizedParam === "true");
+    setAffordableHousing(affordableHousingParam === "true");
+
+    // Trigger search if there's a query or filters
+    if (query || riskLevelParam !== "Any" || violationClassParam !== "Any" || 
+        rentStabilizedParam === "true" || affordableHousingParam === "true" || borough !== "All Boroughs") {
+      initializedFromUrl.current = true;
+      // Use a small delay to ensure state is updated
+      setTimeout(() => {
+        handleSearch({
+          query: query,
+          borough: borough,
+          riskLevel: riskLevelParam,
+          violationClass: violationClassParam,
+          rentStabilized: rentStabilizedParam === "true",
+          affordableHousing: affordableHousingParam === "true",
+        });
+      }, 100);
+    } else {
+      initializedFromUrl.current = true;
+    }
+  }, [searchParams]);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -169,6 +316,12 @@ const Search: React.FC = () => {
   };
 
   const handleViewDetails = (bbl: string) => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page if not authenticated
+      navigate("/signin");
+      return;
+    }
     navigate(`/building/${bbl}`);
   };
 
@@ -215,7 +368,12 @@ const Search: React.FC = () => {
             placeholder="Search by address, borough, or ZIP code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                setCurrentPage(1);
+                handleSearch();
+              }
+            }}
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: 3,
@@ -245,7 +403,10 @@ const Search: React.FC = () => {
           />
           <Button
             variant="contained"
-            onClick={handleSearch}
+            onClick={() => {
+              setCurrentPage(1);
+              handleSearch();
+            }}
             disabled={loading}
             sx={{ 
               minWidth: 120,
@@ -302,7 +463,12 @@ const Search: React.FC = () => {
               <InputLabel>Borough</InputLabel>
               <Select
                 value={selectedBorough}
-                onChange={(e) => setSelectedBorough(e.target.value)}
+                onChange={(e) => {
+                  const newBorough = e.target.value;
+                  setSelectedBorough(newBorough);
+                  setCurrentPage(1);
+                  debouncedSearch({ borough: newBorough, page: 1 });
+                }}
                 label="Borough"
               >
                 {boroughs.map((borough) => (
@@ -313,63 +479,144 @@ const Search: React.FC = () => {
               </Select>
             </FormControl>
 
-            {/* Affordability Filter */}
+            {/* Affordability Filters */}
             <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
                 Affordability
               </Typography>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={rentStabilized}
-                    onChange={(e) => setRentStabilized(e.target.checked)}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setRentStabilized(newValue);
+                      setCurrentPage(1);
+                      debouncedSearch({ rentStabilized: newValue, page: 1 });
+                    }}
                   />
                 }
                 label="Rent Stabilized"
               />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={affordableHousing}
+                    onChange={(e) => {
+                      const newValue = e.target.checked;
+                      setAffordableHousing(newValue);
+                      setCurrentPage(1);
+                      debouncedSearch({ affordableHousing: newValue, page: 1 });
+                    }}
+                  />
+                }
+                label="Affordable Housing"
+              />
             </Box>
 
-            {/* Evictions Filter */}
+            {/* Risk Level Filter */}
             <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Evictions (Last 3 Years)</InputLabel>
+              <InputLabel>Risk Level</InputLabel>
               <Select
-                value={evictionsFilter}
-                onChange={(e) => setEvictionsFilter(e.target.value)}
-                label="Evictions (Last 3 Years)"
+                value={riskLevel}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setRiskLevel(newValue);
+                  setCurrentPage(1);
+                  debouncedSearch({ riskLevel: newValue, page: 1 });
+                }}
+                label="Risk Level"
               >
-                <MenuItem value="Any">Any</MenuItem>
-                <MenuItem value="0">0</MenuItem>
-                <MenuItem value="1-2">1-2</MenuItem>
-                <MenuItem value="3-5">3-5</MenuItem>
-                <MenuItem value="6+">6+</MenuItem>
+                <MenuItem value="Any">Any Risk Level</MenuItem>
+                <MenuItem value="High">High Risk</MenuItem>
+                <MenuItem value="Moderate">Moderate Risk</MenuItem>
+                <MenuItem value="Low">Low Risk</MenuItem>
               </Select>
             </FormControl>
 
-            {/* Violations Filter */}
+            {/* Violation Filters */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, mb: 1.5 }}>
+                Violation Filters
+              </Typography>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Violation Class</InputLabel>
+                <Select
+                  value={violationClass}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setViolationClass(newValue);
+                    setCurrentPage(1);
+                    debouncedSearch({ violationClass: newValue, page: 1 });
+                  }}
+                  label="Violation Class"
+                >
+                  <MenuItem value="Any">Any Class</MenuItem>
+                  <MenuItem value="A">Class A (Most Serious)</MenuItem>
+                  <MenuItem value="B">Class B</MenuItem>
+                  <MenuItem value="C">Class C</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Rent Impairing</InputLabel>
+                <Select
+                  value={rentImpairing}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setRentImpairing(newValue);
+                    setCurrentPage(1);
+                    debouncedSearch({ rentImpairing: newValue, page: 1 });
+                  }}
+                  label="Rent Impairing"
+                >
+                  <MenuItem value="Any">Any</MenuItem>
+                  <MenuItem value="Yes">Has Rent Impairing Violations</MenuItem>
+                  <MenuItem value="No">No Rent Impairing Violations</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Complaint Category Filter */}
             <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel>Open Violations</InputLabel>
+              <InputLabel>Complaint Category</InputLabel>
               <Select
-                value={violationsFilter}
-                onChange={(e) => setViolationsFilter(e.target.value)}
-                label="Open Violations"
+                value={complaintCategory}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setComplaintCategory(newValue);
+                  setCurrentPage(1);
+                  debouncedSearch({ complaintCategory: newValue, page: 1 });
+                }}
+                label="Complaint Category"
               >
-                <MenuItem value="Any">Any</MenuItem>
-                <MenuItem value="0">0</MenuItem>
-                <MenuItem value="1-5">1-5</MenuItem>
-                <MenuItem value="6-10">6-10</MenuItem>
-                <MenuItem value="11+">11+</MenuItem>
+                <MenuItem value="Any">Any Category</MenuItem>
+                <MenuItem value="HEAT/HOT WATER">Heat/Hot Water</MenuItem>
+                <MenuItem value="PLUMBING">Plumbing</MenuItem>
+                <MenuItem value="ELECTRIC">Electric</MenuItem>
+                <MenuItem value="GENERAL CONSTRUCTION">General Construction</MenuItem>
+                <MenuItem value="PAINT/PLASTER">Paint/Plaster</MenuItem>
               </Select>
             </FormControl>
 
-            {/* ZIP Code Filter */}
-            <TextField
-              fullWidth
-              label="ZIP Code"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value)}
-              placeholder="e.g., 10022"
-              sx={{ mb: 3 }}
-            />
+            {/* Recent Activity Filter */}
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel>Recent Activity</InputLabel>
+              <Select
+                value={recentActivity}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  setRecentActivity(newValue);
+                  setCurrentPage(1);
+                  debouncedSearch({ recentActivity: newValue, page: 1 });
+                }}
+                label="Recent Activity"
+              >
+                <MenuItem value="Any">Any Time</MenuItem>
+                <MenuItem value="30">Last 30 Days</MenuItem>
+                <MenuItem value="90">Last 90 Days</MenuItem>
+                <MenuItem value="180">Last 6 Months</MenuItem>
+              </Select>
+            </FormControl>
 
             <Button
               variant="outlined"
@@ -397,20 +644,31 @@ const Search: React.FC = () => {
           )}
           
           {searchResults.length > 0 && !loading && (
+            <>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
               <Typography variant="h6">
                 Showing {searchResults.length} of {totalResults} results
               </Typography>
               <FormControl size="small" sx={{ minWidth: 150 }}>
                 <InputLabel>Sort by</InputLabel>
-                <Select value="Most Relevant" label="Sort by">
+                <Select 
+                  value={sortBy} 
+                  label="Sort by"
+                  onChange={(e) => {
+                    const newSortBy = e.target.value;
+                    setSortBy(newSortBy);
+                    setCurrentPage(1);
+                    debouncedSearch({ sortBy: newSortBy, page: 1 });
+                  }}
+                >
                   <MenuItem value="Most Relevant">Most Relevant</MenuItem>
-                  <MenuItem value="Lowest Risk">Lowest Risk</MenuItem>
                   <MenuItem value="Highest Rating">Highest Rating</MenuItem>
                   <MenuItem value="Most Violations">Most Violations</MenuItem>
                 </Select>
               </FormControl>
             </Box>
+            
+            </>
           )}
 
           {/* Search Results */}
@@ -460,7 +718,7 @@ const Search: React.FC = () => {
                         Units
                       </Typography>
                       <Typography variant="h6">
-                        {building.units || "N/A"}
+                        {building.units ? building.units.toLocaleString() : "N/A"}
                       </Typography>
                     </Box>
                     <Box sx={{ minWidth: "120px" }}>
@@ -522,6 +780,113 @@ const Search: React.FC = () => {
               </Card>
             ))}
           </Box>
+
+          {/* Pagination - Show after results */}
+          {searchResults.length > 0 && totalResults > resultsPerPage && !loading && (
+            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 2, mt: 4, mb: 2, flexWrap: "wrap" }}>
+              <Button
+                variant="outlined"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                sx={{
+                  borderColor: "#FF6B35",
+                  color: "#FF6B35",
+                  minWidth: 100,
+                  "&:hover": {
+                    borderColor: "#E55A2B",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                  "&:disabled": {
+                    borderColor: "rgba(0, 0, 0, 0.12)",
+                    color: "rgba(0, 0, 0, 0.26)",
+                  },
+                }}
+              >
+                Previous
+              </Button>
+              
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body1" sx={{ color: "#4A5568", fontWeight: 500 }}>
+                  Page
+                </Typography>
+                <TextField
+                  type="number"
+                  value={currentPage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow typing, but don't search yet
+                    const numValue = parseInt(value);
+                    if (!isNaN(numValue) && numValue >= 1) {
+                      setCurrentPage(numValue);
+                    }
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const newPage = parseInt(e.target.value);
+                    const maxPage = Math.ceil(totalResults / resultsPerPage);
+                    let pageToUse = newPage;
+                    if (!newPage || newPage < 1) {
+                      pageToUse = 1;
+                      setCurrentPage(1);
+                    } else if (newPage > maxPage) {
+                      pageToUse = maxPage;
+                      setCurrentPage(maxPage);
+                    }
+                    if (searchQuery.trim()) {
+                      handlePageChange(pageToUse);
+                    }
+                  }}
+                  inputProps={{
+                    min: 1,
+                    max: Math.ceil(totalResults / resultsPerPage),
+                    style: { textAlign: "center", padding: "8px", width: "60px" }
+                  }}
+                  sx={{
+                    width: 80,
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": {
+                        borderColor: "rgba(255, 107, 53, 0.3)",
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "rgba(255, 107, 53, 0.5)",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#FF6B35",
+                      },
+                    },
+                  }}
+                />
+                <Typography variant="body1" sx={{ color: "#4A5568", fontWeight: 500 }}>
+                  of {Math.ceil(totalResults / resultsPerPage)}
+                </Typography>
+              </Box>
+              
+              <Button
+                variant="outlined"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= Math.ceil(totalResults / resultsPerPage)}
+                sx={{
+                  borderColor: "#FF6B35",
+                  color: "#FF6B35",
+                  minWidth: 100,
+                  "&:hover": {
+                    borderColor: "#E55A2B",
+                    backgroundColor: "rgba(255, 107, 53, 0.05)",
+                  },
+                  "&:disabled": {
+                    borderColor: "rgba(0, 0, 0, 0.12)",
+                    color: "rgba(0, 0, 0, 0.26)",
+                  },
+                }}
+              >
+                Next
+              </Button>
+            </Box>
+          )}
 
           {searchResults.length === 0 && !loading && !error && (
             <Box sx={{ textAlign: "center", py: 8 }}>

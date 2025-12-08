@@ -1,8 +1,22 @@
 import { Box, Container, Typography, Link as MuiLink } from "@mui/material";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "../hooks";
 import BusinessIcon from "@mui/icons-material/Business";
 
 export function SiteFooter() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+
+  const handleLogout = () => {
+    logout();
+    if (isAdmin) {
+      sessionStorage.removeItem('admin_authenticated');
+      sessionStorage.removeItem('admin_username');
+    }
+    navigate("/");
+  };
+
   return (
     <Box
       component="footer"
@@ -99,20 +113,21 @@ export function SiteFooter() {
               >
                 Neighborhood Explorer
               </MuiLink>
-              <MuiLink
-                href="#"
-                sx={{
-                  color: "#4A5568",
-                  fontSize: "0.85rem",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#FF6B35",
-                  },
-                  transition: "color 0.2s ease",
-                }}
-              >
-                Community Reviews
-              </MuiLink>
+              <Link to="/community" style={{ textDecoration: "none" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#4A5568",
+                    fontSize: "0.85rem",
+                    "&:hover": {
+                      color: "#FF6B35",
+                    },
+                    transition: "color 0.2s ease",
+                  }}
+                >
+                  Community Reviews
+                </Typography>
+              </Link>
             </Box>
           </Box>
 
@@ -133,50 +148,140 @@ export function SiteFooter() {
               Account
             </Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-              <Link to="/signin" style={{ textDecoration: "none" }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#4A5568",
-                    fontSize: "0.85rem",
-                    "&:hover": {
-                      color: "#FF6B35",
-                    },
-                    transition: "color 0.2s ease",
-                  }}
-                >
-                  Log in
-                </Typography>
-              </Link>
-              <Link to="/signup" style={{ textDecoration: "none" }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "#4A5568",
-                    fontSize: "0.85rem",
-                    "&:hover": {
-                      color: "#FF6B35",
-                    },
-                    transition: "color 0.2s ease",
-                  }}
-                >
-                  Sign up
-                </Typography>
-              </Link>
-              <MuiLink
-                href="#"
-                sx={{
-                  color: "#4A5568",
-                  fontSize: "0.85rem",
-                  textDecoration: "none",
-                  "&:hover": {
-                    color: "#FF6B35",
-                  },
-                  transition: "color 0.2s ease",
-                }}
-              >
-                Dashboard
-              </MuiLink>
+              {user || isAdmin ? (
+                <>
+                  {user && (
+                    <>
+                      <Link to="/profile" style={{ textDecoration: "none" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#4A5568",
+                            fontSize: "0.85rem",
+                            "&:hover": {
+                              color: "#FF6B35",
+                            },
+                            transition: "color 0.2s ease",
+                          }}
+                        >
+                          My Profile
+                        </Typography>
+                      </Link>
+                      <Link to="/dashboard" style={{ textDecoration: "none" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#4A5568",
+                            fontSize: "0.85rem",
+                            "&:hover": {
+                              color: "#FF6B35",
+                            },
+                            transition: "color 0.2s ease",
+                          }}
+                        >
+                          My Dashboard
+                        </Typography>
+                      </Link>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <Link to="/admin/dashboard" style={{ textDecoration: "none" }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: "#4A5568",
+                          fontSize: "0.85rem",
+                          "&:hover": {
+                            color: "#FF6B35",
+                          },
+                          transition: "color 0.2s ease",
+                        }}
+                      >
+                        Admin Dashboard
+                      </Typography>
+                    </Link>
+                  )}
+                  <Link to="/admin/login" style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#4A5568",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Admin
+                    </Typography>
+                  </Link>
+                  <Link to="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#e53e3e",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#c53030",
+                          textDecoration: "underline",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Logout
+                    </Typography>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/signin" style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#4A5568",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Log in
+                    </Typography>
+                  </Link>
+                  <Link to="/signup" style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#4A5568",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Sign up
+                    </Typography>
+                  </Link>
+                  <Link to="/admin/login" style={{ textDecoration: "none" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#4A5568",
+                        fontSize: "0.85rem",
+                        "&:hover": {
+                          color: "#FF6B35",
+                        },
+                        transition: "color 0.2s ease",
+                      }}
+                    >
+                      Admin
+                    </Typography>
+                  </Link>
+                </>
+              )}
             </Box>
           </Box>
         </Box>

@@ -18,8 +18,19 @@ from common.utils.env_util import get_env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
 STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+PROJECT_ROOT = BASE_DIR.parent
+STATIC_ROOT = PROJECT_ROOT / "static"
+STATICFILES_DIRS = [
+    BASE_DIR / "static",  # 여기에 _app 폴더가 생김
+]
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -115,10 +126,45 @@ TEMPLATES = [
 # --- Templates ---
 TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]  # backend/templates
 
+# Custom User Model
+AUTH_USER_MODEL = "user.CustomUser"
+
+# Authentication Backends
+AUTHENTICATION_BACKENDS = [
+    "apps.user.authentication.EmailBackend",  # Custom email authentication
+    "django.contrib.auth.backends.ModelBackend",  # Default username authentication
+]
+
+# Frontend URL for email verification links
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+
+# Email Configuration
+# Use console backend in development, SMTP in production
+if RUN_ENV == "development" or DEBUG:
+    EMAIL_BACKEND = env(
+        "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+    )
+else:
+    EMAIL_BACKEND = env(
+        "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
+    )
+
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.gmail.com")
+EMAIL_PORT = env("EMAIL_PORT", default=587)
+EMAIL_USE_TLS = env("EMAIL_USE_TLS", default=True)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default="noreply@housingtransparency.com"
+)
+
 WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# All database credentials must be set via environment variables
+# For local development: Create a .env file in project root with DB_* variables
+# For production: Set environment variables in deployment platform (AWS Elastic Beanstalk)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -180,7 +226,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

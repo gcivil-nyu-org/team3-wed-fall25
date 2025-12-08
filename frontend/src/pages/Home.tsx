@@ -20,9 +20,28 @@ import {
   ArrowForward,
   CheckCircle
 } from "@mui/icons-material";
-import { Link } from "react-router";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router";
+import { useAuth } from "../hooks";
 
 export default function Home() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate("/search");
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)' }}>
       {/* Hero Section */}
@@ -75,6 +94,9 @@ export default function Home() {
             }}>
               <TextField
                 fullWidth
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
                 placeholder="Enter building address or neighborhood..."
                 variant="outlined"
                 sx={{
@@ -107,6 +129,7 @@ export default function Home() {
               <Button 
                 variant="contained" 
                 size="large"
+                onClick={handleSearch}
                 sx={{ 
                   minWidth: '120px',
                   height: '56px',
@@ -126,7 +149,7 @@ export default function Home() {
 
             <Typography variant="body2" sx={{ opacity: 0.8 }}>
               Or{" "}
-              <Link to="/search" style={{ color: 'white', textDecoration: 'underline', fontWeight: 500 }}>
+              <Link to="/map" style={{ color: 'white', textDecoration: 'underline', fontWeight: 500 }}>
                 explore the map
               </Link>{" "}
               to discover trends
@@ -198,6 +221,8 @@ export default function Home() {
                     Historical eviction data and trends by building and neighborhood
             </Typography>
                   <Button 
+                    component={Link}
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#FF6B35',
@@ -248,6 +273,8 @@ export default function Home() {
                     Building code violations, safety issues, and compliance records
             </Typography>
                   <Button 
+                    component={Link}
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#EF4444',
@@ -298,6 +325,8 @@ export default function Home() {
                     Rent-stabilized units, affordable housing programs, and pricing data
                   </Typography>
                   <Button 
+                    component={Link}
+                    to="/search"
                     variant="text" 
                     sx={{ 
                       color: '#22C55E',
@@ -371,7 +400,7 @@ export default function Home() {
 
               <Button 
                 component={Link}
-                to="/search"
+                to="/map"
                 variant="contained"
                 size="large"
                 endIcon={<ArrowForward />}
@@ -502,6 +531,8 @@ export default function Home() {
               </Stack>
 
               <Button 
+                component={Link}
+                to="/reviews"
                 variant="outlined"
                 size="large"
                 sx={{
@@ -525,7 +556,8 @@ export default function Home() {
         </Container>
         </Box>
 
-        {/* CTA Section */}
+        {/* CTA Section (hidden when logged in) */}
+      {!user && (
       <Box sx={{ py: { xs: 8, md: 12 } }}>
         <Container maxWidth="lg">
           <Paper 
@@ -613,6 +645,7 @@ export default function Home() {
           </Paper>
       </Container>
         </Box>
+      )}
     </Box>
   );
 }

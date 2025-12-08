@@ -1,6 +1,8 @@
 import { Box, IconButton, TextareaAutosize } from "@mui/material";
 import { createReviewComment, type CommunityReview } from "../../api";
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "../../hooks";
 
 import { InsertCommentOutlined } from "@mui/icons-material";
 import type { AxiosError } from "axios";
@@ -12,9 +14,18 @@ const ReviewCommentForm = ({
   reviewId: CommunityReview["id"];
   onSuccess(): void;
 }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [comment, setComment] = useState<string>("");
 
   const handleSubmit = async () => {
+    // Check if user is authenticated
+    if (!user) {
+      // Redirect to login page if not authenticated
+      navigate("/signin");
+      return;
+    }
+
     try {
       await createReviewComment(reviewId, comment);
 
