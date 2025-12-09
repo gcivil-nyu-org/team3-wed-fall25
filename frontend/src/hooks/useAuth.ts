@@ -33,8 +33,8 @@ export const useAuth = () => {
         }
         
         const response = await fetchProfile();
-        // Profile endpoint returns user data directly, not wrapped in data object
-        const userData = response.data;
+        // Backend middleware wraps responses in {result: true, data: {...}}
+        const userData = response.data?.data || response.data;
         setUser(userData);
       } catch (err) {
         // If profile fetch fails, clear the token and user state from both storages
@@ -59,10 +59,12 @@ export const useAuth = () => {
     try {
       const response = await loginUser(credentials);
       const responseData = response.data;
-      // Backend returns tokens directly in response.data, not nested in response.data.data
-      const accessToken = responseData?.access || responseData?.access_token || responseData?.token;
-      const refreshToken = responseData?.refresh || responseData?.refresh_token;
-      const userData = responseData?.user; // User data is included in login response
+      // Backend middleware wraps responses in {result: true, data: {...}}
+      // So tokens are in response.data.data, not response.data
+      const authData = responseData?.data || responseData; // Fallback to direct access if not wrapped
+      const accessToken = authData?.access || authData?.access_token || authData?.token;
+      const refreshToken = authData?.refresh || authData?.refresh_token;
+      const userData = authData?.user; // User data is included in login response
       
       if (accessToken) {
         // Store tokens in both sessionStorage and localStorage for compatibility
@@ -84,8 +86,8 @@ export const useAuth = () => {
           // Small delay to ensure token is stored before making the request
           await new Promise(resolve => setTimeout(resolve, 100));
           const profileResponse = await fetchProfile();
-          // Profile endpoint returns user data directly, not wrapped in data object
-          const freshUserData = profileResponse.data;
+          // Backend middleware wraps responses in {result: true, data: {...}}
+          const freshUserData = profileResponse.data?.data || profileResponse.data;
           if (freshUserData) {
             setUser(freshUserData);
             return { success: true, user: freshUserData };
