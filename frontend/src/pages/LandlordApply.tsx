@@ -180,13 +180,24 @@ export default function LandlordApply() {
         });
         setErrors({});
       }
-    } catch (error) {
+      } catch (error: any) {
+      // Extract error message from the error object
+      let errorMessage = "Failed to submit application. Please try again.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.response?.data?.data?.error) {
+        errorMessage = error.response.data.data.error;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       // Show error message
       setSnackbar({
         open: true,
-        message:
-          "Failed to submit application. Please try again." +
-          (error instanceof Error ? `Error: ${error.message}` : ""),
+        message: errorMessage,
         severity: "error",
       });
       console.error("Submission error:", error);

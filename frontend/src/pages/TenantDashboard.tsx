@@ -1,10 +1,44 @@
-import { Box, Container, Typography, Button, Paper, Stack } from "@mui/material";
-import { useNavigate } from "react-router";
+import { Box, Container, Typography, Button, Paper, Stack, CircularProgress } from "@mui/material";
+import { useNavigate, Navigate } from "react-router";
 import { useAuth } from "../hooks";
+import { useEffect } from "react";
 
 export default function TenantDashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect landlords to their dashboard
+  useEffect(() => {
+    if (!loading && user && user.role === "landlord") {
+      navigate("/landlord/dashboard", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Redirect unauthenticated users
+  if (!user) {
+    return <Navigate to="/signin" replace />;
+  }
+
+  // Redirect landlords (handled by useEffect, but also here as fallback)
+  if (user.role === "landlord") {
+    return <Navigate to="/landlord/dashboard" replace />;
+  }
 
   return (
     <Box sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>

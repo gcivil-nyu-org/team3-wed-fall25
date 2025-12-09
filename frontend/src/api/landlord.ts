@@ -526,14 +526,22 @@ export async function claimProperty(
     if (resp.status >= 200 && resp.status < 300) {
       return data;
     }
-    throw new Error(data?.error || `Property claim failed: ${resp.status}`);
+    // Extract error message from response
+    const errorMsg = data?.error || data?.data?.error || data?.message || `Property claim failed: ${resp.status}`;
+    throw new Error(errorMsg);
   } catch (error: any) {
     console.error("claimProperty: error", {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,
     });
-    throw error;
+    // Extract error message from axios error response
+    const errorMsg = error.response?.data?.error || 
+                     error.response?.data?.data?.error || 
+                     error.response?.data?.message || 
+                     error.message || 
+                     "Failed to claim property. Please try again.";
+    throw new Error(errorMsg);
   }
 }
 

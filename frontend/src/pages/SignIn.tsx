@@ -48,16 +48,30 @@ export default function SignIn() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
         
-        // Redirect based on user role
-        setTimeout(() => {
-          // Get user data to check role
-          const userData = result.user;
-          if (userData?.role === 'landlord') {
-            navigate('/landlord/dashboard');
-          } else {
-            navigate('/dashboard');
+        // Wait a bit for user state to be updated, then redirect based on role
+        setTimeout(async () => {
+          // Use the auth hook's user state which should be updated by now
+          // Or fetch profile to ensure we have the latest user data
+          try {
+            const { fetchProfile } = await import('../api');
+            const profileResponse = await fetchProfile();
+            const userData = profileResponse.data?.data || profileResponse.data;
+            
+            if (userData?.role === 'landlord') {
+              navigate('/landlord/dashboard', { replace: true });
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
+          } catch (err) {
+            // Fallback: use result.user if available, otherwise default to dashboard
+            const userData = result.user;
+            if (userData?.role === 'landlord') {
+              navigate('/landlord/dashboard', { replace: true });
+            } else {
+              navigate('/dashboard', { replace: true });
+            }
           }
-        }, 1500);
+        }, 500);
       } else {
         // Check if it's an email verification error
         if (result.authError?.detail?.includes('email') || result.error?.includes('verify')) {

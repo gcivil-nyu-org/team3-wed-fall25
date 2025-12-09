@@ -69,20 +69,22 @@ export const useAuth = () => {
           sessionStorage.setItem('refresh_token', refreshToken);
         }
         
-        // Set user data in state
-        if (userData) {
-          setUser(userData);
-        } else {
-          // If no user data in login response, fetch it from profile endpoint
-          try {
-            const profileResponse = await fetchProfile();
-            const userData = profileResponse.data?.data || profileResponse.data;
+        // Always fetch fresh user data from profile endpoint to ensure we have the latest role
+        try {
+          const profileResponse = await fetchProfile();
+          const freshUserData = profileResponse.data?.data || profileResponse.data;
+          setUser(freshUserData);
+          return { success: true, user: freshUserData };
+        } catch (profileErr) {
+          // Fallback to userData from login response if profile fetch fails
+          if (userData) {
             setUser(userData);
-          } catch (profileErr) {
+            return { success: true, user: userData };
           }
+          // If both fail, still return success but without user data
+          // The user state will be loaded by the useEffect hook
+          return { success: true, user: null };
         }
-        
-        return { success: true, user: userData };
       } else {
         throw new Error('No access token received');
       }
