@@ -489,7 +489,15 @@ export async function updateBuildingInfo(
   }
 }
 
-export async function claimProperty(bbl: string) {
+export async function claimProperty(
+  bbl: string,
+  options?: {
+    landlordType?: string;
+    organizationName?: string;
+    hpdRegistration?: string;
+    businessPhone?: string;
+  }
+) {
   try {
     const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
 
@@ -497,9 +505,15 @@ export async function claimProperty(bbl: string) {
       throw new Error("No authentication token found. Please log in.");
     }
 
+    const payload: any = { bbl };
+    if (options?.landlordType) payload.landlordType = options.landlordType;
+    if (options?.organizationName) payload.organizationName = options.organizationName;
+    if (options?.hpdRegistration) payload.hpdRegistration = options.hpdRegistration;
+    if (options?.businessPhone) payload.businessPhone = options.businessPhone;
+
     const resp = await axios.post(
       `/landlord/apply/`,
-      { bbl },
+      payload,
       {
         headers: {
           "Content-Type": "application/json",

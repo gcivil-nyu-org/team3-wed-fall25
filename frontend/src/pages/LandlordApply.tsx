@@ -18,6 +18,7 @@ import * as landlordApi from "../api/landlord";
 import { useParams, useNavigate } from "react-router";
 import { LANDLORD_TYPES } from "../constants";
 import type { LandlordType } from "../types";
+import { useAuth } from "../hooks/useAuth";
 
 interface FormData {
   name: string;
@@ -33,6 +34,8 @@ interface FormData {
 
 export default function LandlordApply() {
   const { bbl } = useParams<{ bbl: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -58,6 +61,20 @@ export default function LandlordApply() {
     severity: "success",
   });
 
+  // Pre-fill form with user data if logged in
+  useEffect(() => {
+    if (user) {
+      const fullName = user.first_name && user.last_name 
+        ? `${user.first_name} ${user.last_name}`.trim()
+        : user.username || "";
+      setFormData((prevData) => ({
+        ...prevData,
+        name: fullName,
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
+
   useEffect(() => {
     if (bbl) {
       setFormData((prevData) => ({
@@ -67,8 +84,6 @@ export default function LandlordApply() {
     }
   }, [bbl]); // This effect runs when the bbl parameter changes
 
-  // router navigation helper for Back button
-  const navigate = useNavigate();
 
   // Separate handlers for different input types
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,29 +133,53 @@ export default function LandlordApply() {
     setLoading(true);
 
     try {
-      // Call the API method with all fields
-      await landlordApi.submitApplication(formData);
-
-      // Show success message
-      setSnackbar({
-        open: true,
-        message: "Application submitted successfully!",
-        severity: "success",
-      });
-
-      // Reset form
-      setFormData({
-        name: "",
-        email: "",
-        bbl: bbl || "",
-        country: "",
-        landlordType: "individual_owner",
-        organizationName: "",
-        hpdRegistration: "",
-        businessPhone: "",
-        agreeTerms: false,
-      });
-      setErrors({});
+      // If user is logged in and claiming a property, send property-specific details
+      if (user && bbl) {
+        // Use claimProperty API which accepts optional landlord details
+        await landlordApi.claimProperty(bbl, {
+          landlordType: formData.landlordType,
+          organizationName: formData.organizationName || undefined,
+          hpdRegistration: formData.hpdRegistration || undefined,
+          businessPhone: formData.businessPhone || undefined,
+        });
+        
+        setSnackbar({
+          open: true,
+          message: "Property claim submitted successfully! It will be reviewed by an admin.",
+          severity: "success",
+        });
+        
+        // Redirect to landlord dashboard after successful claim
+        setTimeout(() => {
+          navigate("/landlord/dashboard");
+        }, 2000);
+      } else {
+        // Full application form (for sign-up flow)
+        await landlordApi.submitApplication(formData);
+        
+        setSnackbar({
+          open: true,
+          message: "Application submitted successfully!",
+          severity: "success",
+        });
+        
+        // Reset form
+        const fullName = user?.first_name && user?.last_name 
+          ? `${user.first_name} ${user.last_name}`.trim()
+          : user?.username || "";
+        setFormData({
+          name: fullName,
+          email: user?.email || "",
+          bbl: bbl || "",
+          country: "",
+          landlordType: "individual_owner",
+          organizationName: "",
+          hpdRegistration: "",
+          businessPhone: "",
+          agreeTerms: false,
+        });
+        setErrors({});
+      }
     } catch (error) {
       // Show error message
       setSnackbar({
@@ -186,50 +225,70 @@ export default function LandlordApply() {
           Back
         </Button>
         <Typography variant="h4" component="h1" gutterBottom>
-          Landlord Application
+          {user && bbl ? "Claim Property" : "Landlord Application"}
         </Typography>
-        <TextField
-          label="Name"
-          name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          required
-          margin="normal"
-        />
-        <TextField
-          label="Email"
-          name="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          type="email"
-          required
-          margin="normal"
-        />
-        <TextField
-          label="Building BBL"
-          name="bbl"
-          value={formData.bbl}
-          onChange={handleInputChange}
-          required
-          margin="normal"
-        />
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="country-label">Country</InputLabel>
-          <Select
-            labelId="country-label"
-            name="country"
-            value={formData.country}
-            onChange={handleSelectChange}
-            label="Country"
-            required
-          >
-            <MenuItem value="USA">USA</MenuItem>
-            <MenuItem value="Canada">Canada</MenuItem>
-            <MenuItem value="UK">UK</MenuItem>
-            <MenuItem value="Australia">Australia</MenuItem>
-            <MenuItem value="Other">Other</MenuItem>
-          </Select>
-        </FormControl>
+        {user && bbl ? (
+          <>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              You are claiming this property as a landlord. Please provide the following details.
+            </Alert>
+            <TextField
+              label="Building BBL"
+              name="bbl"
+              value={formData.bbl}
+              disabled
+              margin="normal"
+              helperText="This property will be linked to your account after admin approval."
+            />
+          </>
+        ) : (
+          <>
+            <TextField
+              label="Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+              margin="normal"
+              disabled={!!user}
+            />
+            <TextField
+              label="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              type="email"
+              required
+              margin="normal"
+              disabled={!!user}
+            />
+            <TextField
+              label="Building BBL"
+              name="bbl"
+              value={formData.bbl}
+              onChange={handleInputChange}
+              required
+              margin="normal"
+            />
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="country-label">Country</InputLabel>
+              <Select
+                labelId="country-label"
+                name="country"
+                value={formData.country}
+                onChange={handleSelectChange}
+                label="Country"
+                required
+              >
+                <MenuItem value="USA">USA</MenuItem>
+                <MenuItem value="Canada">Canada</MenuItem>
+                <MenuItem value="UK">UK</MenuItem>
+                <MenuItem value="Australia">Australia</MenuItem>
+                <MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+          </>
+        )}
         
         {/* Landlord Type */}
         <FormControl fullWidth margin="normal" required>
@@ -305,7 +364,7 @@ export default function LandlordApply() {
           sx={{ mt: 2 }}
           disabled={loading}
         >
-          {loading ? "Submitting..." : "Submit Application"}
+          {loading ? "Submitting..." : user && bbl ? "Claim Property" : "Submit Application"}
         </Button>
       </Box>
 

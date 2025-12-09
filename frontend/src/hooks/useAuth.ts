@@ -25,7 +25,8 @@ export const useAuth = () => {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const token = sessionStorage.getItem('access_token');
+        // Check both sessionStorage and localStorage for token
+        const token = sessionStorage.getItem('access_token') || localStorage.getItem('access_token');
         if (!token) {
           setLoading(false);
           return;
@@ -35,9 +36,11 @@ export const useAuth = () => {
         const userData = response.data?.data || response.data;
         setUser(userData);
       } catch (err) {
-        // If profile fetch fails, clear the token and user state
+        // If profile fetch fails, clear the token and user state from both storages
         sessionStorage.removeItem('access_token');
         sessionStorage.removeItem('refresh_token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
         setUser(null);
         setError(null);
       } finally {
