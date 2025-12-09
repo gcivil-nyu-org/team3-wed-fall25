@@ -57,17 +57,37 @@ export default function LandlordDashboard() {
           landlordApi.fetchReviews(),
         ]);
         if (!mounted) return;
-        setProperties(
-          propsResp.map((p) => ({
-            address: p.address,
-            occupancyStatus: p.occupancy_status,
-            financialPerformance: p.financial_performance,
-            tenantTurnover: p.tenant_turnover,
-            violations_count: p.violations_count ?? 0,
-            evictions_count: p.evictions_count ?? 0,
-            bbl: p.bbl,
-          }))
+        // Merge PLUTO fields (unitstotal, yearbuilt, ownername) for each property
+        const propsWithPluto = await Promise.all(
+          propsResp.map(async (p: any) => {
+            let pluto = null;
+            try {
+              if (p.bbl) pluto = await landlordApi.fetchPlutoByBBL(p.bbl);
+            } catch (e) {
+              console.warn("Failed to fetch PLUTO for", p.bbl, e);
+            }
+            return {
+              address: p.address,
+              // keys expected by PropertyCard
+              occupancy_status: p.occupancy_status,
+              financial_performance: p.financial_performance,
+              tenant_turnover: p.tenant_turnover,
+              violations_count: p.violations_count ?? 0,
+              evictions_count: p.evictions_count ?? 0,
+              bbl: p.bbl,
+              // landlord-entered metadata (if available from backend)
+              average_rent: (p as any).average_rent ?? null,
+              occupancy_rate: (p as any).occupancy_rate ?? null,
+              turnover_rate: (p as any).turnover_rate ?? null,
+              // PLUTO fields (if available)
+              unitstotal: pluto?.unitstotal ?? pluto?.unitsres ?? null,
+              yearbuilt: pluto?.yearbuilt ?? null,
+              ownername: pluto?.ownername ?? null,
+            };
+          })
         );
+
+        setProperties(propsWithPluto);
         setViolations(
           violsResp.map((v) => ({ message: v.message, resolved: v.resolved }))
         );
