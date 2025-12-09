@@ -151,7 +151,7 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
   const { favorites, refresh: refreshFavorites } = useFavorites();
 
   const favorite = favorites.find((favorite) => favorite.bbl === building.bbl);
-  
+
   const navigate = useNavigate();
   return (
     <Paper
@@ -187,16 +187,20 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
           >
             {(() => {
               // Use unified_address if available (from building_locations)
-              if (building.unified_address && building.unified_address !== 'Address not available') {
+              if (
+                building.unified_address &&
+                building.unified_address !== "Address not available"
+              ) {
                 return building.unified_address;
               }
               // Fallback to house_number + street_name from registration
               if (registration) {
-                const addr = `${registration.house_number || ''} ${registration.street_name || ''}`.trim();
+                const addr =
+                  `${registration.house_number || ""} ${registration.street_name || ""}`.trim();
                 if (addr) return addr;
               }
               // Last resort: check if building has any address data
-              return 'Building Address';
+              return "Building Address";
             })()}
           </Typography>
           <Typography
@@ -207,9 +211,9 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontWeight: 500,
             }}
           >
-            {registration 
-              ? `${registration.boro || 'NYC'}, NY ${registration.zip || ''}`.trim()
-              : 'New York, NY'}
+            {registration
+              ? `${registration.boro || "NYC"}, NY ${registration.zip || ""}`.trim()
+              : "New York, NY"}
           </Typography>
           <Typography
             variant="body2"
@@ -218,13 +222,16 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
               fontSize: "0.9rem",
             }}
           >
-            BBL: {building.bbl}{registration ? ` | BIN: ${registration.bin}` : ''}
+            BBL: {building.bbl}
+            {registration ? ` | BIN: ${registration.bin}` : ""}
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Button
             variant="contained"
-            onClick={() => navigate(`/landlord/apply/${registration?.bbl || building.bbl}`)}
+            onClick={() =>
+              navigate(`/landlord/apply/${registration?.bbl || building.bbl}`)
+            }
             sx={{
               backgroundColor: "#FF6B35",
               color: "white",
@@ -448,37 +455,40 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
                 >
                   {building.registration ? (
                     <>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Registration ID:
-                    </strong>{" "}
-                    {building.registration.registration_id}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Last Registration:
-                    </strong>{" "}
-                    {new Date(
-                      building.registration.last_registration_date
-                    ).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Registration End:
-                    </strong>{" "}
-                    {new Date(
-                      building.registration.registration_end_date
-                    ).toLocaleDateString()}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: "#4A5568" }}>
-                    <strong style={{ color: "#2D3748" }}>
-                      Community Board:
-                    </strong>{" "}
-                    {building.registration.community_board}
-                  </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Registration ID:
+                        </strong>{" "}
+                        {building.registration.registration_id}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Last Registration:
+                        </strong>{" "}
+                        {new Date(
+                          building.registration.last_registration_date
+                        ).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Registration End:
+                        </strong>{" "}
+                        {new Date(
+                          building.registration.registration_end_date
+                        ).toLocaleDateString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#4A5568" }}>
+                        <strong style={{ color: "#2D3748" }}>
+                          Community Board:
+                        </strong>{" "}
+                        {building.registration.community_board}
+                      </Typography>
                     </>
                   ) : (
-                    <Typography variant="body2" sx={{ color: "#6B7280", fontStyle: "italic" }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "#6B7280", fontStyle: "italic" }}
+                    >
                       No registration information available
                     </Typography>
                   )}
@@ -831,7 +841,7 @@ const Building: React.FC = () => {
         pt: { xs: 8, sm: 10 },
       }}
     >
-      <Container maxWidth="lg">
+      <Container maxWidth="xl">
         <Button
           startIcon={<ArrowBack />}
           onClick={() => navigate("/search")}
