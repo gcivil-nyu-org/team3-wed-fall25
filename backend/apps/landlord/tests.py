@@ -7,9 +7,11 @@ discovery deterministic in environments that prefer `tests.py`.
 
 from django.test import TestCase
 from rest_framework.test import APIClient
+
 # from django.urls import reverse
 from django.contrib.auth import get_user_model
 from unittest.mock import patch, MagicMock
+
 # from unittest.mock import patch as um_patch
 # from unittest.mock import MagicMock as um_MagicMock
 # from unittest.mock import patch as mock_patch
