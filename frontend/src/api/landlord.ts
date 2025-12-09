@@ -1,5 +1,5 @@
 // src/api/landlord.ts
-import axios from "./axiosInstance";
+import axiosInstance from "./axiosInstance";
 
 export interface PropertyDTO {
   id: string;
@@ -90,17 +90,8 @@ export interface LandlordStatsDTO {
 // Your existing functions (keeping them as-is)
 export async function fetchProperties() {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<PropertyDTO[]>(`/landlord/properties/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<PropertyDTO[]>(`/landlord/properties/`);
 
     let data = resp.data as any;
 
@@ -123,17 +114,8 @@ export async function fetchProperties() {
 
 export async function fetchViolations() {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<ViolationDTO[]>(`/landlord/violations/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<ViolationDTO[]>(`/landlord/violations/`);
 
     let data = resp.data as any;
     if (data && typeof data === "object" && Array.isArray(data.data)) {
@@ -155,20 +137,10 @@ export async function fetchViolations() {
 
 export async function fetchReviews() {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<ReviewDTO[]>(
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<ReviewDTO[]>(
       // `/landlord/${landlordId}/reviews/`,
-      `/landlord/reviews/`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      `/landlord/reviews/`
     );
 
     let data = resp.data as any;
@@ -191,19 +163,9 @@ export async function fetchViolationsByBBL(
   bbl: string
 ): Promise<BuildingViolationDTO[]> {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<BuildingViolationDTO[]>(
-      `/landlord/violations/bbl/${bbl}/`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<BuildingViolationDTO[]>(
+      `/landlord/violations/bbl/${bbl}/`
     );
 
     let data = resp.data as any;
@@ -229,19 +191,9 @@ export async function fetchComplaintsByBBL(
   bbl: string
 ): Promise<BuildingComplaintDTO[]> {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<BuildingComplaintDTO[]>(
-      `/landlord/complaints/bbl/${bbl}/`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<BuildingComplaintDTO[]>(
+      `/landlord/complaints/bbl/${bbl}/`
     );
 
     let data = resp.data as any;
@@ -266,19 +218,9 @@ export async function fetchBuildingStats(
   bbl: string
 ): Promise<BuildingStatsDTO> {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<BuildingStatsDTO>(
-      `/landlord/building-stats/bbl/${bbl}/`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<BuildingStatsDTO>(
+      `/landlord/building-stats/bbl/${bbl}/`
     );
 
     let data = resp.data as any;
@@ -301,17 +243,8 @@ export async function fetchBuildingStats(
 
 export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.get<LandlordStatsDTO>(`/landlord/stats/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.get<LandlordStatsDTO>(`/landlord/stats/`);
 
     let data = resp.data as any;
     if (data && typeof data === "object" && data.data) {
@@ -334,23 +267,12 @@ export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
 
 export async function submitReviewResponse(reviewId: string, response: string) {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.post(
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.post(
       `/landlord/reviews/response/`,
       {
         review_id: reviewId,
         response: response,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -374,23 +296,12 @@ export async function submitReviewResponse(reviewId: string, response: string) {
 
 export async function flagReview(reviewId: string, reason: string) {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.post(
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.post(
       `/landlord/reviews/flag/`,
       {
         review_id: reviewId,
         reason: reason,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
       }
     );
 
@@ -422,18 +333,8 @@ export async function submitApplication(applicationData: {
   agreeTerms: boolean;
 }) {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.post(`/landlord/apply/`, applicationData, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.post(`/landlord/apply/`, applicationData);
 
     let data = resp.data as any;
     if (resp.status >= 200 && resp.status < 300) {
@@ -460,18 +361,8 @@ export async function updateBuildingInfo(
   payload: { average_rent?: number | null; occupancy_rate?: number | null }
 ) {
   try {
-    const token = localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    const resp = await axios.post(`/landlord/building/${bbl}/update/`, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.post(`/landlord/building/${bbl}/update/`, payload);
 
     const data = resp.data as any;
     if (resp.status >= 200 && resp.status < 300) {
@@ -499,27 +390,16 @@ export async function claimProperty(
   }
 ) {
   try {
-    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
     const payload: any = { bbl };
     if (options?.landlordType) payload.landlordType = options.landlordType;
     if (options?.organizationName) payload.organizationName = options.organizationName;
     if (options?.hpdRegistration) payload.hpdRegistration = options.hpdRegistration;
     if (options?.businessPhone) payload.businessPhone = options.businessPhone;
 
-    const resp = await axios.post(
+    // Use axiosInstance which has the token interceptor
+    const resp = await axiosInstance.post(
       `/landlord/apply/`,
-      payload,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      payload
     );
 
     const data = resp.data as any;

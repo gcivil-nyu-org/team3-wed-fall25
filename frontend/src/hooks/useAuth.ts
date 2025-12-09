@@ -64,27 +64,38 @@ export const useAuth = () => {
       const userData = authData?.user; // User data is not directly in login response, will be fetched by fallback
       
       if (accessToken) {
+        // Store tokens in both sessionStorage and localStorage for compatibility
         sessionStorage.setItem('access_token', accessToken);
+        localStorage.setItem('access_token', accessToken);
         if (refreshToken) {
           sessionStorage.setItem('refresh_token', refreshToken);
+          localStorage.setItem('refresh_token', refreshToken);
         }
         
-        // Always fetch fresh user data from profile endpoint to ensure we have the latest role
+        // Set user data from login response first (immediate)
+        if (userData) {
+          setUser(userData);
+        }
+        
+        // Try to fetch fresh user data from profile endpoint to ensure we have the latest role
+        // But don't fail the login if this fails - use the userData from login response
         try {
+          // Small delay to ensure token is stored before making the request
+          await new Promise(resolve => setTimeout(resolve, 100));
           const profileResponse = await fetchProfile();
           const freshUserData = profileResponse.data?.data || profileResponse.data;
-          setUser(freshUserData);
-          return { success: true, user: freshUserData };
-        } catch (profileErr) {
-          // Fallback to userData from login response if profile fetch fails
-          if (userData) {
-            setUser(userData);
-            return { success: true, user: userData };
+          if (freshUserData) {
+            setUser(freshUserData);
+            return { success: true, user: freshUserData };
           }
-          // If both fail, still return success but without user data
-          // The user state will be loaded by the useEffect hook
-          return { success: true, user: null };
+        } catch (profileErr: any) {
+          console.warn('Profile fetch failed after login, using login response data:', profileErr);
+          // Continue with userData from login response
         }
+        
+        // Return success with userData from login response (or null if not available)
+        // The useEffect hook will try to load user data on mount
+        return { success: true, user: userData || null };
       } else {
         throw new Error('No access token received');
       }

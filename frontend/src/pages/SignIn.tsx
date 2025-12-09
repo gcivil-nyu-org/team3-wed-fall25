@@ -48,28 +48,14 @@ export default function SignIn() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
         
-        // Wait a bit for user state to be updated, then redirect based on role
-        setTimeout(async () => {
-          // Use the auth hook's user state which should be updated by now
-          // Or fetch profile to ensure we have the latest user data
-          try {
-            const { fetchProfile } = await import('../api');
-            const profileResponse = await fetchProfile();
-            const userData = profileResponse.data?.data || profileResponse.data;
-            
-            if (userData?.role === 'landlord') {
-              navigate('/landlord/dashboard', { replace: true });
-            } else {
-              navigate('/dashboard', { replace: true });
-            }
-          } catch (err) {
-            // Fallback: use result.user if available, otherwise default to dashboard
-            const userData = result.user;
-            if (userData?.role === 'landlord') {
-              navigate('/landlord/dashboard', { replace: true });
-            } else {
-              navigate('/dashboard', { replace: true });
-            }
+        // Redirect based on user role from login result
+        // The user state in useAuth hook will be updated, but we use result.user for immediate redirect
+        setTimeout(() => {
+          const userData = result.user;
+          if (userData?.role === 'landlord') {
+            navigate('/landlord/dashboard', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
           }
         }, 500);
       } else {
