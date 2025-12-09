@@ -20,7 +20,7 @@ const MessageForm = ({
         setBody("");
         onSuccess();
 
-        alert("Sent");
+        // alert("Sent");
       } catch (e) {
         alert((e as AxiosError).message);
       }
