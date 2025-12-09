@@ -33,7 +33,8 @@ export const useAuth = () => {
         }
         
         const response = await fetchProfile();
-        const userData = response.data?.data || response.data;
+        // Profile endpoint returns user data directly, not wrapped in data object
+        const userData = response.data;
         setUser(userData);
       } catch (err) {
         // If profile fetch fails, clear the token and user state from both storages
@@ -58,10 +59,10 @@ export const useAuth = () => {
     try {
       const response = await loginUser(credentials);
       const responseData = response.data;
-      const authData = responseData?.data; // Extract the nested 'data' object
-      const accessToken = authData?.access || authData?.access_token || authData?.token;
-      const refreshToken = authData?.refresh || authData?.refresh_token;
-      const userData = authData?.user; // User data is not directly in login response, will be fetched by fallback
+      // Backend returns tokens directly in response.data, not nested in response.data.data
+      const accessToken = responseData?.access || responseData?.access_token || responseData?.token;
+      const refreshToken = responseData?.refresh || responseData?.refresh_token;
+      const userData = responseData?.user; // User data is included in login response
       
       if (accessToken) {
         // Store tokens in both sessionStorage and localStorage for compatibility
@@ -83,7 +84,8 @@ export const useAuth = () => {
           // Small delay to ensure token is stored before making the request
           await new Promise(resolve => setTimeout(resolve, 100));
           const profileResponse = await fetchProfile();
-          const freshUserData = profileResponse.data?.data || profileResponse.data;
+          // Profile endpoint returns user data directly, not wrapped in data object
+          const freshUserData = profileResponse.data;
           if (freshUserData) {
             setUser(freshUserData);
             return { success: true, user: freshUserData };
