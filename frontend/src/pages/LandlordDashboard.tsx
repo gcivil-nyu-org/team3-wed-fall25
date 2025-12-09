@@ -62,7 +62,7 @@ export default function LandlordDashboard() {
   const [violations, setViolations] = useState<any[] | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseLoading, setResponseLoading] = useState(false); // Add loading state for responses
 
@@ -70,7 +70,7 @@ export default function LandlordDashboard() {
     let mounted = true;
     async function load() {
       setLoading(true);
-      setError(null);
+      // setError(null);
       try {
         // Replace with actual landlordId - for now use demo id
         // const landlordId = "101";
@@ -134,7 +134,7 @@ export default function LandlordDashboard() {
         setProperties(mockProperties as any);
         setViolations(mockViolations as any);
         setReviews(mockReviews as any);
-        setError("Unable to load live landlord data; using mock data.");
+        // setError("Unable to load live landlord data; using mock data.");
       } finally {
         if (mounted) setLoading(false);
       }
