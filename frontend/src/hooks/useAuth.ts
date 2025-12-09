@@ -169,8 +169,16 @@ export const useAuth = () => {
   };
 
   const logout = () => {
+    // Clear all authentication tokens
     sessionStorage.removeItem('access_token');
     sessionStorage.removeItem('refresh_token');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    
+    // Clear admin session if present
+    sessionStorage.removeItem('admin_authenticated');
+    sessionStorage.removeItem('admin_username');
+    
     setUser(null);
     setError(null);
   };

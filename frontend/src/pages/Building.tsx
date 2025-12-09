@@ -16,6 +16,7 @@ import ReviewTab from "../components/Reviews";
 import AddFavoritesButton from "../components/AddFavoritesButton";
 import { useFavorites } from "../hooks/useFavorites";
 import RemoveFavoritesButton from "../components/RemoveFavoritesButton";
+import { useAuth } from "../hooks/useAuth";
 
 // Temporarily inline the BuildingData type to resolve export issue
 interface BuildingData {
@@ -149,6 +150,7 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
   const { registration, rent_stabilized, counts } = building;
 
   const { favorites, refresh: refreshFavorites } = useFavorites();
+  const { user } = useAuth();
 
   const favorite = favorites.find((favorite) => favorite.bbl === building.bbl);
   
@@ -222,20 +224,23 @@ const BuildingHeader: React.FC<{ building: BuildingData }> = ({ building }) => {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Button
-            variant="contained"
-            onClick={() => navigate(`/landlord/apply/${registration?.bbl || building.bbl}`)}
-            sx={{
-              backgroundColor: "#FF6B35",
-              color: "white",
-              fontWeight: 600,
-              "&:hover": {
-                backgroundColor: "#E55A2B",
-              },
-            }}
-          >
-            Apply as Landlord
-          </Button>
+          {/* Only show "Apply as Landlord" button for logged-in landlords */}
+          {user && user.role === "landlord" && (
+            <Button
+              variant="contained"
+              onClick={() => navigate(`/landlord/apply/${registration?.bbl || building.bbl}`)}
+              sx={{
+                backgroundColor: "#FF6B35",
+                color: "white",
+                fontWeight: 600,
+                "&:hover": {
+                  backgroundColor: "#E55A2B",
+                },
+              }}
+            >
+              Apply as Landlord
+            </Button>
+          )}
           {favorite ? (
             <RemoveFavoritesButton
               id={favorite.id}

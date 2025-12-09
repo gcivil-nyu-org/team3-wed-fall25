@@ -31,6 +31,12 @@ export default function AdminLogin() {
 
     // Simple authentication check
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+      // Clear any existing user sessions first
+      sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("refresh_token");
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      
       // Store admin session
       sessionStorage.setItem("admin_authenticated", "true");
       sessionStorage.setItem("admin_username", username);

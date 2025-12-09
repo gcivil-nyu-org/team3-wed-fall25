@@ -54,7 +54,9 @@ class LandlordRepository:
                 print(f"[LandlordRepository] failed to update community_reviews: {e}")
                 raise
 
-    def create_landlord_application(self, bbl: str, owner_user_id: int, status: str = "pending") -> bool:
+    def create_landlord_application(
+        self, bbl: str, owner_user_id: int, status: str = "pending"
+    ) -> bool:
         """
         Create a new landlord application/owner record with status
         Status can be: 'pending', 'approved', 'rejected'
@@ -122,7 +124,7 @@ class LandlordRepository:
                     ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
                     """
                 )
-                
+
                 db.execute(
                     """
                     UPDATE landlord_owners 
@@ -149,7 +151,7 @@ class LandlordRepository:
                     ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
                     """
                 )
-                
+
                 applications = db.query_all(
                     """
                     SELECT lo.id, lo.bbl, lo.owner_user_id, lo.status, lo.created_at, lo.updated_at,
@@ -178,7 +180,7 @@ class LandlordRepository:
                     ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
                     """
                 )
-                
+
                 properties = db.query_all(
                     """
                     SELECT bbl FROM landlord_owners 

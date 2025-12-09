@@ -274,7 +274,10 @@ class BuildingSearchView(APIView):
             return Response(
                 {
                     "result": False,
-                    "detail": "Query parameter 'q' (address, zip code, BBL, or borough) or at least one filter is required.",
+                    "detail": (
+                        "Query parameter 'q' (address, zip code, BBL, or borough) "
+                        "or at least one filter is required."
+                    ),
                     "data": [],
                     "total": 0,
                 },

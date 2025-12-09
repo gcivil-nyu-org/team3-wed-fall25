@@ -53,6 +53,22 @@ export default function LandlordDashboard() {
       navigate("/verify-email");
       return;
     }
+    
+    // Redirect non-landlords away from landlord dashboard
+    if (user && user.role !== "landlord") {
+      if (user.role === "tenant") {
+        navigate("/dashboard");
+      } else {
+        navigate("/");
+      }
+      return;
+    }
+    
+    // Redirect unauthenticated users
+    if (!user) {
+      navigate("/signin");
+      return;
+    }
   }, [user, navigate]);
 
   useEffect(() => {

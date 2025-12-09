@@ -14,7 +14,12 @@ export default function SignIn() {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loading } = useAuth();
+  const { login, loading, logout } = useAuth();
+
+  useEffect(() => {
+    // Clear any existing sessions when coming to sign in page
+    logout();
+  }, []);
 
   useEffect(() => {
     // Check if we should show resend option (from email verification failure)
@@ -43,9 +48,15 @@ export default function SignIn() {
       if (result.success) {
         setMessage({ type: 'success', text: 'Login successful! Redirecting...' });
         
-        // Redirect to dashboard after successful login
+        // Redirect based on user role
         setTimeout(() => {
-          navigate('/dashboard');
+          // Get user data to check role
+          const userData = result.user;
+          if (userData?.role === 'landlord') {
+            navigate('/landlord/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
         }, 1500);
       } else {
         // Check if it's an email verification error
