@@ -11,6 +11,9 @@ from .views import (
     ReviewResponseView,
     FlagReviewView,
     BuildingUpdateView,
+    PropertyClaimListView,
+    PropertyClaimApproveView,
+    PropertyClaimRejectView,
 )
 
 urlpatterns = [
@@ -54,4 +57,20 @@ urlpatterns = [
     path("stats/", LandlordStatsView.as_view(), name="landlord_stats"),
     path("reviews/response/", ReviewResponseView.as_view(), name="review_response"),
     path("reviews/flag/", FlagReviewView.as_view(), name="flag_review"),
+    # Admin endpoints for property claim management
+    path(
+        "claims/pending/",
+        PropertyClaimListView.as_view(),
+        name="property_claims_pending",
+    ),
+    path(
+        "claims/approve/",
+        PropertyClaimApproveView.as_view(),
+        name="property_claim_approve",
+    ),
+    path(
+        "claims/reject/",
+        PropertyClaimRejectView.as_view(),
+        name="property_claim_reject",
+    ),
 ]

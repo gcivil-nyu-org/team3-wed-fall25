@@ -32,19 +32,6 @@ STATICFILES_DIRS = [
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = "/static/"
-PROJECT_ROOT = BASE_DIR.parent
-STATIC_ROOT = PROJECT_ROOT / "static"
-STATICFILES_DIRS = [
-    BASE_DIR / "static",  # 여기에 _app 폴더가 생김
-]
-
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -91,6 +78,8 @@ INSTALLED_APPS = [
     "apps.building",
     "apps.community",
     "apps.neighborhood",
+    "apps.landlord",
+    "apps.admin",
 ]
 
 MIDDLEWARE = [

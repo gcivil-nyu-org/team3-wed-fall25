@@ -1,5 +1,15 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import {
+  fetchAdminStats,
+  fetchFlaggedReviews,
+  approveReview,
+  removeReview,
+  fetchWeeklyStats,
+  type ModerationItem,
+  type AdminStats,
+  type WeeklyStats,
+} from "../api/admin/adminApi";
 import {
   Box,
   Container,
@@ -36,81 +46,107 @@ import {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const [stats, setStats] = useState<AdminStats>({
+    totalUsers: 0,
+    totalReviews: 0,
+    pendingReports: 0,
+    buildingsTracked: 0,
+  });
+  const [moderationQueue, setModerationQueue] = useState<ModerationItem[]>([]);
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats>({
+    reviewsApproved: 0,
+    reviewsRemoved: 0,
+    usersBanned: 0,
+    reportsResolved: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     // Check if admin is authenticated
     const isAuthenticated = sessionStorage.getItem("admin_authenticated") === "true";
     if (!isAuthenticated) {
       navigate("/admin/login");
+      return;
     }
+    loadData();
   }, [navigate]);
-  // Mock data - replace with real API calls
-  const stats = {
-    totalUsers: 1247,
-    totalReviews: 3421,
-    pendingReports: 23,
-    buildingsTracked: 15689,
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, moderationData, weeklyData] = await Promise.all([
+        fetchAdminStats(),
+        fetchFlaggedReviews(),
+        fetchWeeklyStats(),
+      ]);
+      setStats(statsData);
+      setModerationQueue(moderationData);
+      setWeeklyStats(weeklyData);
+    } catch (error) {
+      console.error("Error loading admin data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const moderationQueue = [
-    {
-      id: 1,
-      type: "review",
-      content: "This building has serious maintenance issues...",
-      author: "user@example.com",
-      reportedBy: 5,
-      createdAt: "2025-10-29T10:30:00Z",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "review",
-      content: "Great landlord! Very responsive...",
-      author: "user2@example.com",
-      reportedBy: 1,
-      createdAt: "2025-10-29T09:15:00Z",
-      status: "pending",
-    },
-    {
-      id: 3,
-      type: "user",
-      content: "User reported for spam",
-      author: "spammer@example.com",
-      reportedBy: 12,
-      createdAt: "2025-10-28T16:45:00Z",
-      status: "pending",
-    },
-  ];
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
-  const activityLogs = [
-    {
-      id: 1,
-      action: "Approved review",
-      admin: "admin@housingtransparency.com",
-      target: "Review #4521",
-      timestamp: "2025-10-29T13:15:00Z",
-    },
-    {
-      id: 2,
-      action: "Removed review",
-      admin: "admin@housingtransparency.com",
-      target: "Review #4503",
-      timestamp: "2025-10-29T12:30:00Z",
-    },
-    {
-      id: 3,
-      action: "Banned user",
-      admin: "admin2@housingtransparency.com",
-      target: "user@spam.com",
-      timestamp: "2025-10-29T11:20:00Z",
-    },
-  ];
+  const handleApprove = async (id: number) => {
+    try {
+      await approveReview(id);
+      // Remove from queue
+      setModerationQueue((queue) => queue.filter((item) => item.id !== id));
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        pendingReports: Math.max(0, prev.pendingReports - 1),
+      }));
+      setWeeklyStats((prev) => ({
+        ...prev,
+        reviewsApproved: prev.reviewsApproved + 1,
+        reportsResolved: prev.reportsResolved + 1,
+      }));
+    } catch (error) {
+      console.error("Error approving review:", error);
+      alert("Failed to approve review. Please try again.");
+    }
+  };
 
-  const weeklyStats = {
-    reviewsApproved: 145,
-    reviewsRemoved: 12,
-    usersBanned: 3,
-    reportsResolved: 89,
+  const handleRemove = async (id: number) => {
+    if (!window.confirm("Are you sure you want to remove this review?")) {
+      return;
+    }
+    try {
+      await removeReview(id);
+      // Remove from queue
+      setModerationQueue((queue) => queue.filter((item) => item.id !== id));
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        pendingReports: Math.max(0, prev.pendingReports - 1),
+        totalReviews: Math.max(0, prev.totalReviews - 1),
+      }));
+      setWeeklyStats((prev) => ({
+        ...prev,
+        reviewsRemoved: prev.reviewsRemoved + 1,
+        reportsResolved: prev.reportsResolved + 1,
+      }));
+    } catch (error) {
+      console.error("Error removing review:", error);
+      alert("Failed to remove review. Please try again.");
+    }
+  };
+
+  const handleReview = (id: number) => {
+    const item = moderationQueue.find((i) => i.id === id);
+    if (item?.bbl) {
+      navigate(`/building/${item.bbl}`);
+    }
   };
 
   const platformHealth = {
@@ -118,18 +154,6 @@ export default function AdminDashboard() {
     dbStatus: "healthy",
     emailService: "healthy",
     storageUsage: 65,
-  };
-
-  const handleApprove = (_id: number) => {
-    // TODO: Implement approve action
-  };
-
-  const handleRemove = (_id: number) => {
-    // TODO: Implement remove action
-  };
-
-  const handleReview = (_id: number) => {
-    // TODO: Navigate to detail view
   };
 
   const getStatusColor = (status: string) => {
@@ -145,9 +169,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A";
     return new Date(dateString).toLocaleString();
   };
+
+  if (loading) {
+    return (
+      <Container maxWidth="xl" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+          <LinearProgress sx={{ width: "100%" }} />
+        </Box>
+      </Container>
+    );
+  }
 
   return (
     <Container maxWidth="xl" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
@@ -248,8 +283,13 @@ export default function AdminDashboard() {
           >
             Export Reports
           </Button>
-          <Button variant="outlined" startIcon={<Refresh />}>
-            Refresh Data
+          <Button
+            variant="outlined"
+            startIcon={<Refresh />}
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            {refreshing ? "Refreshing..." : "Refresh Data"}
           </Button>
           <Button variant="outlined" startIcon={<TrendingUp />}>
             View Analytics
@@ -524,64 +564,6 @@ export default function AdminDashboard() {
         </Box>
       </Stack>
 
-      {/* Recent Admin Activity Logs */}
-      <Box sx={{ mt: 3 }}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-              Recent Admin Activity
-            </Typography>
-
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Action</TableCell>
-                    <TableCell>Admin</TableCell>
-                    <TableCell>Target</TableCell>
-                    <TableCell>Timestamp</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {activityLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>
-                        <Chip
-                          label={log.action}
-                          size="small"
-                          color={
-                            log.action.includes("Removed") ||
-                            log.action.includes("Banned")
-                              ? "error"
-                              : "success"
-                          }
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{log.admin}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{log.target}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" fontSize="0.85rem">
-                          {formatDate(log.timestamp)}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            {activityLogs.length === 0 && (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <Typography variant="body1" color="text.secondary">
-                  No recent activity
-                </Typography>
-              </Box>
-            )}
-          </Paper>
-      </Box>
     </Container>
   );
 }

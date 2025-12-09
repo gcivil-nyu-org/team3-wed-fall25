@@ -5,6 +5,8 @@ import { ReviewList } from "../components/landlord/ReviewList";
 import type { Review } from "../components/landlord/ReviewList";
 import { ReviewResponseForm } from "../components/landlord/ReviewResponseForm";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "../hooks/useAuth";
 import * as landlordApi from "../api/landlord";
 
 // Example mock data
@@ -35,6 +37,8 @@ const mockReviews: Review[] = [
 ];
 
 export default function LandlordDashboard() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [properties, setProperties] = useState<any[] | null>(null);
   const [violations, setViolations] = useState<any[] | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
@@ -42,6 +46,14 @@ export default function LandlordDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseLoading, setResponseLoading] = useState(false); // Add loading state for responses
+
+  useEffect(() => {
+    // Check if user is verified
+    if (user && !user.is_verified) {
+      navigate("/verify-email");
+      return;
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     let mounted = true;

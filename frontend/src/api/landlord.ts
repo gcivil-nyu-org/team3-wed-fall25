@@ -489,3 +489,37 @@ export async function updateBuildingInfo(
   }
 }
 
+export async function claimProperty(bbl: string) {
+  try {
+    const token = sessionStorage.getItem("access_token") || localStorage.getItem("access_token");
+
+    if (!token) {
+      throw new Error("No authentication token found. Please log in.");
+    }
+
+    const resp = await axios.post(
+      `/landlord/apply/`,
+      { bbl },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = resp.data as any;
+    if (resp.status >= 200 && resp.status < 300) {
+      return data;
+    }
+    throw new Error(data?.error || `Property claim failed: ${resp.status}`);
+  } catch (error: any) {
+    console.error("claimProperty: error", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+}
+

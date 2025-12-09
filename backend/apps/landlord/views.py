@@ -44,11 +44,25 @@ class PropertiesView(APIView):
         # print(f"Fetching properties for user_id: {user_id}")
         try:
             with PostgresClient() as db:
+                # Ensure status column exists
+                try:
+                    db.execute(
+                        """
+                        ALTER TABLE landlord_owners 
+                        ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
+                        """
+                    )
+                except Exception:
+                    pass  # Column might already exist
+
+                # Only return approved properties
                 rows = db.query_all(
                     """
                     SELECT bbl
                     FROM landlord_owners
-                    WHERE owner_user_id = %s AND deleted_at IS NULL
+                    WHERE owner_user_id = %s 
+                    AND (status = 'approved' OR status IS NULL)
+                    AND deleted_at IS NULL
                     """,
                     (user_id,),
                 )
@@ -593,13 +607,16 @@ class LandlordApplicationView(APIView):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def landlord_apply_get(request):
-    """Handle landlord application submission."""
+    """Handle landlord application submission.
+
+    This endpoint can be called:
+    1. During sign-up (user already selected landlord role)
+    2. From property details page (convert tenant to landlord if needed)
+    """
     print("landlord_apply_get called")
     try:
         data = request.data
         bbl = data.get("bbl")
-        country = data.get("country")
-        agree_terms = data.get("agreeTerms")
         # Optional fields from form
         landlord_type = data.get("landlordType")
         organization_name = data.get("organizationName")
@@ -608,10 +625,10 @@ def landlord_apply_get(request):
 
         print("landlord application data:", data)
 
-        if not all([bbl, country, agree_terms]):
-            print("[LandlordApplyView] Missing required fields.")
+        if not bbl:
+            print("[LandlordApplyView] Missing required field: BBL")
             return Response(
-                {"error": "BBL, country, and terms agreement are required."},
+                {"error": "BBL is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -624,92 +641,67 @@ def landlord_apply_get(request):
             )
 
         user_id = request.user.id
-        print(f"landlord application by user_id: {user_id}")
-        with PostgresClient() as db:
-            # Check for existing application
-            existing = db.query_one(
-                """
-                SELECT id FROM landlord_owners 
-                WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
-                """,
-                (bbl, user_id),
+        user = request.user
+        print(f"landlord application by user_id: {user_id}, current role: {user.role}")
+
+        # Convert user to landlord if they're not already a landlord
+        if user.role != "landlord":
+            print(
+                f"[LandlordApplyView] Converting user {user_id} from {user.role} to landlord"
+            )
+            user.role = "landlord"
+            update_fields = ["role"]
+
+            # Set landlord_type if provided and not already set
+            if landlord_type and not user.landlord_type:
+                user.landlord_type = landlord_type
+                update_fields.append("landlord_type")
+
+            # Set other landlord fields if provided
+            if organization_name and not user.organization_name:
+                user.organization_name = organization_name
+                update_fields.append("organization_name")
+
+            if hpd_registration and not user.hpd_registration_number:
+                user.hpd_registration_number = hpd_registration
+                update_fields.append("hpd_registration_number")
+
+            if business_phone and not user.business_phone:
+                user.business_phone = business_phone
+                update_fields.append("business_phone")
+
+            user.save(update_fields=update_fields)
+            print(
+                f"[LandlordApplyView] User converted to landlord with fields: {update_fields}"
             )
 
-            if existing:
-                print(
-                    "[LandlordApplyView] Application already exists for this user and BBL."
-                )
-                return Response(
-                    {"error": "You already have an application for this BBL."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # Use repository to create application with pending status
+        repo = LandlordRepository()
+        success = repo.create_landlord_application(bbl, user_id, status="pending")
 
-            # Insert into landlord_owners
-            db.execute(
-                """
-                INSERT INTO landlord_owners (bbl, owner_user_id, created_at, updated_at)
-                VALUES (%s, %s, NOW(), NOW())
-                """,
-                (bbl, user_id),
+        if not success:
+            return Response(
+                {"error": "You already have an application for this property."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-
-            # Optionally update user profile with landlord information if provided
-            # Only update fields that are not already set
-            from django.contrib.auth import get_user_model
-
-            User = get_user_model()
-            try:
-                user = User.objects.get(id=user_id)
-                update_fields = []
-
-                if landlord_type and not user.landlord_type:
-                    user.landlord_type = landlord_type
-                    update_fields.append("landlord_type")
-
-                if organization_name and not user.organization_name:
-                    user.organization_name = organization_name
-                    update_fields.append("organization_name")
-
-                if hpd_registration and not user.hpd_registration_number:
-                    user.hpd_registration_number = hpd_registration
-                    update_fields.append("hpd_registration_number")
-
-                if business_phone and not user.business_phone:
-                    user.business_phone = business_phone
-                    update_fields.append("business_phone")
-
-                if update_fields:
-                    user.save(update_fields=update_fields)
-                    print(
-                        f"[LandlordApplyView] Updated user profile fields: {update_fields}"
-                    )
-            except User.DoesNotExist:
-                print(
-                    f"[LandlordApplyView] User {user_id} not found for profile update"
-                )
-            except Exception as e:
-                print(f"[LandlordApplyView] Error updating user profile: {e}")
-                # Don't fail the application if profile update fails
-
-            # Optional: If you still want to store the additional info in landlord_applications
-            # if all([full_name, email, phone, experience_years]):
-            #     db.execute(
-            #         """
-            #         INSERT INTO landlord_applications (
-            #             full_name, email, phone, experience_years, country, agree_terms, user_id
-            #         )
-            #         VALUES (%s, %s, %s, %s, %s, %s, %s)
-            #         """,
-            #         (full_name, email, phone, experience_years, country, agree_terms, user_id),
-            #     )
 
         return Response(
-            {"message": "Application submitted successfully."},
+            {
+                "message": (
+                    "Property claim request submitted successfully. "
+                    "It will be reviewed by an admin."
+                ),
+                "status": "pending",
+            },
             status=status.HTTP_201_CREATED,
         )
 
     except Exception as e:
-        print(f"[LandlordApplyView] DB error: {e}")
+        print(f"[LandlordApplyView] Error: {e}")
+        return Response(
+            {"error": f"Error submitting application: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
         return Response(
             {"error": "Internal server error."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1073,7 +1065,9 @@ class BuildingUpdateView(APIView):
                 # Upsert the values
                 db.execute(
                     """
-                    INSERT INTO landlord_property_meta (bbl, average_rent, occupancy_rate, updated_by, updated_at)
+                    INSERT INTO landlord_property_meta (
+                        bbl, average_rent, occupancy_rate, updated_by, updated_at
+                    )
                     VALUES (%s, %s, %s, %s, NOW())
                     ON CONFLICT (bbl) DO UPDATE SET
                       average_rent = EXCLUDED.average_rent,
@@ -1339,6 +1333,118 @@ class FlagReviewView(APIView):
             return Response({"data": row}, status=status.HTTP_200_OK)
         except Exception as e:
             print(f"[FlagReviewView] Error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class PropertyClaimListView(APIView):
+    """Get all pending property claim applications (Admin only)"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """List all pending property claim applications"""
+        # Check if user is admin/staff
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "Admin access required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            repo = LandlordRepository()
+            applications = repo.get_pending_applications()
+            return Response({"applications": applications}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[PropertyClaimListView] Error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class PropertyClaimApproveView(APIView):
+    """Approve a property claim application (Admin only)"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Approve a property claim application"""
+        # Check if user is admin/staff
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "Admin access required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            application_id = request.data.get("application_id")
+            if not application_id:
+                return Response(
+                    {"error": "application_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            repo = LandlordRepository()
+            success = repo.update_application_status(application_id, "approved")
+
+            if success:
+                return Response(
+                    {"message": "Property claim approved successfully."},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"error": "Failed to approve property claim."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        except Exception as e:
+            print(f"[PropertyClaimApproveView] Error: {e}")
+            return Response(
+                {"error": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class PropertyClaimRejectView(APIView):
+    """Reject a property claim application (Admin only)"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """Reject a property claim application"""
+        # Check if user is admin/staff
+        if not (request.user.is_staff or request.user.is_superuser):
+            return Response(
+                {"error": "Admin access required."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            application_id = request.data.get("application_id")
+            if not application_id:
+                return Response(
+                    {"error": "application_id is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            repo = LandlordRepository()
+            success = repo.update_application_status(application_id, "rejected")
+
+            if success:
+                return Response(
+                    {"message": "Property claim rejected."},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"error": "Failed to reject property claim."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+        except Exception as e:
+            print(f"[PropertyClaimRejectView] Error: {e}")
             return Response(
                 {"error": "Internal server error."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

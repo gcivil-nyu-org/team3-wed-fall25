@@ -54,16 +54,17 @@ class LandlordRepository:
                 print(f"[LandlordRepository] failed to update community_reviews: {e}")
                 raise
 
-    def create_landlord_application(self, bbl: str, owner_user_id: int) -> bool:
+    def create_landlord_application(self, bbl: str, owner_user_id: int, status: str = "pending") -> bool:
         """
-        Create a new landlord application/owner record
+        Create a new landlord application/owner record with status
+        Status can be: 'pending', 'approved', 'rejected'
         """
         with self.client_factory() as db:
             try:
                 # Check if this user already has an application for this BBL
                 existing = db.query_one(
                     """
-                    SELECT id FROM landlord_owners 
+                    SELECT id, status FROM landlord_owners 
                     WHERE bbl = %s AND owner_user_id = %s AND deleted_at IS NULL
                     """,
                     (bbl, owner_user_id),
@@ -72,16 +73,121 @@ class LandlordRepository:
                 if existing:
                     return False  # Already exists
 
-                # Insert new application
-                db.execute(
-                    """
-                    INSERT INTO landlord_owners (bbl, owner_user_id, created_at, updated_at)
-                    VALUES (%s, %s, NOW(), NOW())
-                    """,
-                    (bbl, owner_user_id),
-                )
+                # Check if status column exists, if not add it
+                try:
+                    db.execute(
+                        """
+                        INSERT INTO landlord_owners (bbl, owner_user_id, status, created_at, updated_at)
+                        VALUES (%s, %s, %s, NOW(), NOW())
+                        """,
+                        (bbl, owner_user_id, status),
+                    )
+                except Exception as e:
+                    # If status column doesn't exist, insert without it
+                    if "column" in str(e).lower() and "status" in str(e).lower():
+                        # Add status column if it doesn't exist
+                        db.execute(
+                            """
+                            ALTER TABLE landlord_owners 
+                            ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
+                            """
+                        )
+                        # Retry insert
+                        db.execute(
+                            """
+                            INSERT INTO landlord_owners (bbl, owner_user_id, status, created_at, updated_at)
+                            VALUES (%s, %s, %s, NOW(), NOW())
+                            """,
+                            (bbl, owner_user_id, status),
+                        )
+                    else:
+                        raise
                 return True
 
             except Exception as e:
                 print(f"[LandlordRepository] Error creating landlord application: {e}")
                 return False
+
+    def update_application_status(self, application_id: int, status: str) -> bool:
+        """
+        Update the status of a landlord application
+        Status can be: 'pending', 'approved', 'rejected'
+        """
+        with self.client_factory() as db:
+            try:
+                # Ensure status column exists
+                db.execute(
+                    """
+                    ALTER TABLE landlord_owners 
+                    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
+                    """
+                )
+                
+                db.execute(
+                    """
+                    UPDATE landlord_owners 
+                    SET status = %s, updated_at = NOW()
+                    WHERE id = %s AND deleted_at IS NULL
+                    """,
+                    (status, application_id),
+                )
+                return True
+            except Exception as e:
+                print(f"[LandlordRepository] Error updating application status: {e}")
+                return False
+
+    def get_pending_applications(self) -> list:
+        """
+        Get all pending property claim applications
+        """
+        with self.client_factory() as db:
+            try:
+                # Ensure status column exists
+                db.execute(
+                    """
+                    ALTER TABLE landlord_owners 
+                    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
+                    """
+                )
+                
+                applications = db.query_all(
+                    """
+                    SELECT lo.id, lo.bbl, lo.owner_user_id, lo.status, lo.created_at, lo.updated_at,
+                           u.email, u.first_name, u.last_name, u.organization_name
+                    FROM landlord_owners lo
+                    JOIN custom_user u ON lo.owner_user_id = u.id
+                    WHERE lo.status = 'pending' AND lo.deleted_at IS NULL
+                    ORDER BY lo.created_at DESC
+                    """
+                )
+                return applications or []
+            except Exception as e:
+                print(f"[LandlordRepository] Error fetching pending applications: {e}")
+                return []
+
+    def get_approved_properties_for_landlord(self, owner_user_id: int) -> list:
+        """
+        Get all approved properties for a landlord
+        """
+        with self.client_factory() as db:
+            try:
+                # Ensure status column exists
+                db.execute(
+                    """
+                    ALTER TABLE landlord_owners 
+                    ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'pending'
+                    """
+                )
+                
+                properties = db.query_all(
+                    """
+                    SELECT bbl FROM landlord_owners 
+                    WHERE owner_user_id = %s 
+                    AND status = 'approved' 
+                    AND deleted_at IS NULL
+                    """
+                )
+                return [p["bbl"] for p in properties] if properties else []
+            except Exception as e:
+                print(f"[LandlordRepository] Error fetching approved properties: {e}")
+                return []

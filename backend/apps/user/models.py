@@ -72,8 +72,10 @@ class CustomUser(AbstractUser):
         """Validate that role-specific fields are filled based on role"""
         from django.core.exceptions import ValidationError
 
-        # Only validate if this is a new instance (no pk) or if we're explicitly setting role-specific fields
-        # This allows partial updates (e.g., updating username) without requiring tenant_type to be re-sent
+        # Only validate if this is a new instance (no pk) or if we're
+        # explicitly setting role-specific fields
+        # This allows partial updates (e.g., updating username) without
+        # requiring tenant_type to be re-sent
         if self.role == "tenant" and not self.tenant_type:
             # Check if this is an existing user with tenant_type already set
             if self.pk:

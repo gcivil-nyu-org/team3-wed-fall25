@@ -44,7 +44,9 @@ import {
   fetchViolationsByBBL,
   fetchComplaintsByBBL,
   fetchBuildingStats,
+  claimProperty,
 } from "../api/landlord";
+import { useAuth } from "../hooks/useAuth";
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -132,6 +134,7 @@ const mockBuildingStats = {
 export default function BuildingDetail() {
   const { bbl } = useParams<{ bbl: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +148,10 @@ export default function BuildingDetail() {
     occupancyRate: "",
   });
   const [saveMessage, setSaveMessage] = useState<{ open: boolean; text?: string; severity?: "success" | "error" }>(
+    { open: false }
+  );
+  const [claimingProperty, setClaimingProperty] = useState(false);
+  const [claimMessage, setClaimMessage] = useState<{ open: boolean; text?: string; severity?: "success" | "error" }>(
     { open: false }
   );
 
@@ -223,6 +230,31 @@ export default function BuildingDetail() {
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleClaimProperty = async () => {
+    if (!bbl) return;
+    
+    setClaimingProperty(true);
+    setClaimMessage({ open: false });
+    
+    try {
+      await claimProperty(bbl);
+      setClaimMessage({
+        open: true,
+        text: "Property claim submitted successfully! It will be reviewed by an admin.",
+        severity: "success",
+      });
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message || "Failed to claim property";
+      setClaimMessage({
+        open: true,
+        text: errorMsg,
+        severity: "error",
+      });
+    } finally {
+      setClaimingProperty(false);
+    }
   };
   const getViolationSeverityColor = (violationClass: string) => {
     switch (violationClass) {
@@ -326,6 +358,34 @@ export default function BuildingDetail() {
         <Alert severity="warning" sx={{ mb: 2 }}>
           {error}
         </Alert>
+      )}
+
+      {/* Property Claim Button - Only visible to logged-in landlords */}
+      {user && user.role === "landlord" && (
+        <Box sx={{ mb: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleClaimProperty}
+            disabled={claimingProperty}
+            sx={{ mb: 1 }}
+          >
+            {claimingProperty ? "Submitting..." : "This is my property"}
+          </Button>
+          <Snackbar
+            open={claimMessage.open}
+            autoHideDuration={6000}
+            onClose={() => setClaimMessage({ open: false })}
+          >
+            <Alert
+              onClose={() => setClaimMessage({ open: false })}
+              severity={claimMessage.severity || "info"}
+              sx={{ width: "100%" }}
+            >
+              {claimMessage.text}
+            </Alert>
+          </Snackbar>
+        </Box>
       )}
 
       {/* Quick Stats */}

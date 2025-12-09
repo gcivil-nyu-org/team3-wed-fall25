@@ -185,7 +185,9 @@ class Command(BaseCommand):
             for review in reviews_data:
                 cursor.execute(
                     """
-                    INSERT INTO community_reviews (user_id, bbl, rating, title, body, created_at, updated_at)
+                    INSERT INTO community_reviews (
+                        user_id, bbl, rating, title, body, created_at, updated_at
+                    )
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT DO NOTHING
                     """,
@@ -257,7 +259,9 @@ class Command(BaseCommand):
                 created_at = datetime.now() - timedelta(days=2 - i, hours=12 - i * 2)
                 cursor.execute(
                     """
-                    INSERT INTO community_messages (sender_id, receiver_id, bbl, body, read_at, created_at, updated_at)
+                    INSERT INTO community_messages (
+                        sender_id, receiver_id, bbl, body, read_at, created_at, updated_at
+                    )
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
                     [
