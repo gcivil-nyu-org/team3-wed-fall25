@@ -79,7 +79,7 @@ INSTALLED_APPS = [
     "apps.community",
     "apps.neighborhood",
     "apps.landlord",
-    "apps.admin",
+    "apps.admin_panel",
 ]
 
 MIDDLEWARE = [
