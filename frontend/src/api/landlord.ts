@@ -399,6 +399,47 @@ export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
   }
 }
 
+// Toggle resolved state for a violation by id
+export async function toggleViolationResolved(violationId: number | string, resolved: boolean) {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) throw new Error("No authentication token found. Please log in.");
+
+    // backend expects a patch to /landlord/violation/<id>/ with { resolved: true|false }
+    const resp = await axios.patch(
+      `/landlord/violation/${violationId}/`,
+      { resolved },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return resp.data;
+  } catch (err) {
+    console.error("toggleViolationResolved error", err);
+    throw err;
+  }
+}
+
+// Toggle resolved state for a complaint by id
+export async function toggleComplaintResolved(complaintId: number | string, resolved: boolean) {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) throw new Error("No authentication token found. Please log in.");
+
+    const resp = await axios.patch(
+      `/landlord/complaint/${complaintId}/`,
+      { resolved },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return resp.data;
+  } catch (err) {
+    console.error("toggleComplaintResolved error", err);
+    throw err;
+  }
+}
+
 export async function submitReviewResponse(reviewId: string, response: string) {
   try {
     const token = localStorage.getItem("access_token");
@@ -524,7 +565,7 @@ export async function submitApplication(applicationData: {
 // this helper attempts POST to `/landlord/building/{bbl}/update/` and returns the server payload.
 export async function updateBuildingInfo(
   bbl: string,
-  payload: { average_rent?: number | null; occupancy_rate?: number | null }
+  payload: { average_rent?: number | null; occupancy_rate?: number | null; turnover_rate?: number | null }
 ) {
   try {
     const token = localStorage.getItem("access_token");

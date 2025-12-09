@@ -9,6 +9,8 @@ from .views import (
     BuildingStatsView,
     BuildingPlutoView,
     LandlordStatsView,
+    ViolationUpdateView,
+    ComplaintUpdateView,
     ReviewResponseView,
     FlagReviewView,
     BuildingUpdateView,
@@ -56,6 +58,17 @@ urlpatterns = [
         "building/<str:bbl>/pluto/",
         BuildingPlutoView.as_view(),
         name="building_pluto",
+    ),
+    # Update endpoints for individual violations/complaints
+    path(
+        "violation/<int:violation_id>/",
+        ViolationUpdateView.as_view(),
+        name="violation_update",
+    ),
+    path(
+        "complaint/<int:complaint_id>/",
+        ComplaintUpdateView.as_view(),
+        name="complaint_update",
     ),
     path("stats/", LandlordStatsView.as_view(), name="landlord_stats"),
     path("reviews/response/", ReviewResponseView.as_view(), name="review_response"),

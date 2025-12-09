@@ -18,6 +18,14 @@ export interface PropertyCardProps {
   tenant_turnover: string | null;
   violations_count?: number;
   evictions_count?: number;
+  average_rent?: number | null;
+  occupancy_rate?: number | null;
+  // PLUTO fields
+  unitstotal?: number | null;
+  yearbuilt?: number | null;
+  ownername?: string | null;
+  // Landlord-entered numeric turnover (percent)
+  turnover_rate?: number | null;
 }
 
 export function PropertyCard({
@@ -28,6 +36,12 @@ export function PropertyCard({
   tenant_turnover,
   violations_count = 0,
   evictions_count = 0,
+  average_rent,
+  occupancy_rate,
+  unitstotal,
+  yearbuilt,
+  ownername,
+  turnover_rate,
 }: PropertyCardProps) {
   const navigate = useNavigate();
 
@@ -35,9 +49,13 @@ export function PropertyCard({
     navigate(`/landlord/building/${bbl}`); 
   };
   // console.log("PropertyCard render:", { id, bbl, address, evictions_count, violations_count });
-  // Format the data for display
-  const occupancyDisplay = occupancy_status || "Unknown";
-  const financialDisplay = financial_performance || "Unknown";
+  // Prefer landlord-entered numeric metadata when available
+  const occupancyDisplay = occupancy_rate !== undefined && occupancy_rate !== null
+    ? `${Number(occupancy_rate).toFixed(1)}% occupied`
+    : (occupancy_status || "Unknown");
+  const financialDisplay = average_rent !== undefined && average_rent !== null
+    ? `$${Number(average_rent).toLocaleString()}`
+    : (financial_performance || "Unknown");
   const turnoverDisplay = tenant_turnover || "Unknown";
 
   return (
@@ -66,6 +84,29 @@ export function PropertyCard({
             color="default"
             size="small"
           />
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+          <Chip
+            label={`Units: ${unitstotal ?? "N/A"}`}
+            color={unitstotal && unitstotal > 0 ? "primary" : "default"}
+            size="small"
+          />
+          <Chip
+            label={`Year: ${yearbuilt ?? "N/A"}`}
+            color={yearbuilt ? "primary" : "default"}
+            size="small"
+          />
+          {turnover_rate !== undefined && turnover_rate !== null ? (
+            <Chip
+              label={`Turnover rate: ${Number(turnover_rate).toFixed(1)}%`}
+              color="default"
+              size="small"
+            />
+          ) : null}
+          {ownername ? (
+            <Chip label={`Owner: ${ownername}`} color="secondary" size="small" />
+          ) : null}
         </Box>
 
         <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
