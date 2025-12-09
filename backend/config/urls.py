@@ -34,7 +34,8 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
-    path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    # Use custom login view under /api/auth/login/ (defined in apps.user.urls).
+    # Keep token refresh endpoint for JWT refresh operations.
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/", include("apps.user.urls")),
     path("api/building/", include("apps.building.urls")),
