@@ -75,31 +75,16 @@ export const useAuth = () => {
           localStorage.setItem('refresh_token', refreshToken);
         }
         
-        // Set user data from login response first (immediate)
+        // Set user data from login response immediately
+        // Don't fetch profile here - it causes 401 errors. The useEffect hook will load it on mount.
         if (userData) {
           setUser(userData);
+          return { success: true, user: userData };
         }
         
-        // Try to fetch fresh user data from profile endpoint to ensure we have the latest role
-        // But don't fail the login if this fails - use the userData from login response
-        try {
-          // Small delay to ensure token is stored before making the request
-          await new Promise(resolve => setTimeout(resolve, 100));
-          const profileResponse = await fetchProfile();
-          // Backend middleware wraps responses in {result: true, data: {...}}
-          const freshUserData = profileResponse.data?.data || profileResponse.data;
-          if (freshUserData) {
-            setUser(freshUserData);
-            return { success: true, user: freshUserData };
-          }
-        } catch (profileErr: any) {
-          console.warn('Profile fetch failed after login, using login response data:', profileErr);
-          // Continue with userData from login response
-        }
-        
-        // Return success with userData from login response (or null if not available)
-        // The useEffect hook will try to load user data on mount
-        return { success: true, user: userData || null };
+        // If no user data in login response, return success anyway
+        // The useEffect hook will fetch the profile on mount
+        return { success: true, user: null };
       } else {
         throw new Error('No access token received');
       }
