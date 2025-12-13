@@ -360,7 +360,7 @@ export default function BuildingDetail() {
       </Box>
     );
   }
-  const topbarHeight = 64; // Adjust if your topbar height is different
+  // const topbarHeight = 64; // Adjust if your topbar height is different
   return (
     <Box
       sx={{
