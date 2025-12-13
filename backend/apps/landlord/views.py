@@ -1666,3 +1666,38 @@ class FlagReviewView(APIView):
                 {"error": "Internal server error."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+class LandlordsByBBLView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, bbl):
+        try:
+            with PostgresClient() as db:
+                rows = db.query_all(
+                    """
+                    SELECT DISTINCT
+                        cu.id,
+                        cu.username,
+                        cu.email
+                    FROM landlord_owners AS lo
+                    JOIN custom_user AS cu
+                      ON lo.owner_user_id = cu.id
+                    WHERE lo.bbl = %s
+                      AND lo.deleted_at IS NULL
+                    """,
+                    (bbl,),
+                )
+
+            landlords = [
+                {
+                    "user_id": row["id"],
+                    "username": row["username"],
+                    "email": row["email"],
+                }
+                for row in rows
+            ]
+
+            return Response(landlords, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"[LandlordsByBBLView] DB error: {e}")
+            return Response([], status=status.HTTP_200_OK)

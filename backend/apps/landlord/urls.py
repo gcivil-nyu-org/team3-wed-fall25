@@ -14,6 +14,7 @@ from .views import (
     ReviewResponseView,
     FlagReviewView,
     BuildingUpdateView,
+    LandlordsByBBLView,
 )
 
 urlpatterns = [
@@ -73,4 +74,9 @@ urlpatterns = [
     path("stats/", LandlordStatsView.as_view(), name="landlord_stats"),
     path("reviews/response/", ReviewResponseView.as_view(), name="review_response"),
     path("reviews/flag/", FlagReviewView.as_view(), name="flag_review"),
+    path(
+        "landlords/<str:bbl>/",
+        LandlordsByBBLView.as_view(),
+        name="landlords-by-bbl",
+    ),
 ]
