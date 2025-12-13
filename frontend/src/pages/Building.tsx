@@ -16,6 +16,7 @@ import ReviewTab from "../components/Reviews";
 import AddFavoritesButton from "../components/AddFavoritesButton";
 import { useFavorites } from "../hooks/useFavorites";
 import RemoveFavoritesButton from "../components/RemoveFavoritesButton";
+import { LandlordList } from "../components/landlord/LandlordList.js";
 
 // Temporarily inline the BuildingData type to resolve export issue
 interface BuildingData {
@@ -403,6 +404,7 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
     { id: "violations", label: "Violations" },
     { id: "evictions", label: "Evictions" },
     { id: "reviews", label: "Reviews" },
+    { id: "landlords", label: "Landlords" },
   ];
 
   const renderTabContent = () => {
@@ -712,6 +714,9 @@ const BuildingTabs: React.FC<{ building: BuildingData }> = ({ building }) => {
 
       case "reviews":
         return <ReviewTab bbl={building.bbl} />;
+
+      case "landlords":
+        return <LandlordList bbl={building.bbl} />;
 
       default:
         return null;

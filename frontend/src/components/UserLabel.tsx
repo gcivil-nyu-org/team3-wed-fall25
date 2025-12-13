@@ -31,6 +31,7 @@ const UserLabel = ({
           border: "none",
           background: "#fff",
           cursor: enableActions ? "pointer" : "default",
+          paddingLeft: 1,
         }}
         component={enableActions ? "button" : "div"}
         onClick={handleClick}
