@@ -1,1205 +1,1010 @@
-# python
-import importlib
-import inspect
-from unittest.mock import patch
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from django.test import TestCase
+from unittest.mock import patch
 
 from infrastructures.postgres.building_repository import BuildingRepository
+from infrastructures.postgres.landlord_repository import LandlordRepository
 from infrastructures.postgres.neighborhood_repository import NeighborhoodRepository
-from infrastructures.postgres.postgres_client import PostgresClient
+from infrastructures.postgres.postgres_client import (
+    PostgresClient,
+    DatabaseError,  # type: ignore
+)
 
 
-class PostgresModuleSmokeTests(TestCase):
-    def test_module_importable(self):
-        try:
-            mod = importlib.import_module("infrastructures.postgres")
-        except ImportError:
-            self.skipTest("backend.infrastructures.postgres 모듈이 없음")
-        self.assertIsNotNone(mod)
+# ============================================================
+# 공통 Fake 객체들
+# ============================================================
 
-    def test_functions_and_classes_do_not_raise_when_called_if_possible(self):
-        try:
-            mod = importlib.import_module("infrastructures.postgres")
-        except ImportError:
-            self.skipTest("backend.infrastructures.postgres 모듈이 없음")
 
-        # 모듈에 정의된 함수들 시도
-        for name, func in inspect.getmembers(mod, inspect.isfunction):
-            if getattr(func, "__module__", None) != mod.__name__:
-                continue
-            try:
-                func()
-            except TypeError:
-                # 시그니처가 달라 호출 불가하면 건너뜀
-                continue
-            except Exception:
-                # 내부 예외는 실패로 처리하지 않음
-                continue
+class FakeCursor:
+    """
+    psycopg2 RealDictCursor를 대체하는 간단 Fake.
+    - rows: fetch 결과
+    - rowcount: execute 결과 row 수(대충 int만 있어도 됨)
+    """
 
-        # 모듈에 정의된 클래스들 시도
-        for name, cls in inspect.getmembers(mod, inspect.isclass):
-            if getattr(cls, "__module__", None) != mod.__name__:
-                continue
-            try:
-                cls()
-            except TypeError:
-                continue
-            except Exception:
-                continue
-        self.assertTrue(True)
+    def __init__(self, rows: Optional[List[Dict[str, Any]]] = None, fail: bool = False):
+        self.rows: List[Dict[str, Any]] = rows or []
+        self.fail = fail
+        self.executed_sql: List[str] = []
+        self.rowcount: int = 0  # PostgresClient.execute에서 접근함
+
+    def execute(self, sql, params=None):
+        self.executed_sql.append(str(sql))
+        if self.fail:
+            raise Exception("Fake SQL error")
+        # 대충 rows 길이만큼 rowcount 설정 (정확할 필요 없음)
+        self.rowcount = len(self.rows)
+
+    def fetchone(self):
+        if not self.rows:
+            return None
+        return self.rows[0]
+
+    def fetchall(self):
+        return list(self.rows)
+
+    def close(self):
+        pass
+
+
+class FakeConnection:
+    """psycopg2 connection 대체용 Fake."""
+
+    def __init__(self, cursor: FakeCursor):
+        self.cursor_obj = cursor
+        self.autocommit = False
+        self.closed = False
+        self.committed = False
+        self.rolled_back = False
+
+    def cursor(self, cursor_factory=None):
+        return self.cursor_obj
+
+    def commit(self):
+        self.committed = True
+
+    def rollback(self):
+        self.rolled_back = True
+
+    def close(self):
+        self.closed = True
+
+
+class DummyDB:
+    """
+    Repository에서 사용하는 최소 기능 Fake DB.
+    - query_one / query_all 결과를 순서대로 꺼내서 반환.
+    """
+
+    def __init__(
+        self,
+        *,
+        query_one_results: Optional[List[Optional[Dict[str, Any]]]] = None,
+        query_all_results: Optional[List[List[Dict[str, Any]]]] = None,
+        execute_result: int = 1,
+        execute_fail: bool = False,
+    ):
+        self._query_one_results = list(query_one_results or [])
+        self._query_all_results = list(query_all_results or [])
+        self._execute_result = execute_result
+        self._execute_fail = execute_fail
+
+    # context manager
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def _pop_one(self, store, default):
+        return store.pop(0) if store else default
+
+    def query_one(self, sql, params=None):
+        return self._pop_one(self._query_one_results, None)
+
+    def query_all(self, sql, params=None):
+        return self._pop_one(self._query_all_results, [])
+
+    def execute(self, sql, params=None, returning=None):
+        if self._execute_fail:
+            raise Exception("Dummy execute failed")
+        return self._execute_result
+
+
+# ============================================================
+# PostgresClient 테스트
+# ============================================================
 
 
 class PostgresClientTests(TestCase):
-    def setUp(self):
-        self.client = PostgresClient()
+    def _patch_env(self, mock_get_env):
+        # get_env()가 callable을 돌려주므로, 그 안에서 key로 조회
+        mock_get_env.return_value = lambda key, default=None: {
+            "DB_NAME": "test_db",
+            "DB_USER": "user",
+            "DB_PASSWORD": "pw",
+            "DB_HOST": "localhost",
+            "DB_PORT": 5432,
+        }.get(key, default)
 
-    def test_postgres_client_initialization(self):
-        """Test PostgresClient initialization"""
-        self.assertIsNotNone(self.client._params)
-        self.assertIn("dbname", self.client._params)
-        self.assertIn("user", self.client._params)
-        self.assertIn("password", self.client._params)
-        self.assertIn("host", self.client._params)
-        self.assertIn("port", self.client._params)
-        self.assertIsNone(self.client.conn)
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_context_manager_commit_and_close(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
 
-    def test_postgres_client_connection(self):
-        """Test actual database connection"""
-        try:
-            with self.client as db:
-                self.assertEqual(db, self.client)
-                self.assertIsNotNone(self.client.conn)
-                # Test a simple query
-                result = db.query_one("SELECT 1 as test_value")
-                self.assertEqual(result["test_value"], 1)
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
+        cursor = FakeCursor(rows=[{"test_value": 1}])
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
 
-    def test_postgres_client_query_one(self):
-        """Test query_one with real database"""
-        try:
-            with self.client as db:
-                # Test with result
-                result = db.query_one("SELECT 42 as answer")
-                self.assertEqual(result["answer"], 42)
+        client = PostgresClient()
+        with client as db:
+            row = db.query_one("SELECT 1 as test_value")
+            self.assertEqual(row["test_value"], 1)
+            self.assertFalse(conn.committed)
+            self.assertFalse(conn.closed)
 
-                # Test with no result
-                result = db.query_one("SELECT 1 WHERE 1 = 0")
-                self.assertIsNone(result)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # with 블록 정상 종료 시 commit + close
+        self.assertTrue(conn.committed)
+        self.assertTrue(conn.closed)
+        self.assertIsNone(client.conn)
 
-    def test_postgres_client_query_all(self):
-        """Test query_all with real database"""
-        try:
-            with self.client as db:
-                # Test with results
-                result = db.query_all("SELECT generate_series(1, 3) as num")
-                self.assertEqual(len(result), 3)
-                self.assertEqual(result[0]["num"], 1)
-                self.assertEqual(result[1]["num"], 2)
-                self.assertEqual(result[2]["num"], 3)
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_context_manager_rollback_on_exception(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
 
-                # Test with no results
-                result = db.query_all("SELECT 1 WHERE 1 = 0")
-                self.assertEqual(result, [])
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
 
-    def test_postgres_client_execute(self):
-        """Test execute with real database"""
-        try:
-            with self.client as db:
-                # Test execute without returning
-                result = db.execute("SELECT 1")
-                self.assertIsNotNone(result)
+        client = PostgresClient()
 
-                # Test execute with returning
-                result = db.execute("SELECT 99 as test_id", returning="test_id")
-                self.assertEqual(result, 99)
-        except Exception as e:
-            self.skipTest(f"Database execute failed: {e}")
+        with self.assertRaises(RuntimeError):
+            with client:
+                raise RuntimeError("boom")
 
-    def test_postgres_client_context_manager(self):
-        """Test context manager behavior"""
-        try:
-            # Test normal exit
-            with self.client as db:
-                self.assertIsNotNone(db.conn)
-            self.assertIsNone(self.client.conn)
-        except Exception as e:
-            self.skipTest(f"Database context manager failed: {e}")
+        self.assertTrue(conn.rolled_back)
+        self.assertTrue(conn.closed)
+
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_query_one_and_all(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            # query_one
+            cursor.rows = [{"answer": 42}]
+            row = db.query_one("SELECT 42 as answer")
+            self.assertEqual(row["answer"], 42)
+
+            cursor.rows = []
+            row = db.query_one("SELECT 1 WHERE 1=0")
+            self.assertIsNone(row)
+
+            # query_all
+            cursor.rows = [{"num": 1}, {"num": 2}, {"num": 3}]
+            rows = db.query_all("SELECT generate_series(1,3) as num")
+            self.assertEqual(len(rows), 3)
+            self.assertEqual(rows[0]["num"], 1)
+
+            cursor.rows = []
+            rows = db.query_all("SELECT 1 WHERE 1=0")
+            self.assertEqual(rows, [])
+
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_execute_with_and_without_returning(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            # returning 없음
+            cursor.rows = []
+            result = db.execute("UPDATE something SET x=1")
+            self.assertIsInstance(result, int)
+
+            # returning 있음
+            cursor.rows = [{"id": 99}]
+            result = db.execute("SELECT 99 as id", returning="id")
+            self.assertEqual(result, 99)
+
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_exists_and_scalar(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            # exists True
+            cursor.rows = [{"value": 1}]
+            self.assertTrue(db.exists("SELECT 1"))
+
+            # exists False
+            cursor.rows = []
+            self.assertFalse(db.exists("SELECT 1 WHERE 1=0"))
+
+            # scalar 기본
+            cursor.rows = [{"value": 42}]
+            self.assertEqual(db.scalar("SELECT 42 as value"), 42)
+
+            # scalar column 지정
+            cursor.rows = [{"test_value": 7, "other": 9}]
+            self.assertEqual(
+                db.scalar("SELECT 7 as test_value, 9 as other", column="test_value"), 7
+            )
+
+            # scalar no result
+            cursor.rows = []
+            self.assertIsNone(db.scalar("SELECT 1 WHERE 1=0"))
+
+    @patch("infrastructures.postgres.postgres_client.execute_values")
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_bulk_insert_variants(self, mock_get_env, mock_connect, mock_exec_values):
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            rows = [{"id": 1, "name": "a"}, {"id": 2, "name": "b"}]
+
+            # 기본 bulk_insert
+            count = db.bulk_insert("my_table", ["id", "name"], rows)
+            self.assertEqual(count, 2)
+            self.assertTrue(mock_exec_values.called)
+
+            mock_exec_values.reset_mock()
+
+            # conflict_target + DO NOTHING
+            db.bulk_insert(
+                "my_table",
+                ["id", "name"],
+                rows,
+                conflict_target=["id"],
+                do_update=False,
+            )
+            self.assertTrue(mock_exec_values.called)
+
+            mock_exec_values.reset_mock()
+
+            # conflict_target + DO UPDATE
+            db.bulk_insert(
+                "my_table",
+                ["id", "name"],
+                rows,
+                conflict_target=["id"],
+                do_update=True,
+            )
+            self.assertTrue(mock_exec_values.called)
+
+    @patch("infrastructures.postgres.postgres_client.execute_values")
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_bulk_insert_empty_rows_returns_zero(
+        self, mock_get_env, mock_connect, mock_exec_values
+    ):
+        """rows가 비어있을 때 0 반환 & execute_values 호출 안 됨."""
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor()
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            count = db.bulk_insert("my_table", ["id"], [])
+            self.assertEqual(count, 0)
+            mock_exec_values.assert_not_called()
+
+    @patch("infrastructures.postgres.postgres_client.psycopg2.connect")
+    @patch("infrastructures.postgres.postgres_client.get_env")
+    def test_error_wrapping_in_database_error(self, mock_get_env, mock_connect):
+        self._patch_env(mock_get_env)
+
+        cursor = FakeCursor(fail=True)
+        conn = FakeConnection(cursor)
+        mock_connect.return_value = conn
+
+        client = PostgresClient()
+        with client as db:
+            with self.assertRaises(DatabaseError):
+                db.query_one("SELECT 1")
+
+            with self.assertRaises(DatabaseError):
+                db.query_all("SELECT 1")
+
+            with self.assertRaises(DatabaseError):
+                db.execute("UPDATE something SET x=1")
+
+
+# ============================================================
+# BuildingRepository 테스트
+# ============================================================
 
 
 class BuildingRepositoryTests(TestCase):
     def setUp(self):
-        self.repository = BuildingRepository()
+        self.repo = BuildingRepository()
 
-    def test_building_repository_initialization(self):
-        """Test BuildingRepository initialization"""
-        self.assertEqual(self.repository.client_factory, PostgresClient)
+    def test_get_by_bbl_basic_flow(self):
+        """location/registration/rent 등 기본 흐름이 문제 없이 돈다."""
+        location_row = {
+            "address": "123 Main St",
+            "house_number": "123",
+            "street_name": "MAIN ST",
+            "borough": "MANHATTAN",
+            "zip": "10001",
+            "latitude": 40.7,
+            "longitude": -74.0,
+            "has_location": True,
+        }
+        reg_row = {
+            "bbl": "1234567890",
+            "bin": "1",
+            "boro_id": 1,
+            "boro": "MANHATTAN",
+            "block": 1,
+            "lot": 1,
+            "house_number": None,
+            "street_name": None,
+            "zip": "10001",
+            "community_board": "1",
+            "last_registration_date": None,
+            "registration_end_date": None,
+            "registration_id": 10,
+            "building_id": 20,
+        }
+        rent_row = {
+            "bbl": "1234567890",
+            "borough": "MANHATTAN",
+            "block": 1,
+            "lot": 1,
+            "zip": "10001",
+            "city": "NEW YORK",
+            "status": "STABILIZED",
+            "source_year": 2024,
+        }
 
-    def test_get_by_bbl_basic(self):
-        """Test get_by_bbl with a non-existent BBL"""
-        try:
-            building = self.repository.get_by_bbl("9999999999")
-            self.assertEqual(building.bbl, "9999999999")
-            self.assertIsNone(building.registration)
-            self.assertIsNone(building.rent_stabilized)
-            self.assertEqual(building.contacts, [])
-            self.assertEqual(building.affordable, [])
-            self.assertEqual(building.complaints, [])
-            self.assertEqual(building.violations, [])
-            self.assertEqual(building.acris_master, {})
-            self.assertEqual(building.acris_legals, {})
-            self.assertEqual(building.acris_parties, {})
-            self.assertEqual(building.evictions, [])
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # query_one: location -> reg -> rent
+        dummy = DummyDB(
+            query_one_results=[location_row, reg_row, rent_row],
+            query_all_results=[[], [], [], [], [], [], []],
+        )
+        self.repo.client_factory = lambda: dummy
 
-    def test_get_by_bbl_with_real_data(self):
-        """Test get_by_bbl with potentially real data"""
-        try:
-            # Try to get a building that might exist
-            building = self.repository.get_by_bbl(
-                "1013510030"
-            )  # Example BBL from the test file
-            self.assertEqual(building.bbl, "1013510030")
-            # The building object should be created regardless of whether data exists
-            self.assertIsInstance(building.contacts, list)
-            self.assertIsInstance(building.affordable, list)
-            self.assertIsInstance(building.complaints, list)
-            self.assertIsInstance(building.violations, list)
-            self.assertIsInstance(building.acris_master, dict)
-            self.assertIsInstance(building.acris_legals, dict)
-            self.assertIsInstance(building.acris_parties, dict)
-            self.assertIsInstance(building.evictions, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        with patch(
+            "infrastructures.postgres.building_repository.build_building_from_rows"
+        ) as mock_builder:
+            mock_builder.return_value = {"bbl": "1234567890"}
+            result = self.repo.get_by_bbl("1234567890")
 
-    def test_building_repository_methods_exist(self):
-        """Test that BuildingRepository has expected methods"""
-        self.assertTrue(hasattr(self.repository, "get_by_bbl"))
-        self.assertTrue(callable(getattr(self.repository, "get_by_bbl")))
-        self.assertTrue(hasattr(self.repository, "search_buildings"))
-        self.assertTrue(callable(getattr(self.repository, "search_buildings")))
+            self.assertEqual(result["bbl"], "1234567890")
+            # reg_row가 location 기반으로 채워졌는지 확인
+            kwargs = mock_builder.call_args.kwargs
+            self.assertEqual(kwargs["reg_row"]["house_number"], "123")
+            self.assertEqual(kwargs["reg_row"]["street_name"], "MAIN ST")
 
-    def test_search_buildings_empty_query(self):
-        """Test search_buildings with empty query"""
-        try:
-            results = self.repository.search_buildings("")
-            self.assertEqual(results, [])
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+    def test_get_many_by_bbl_handles_exceptions(self):
+        """get_many_by_bbl이 개별 BBL 예외를 삼킨다."""
+        def fake_get(bbl: str):
+            if bbl == "bad":
+                raise ValueError("boom")
+            return f"OK-{bbl}"
 
-    def test_search_buildings_zip_code(self):
-        """Test search_buildings with zip code query"""
-        try:
-            results = self.repository.search_buildings("10001", limit=5)
-            self.assertIsInstance(results, list)
-            # Results should have expected structure
-            if results:
-                self.assertIn("bbl", results[0])
-                self.assertIn("address", results[0])
-                self.assertIn("borough", results[0])
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        self.repo.get_by_bbl = fake_get  # type: ignore[assignment]
 
-    def test_search_buildings_address(self):
-        """Test search_buildings with address query"""
-        try:
-            results = self.repository.search_buildings("Broadway", limit=5)
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        result = self.repo.get_many_by_bbl(["good", "bad"])
+        self.assertEqual(result["good"], "OK-good")
+        self.assertNotIn("bad", result)
 
-    def test_search_buildings_with_borough_filter(self):
-        """Test search_buildings with borough filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", borough="Manhattan", limit=5
+    def test_get_registration_by_bbl_no_result(self):
+        """registration이 없으면 None을 반환한다."""
+        dummy = DummyDB(query_one_results=[None])
+        self.repo.client_factory = lambda: dummy
+
+        result = self.repo.get_registration_by_bbl("1013510030")
+        self.assertIsNone(result)
+
+    def test_get_registration_by_bbl_with_and_without_contacts(self):
+        """registration_id 유무에 따라 contacts 쿼리 분기를 커버한다."""
+        reg_no_contacts = {
+            "bbl": "1013510030",
+            "registration_id": None,
+            "building_id": 1,
+            "house_number": "1",
+            "street_name": "MAIN",
+            "zip": "10001",
+            "community_board": "1",
+            "boro": "MANHATTAN",
+            "boro_id": 1,
+            "block": 1,
+            "lot": 1,
+            "last_registration_date": None,
+            "registration_end_date": None,
+        }
+        reg_with_contacts = dict(reg_no_contacts)
+        reg_with_contacts["registration_id"] = 10
+
+        contacts = [
+            {
+                "name": "John Doe",
+                "business_name": "JD LLC",
+                "role": "Head Officer",
+                "phone": "123",
+                "email": "test@example.com",
+            }
+        ]
+
+        # 첫 호출: reg_no_contacts, 두 번째 호출: reg_with_contacts
+        dummy = DummyDB(
+            query_one_results=[reg_no_contacts, reg_with_contacts],
+            query_all_results=[[], contacts],
+        )
+        self.repo.client_factory = lambda: dummy
+
+        # 1) contacts 없는 경우
+        res1 = self.repo.get_registration_by_bbl("1013510030")
+        self.assertIsNotNone(res1)
+        self.assertEqual(res1["contacts"], [])
+
+        # 2) contacts 있는 경우
+        res2 = self.repo.get_registration_by_bbl("1013510030")
+        self.assertIsNotNone(res2)
+        self.assertEqual(len(res2["contacts"]), 1)
+        self.assertEqual(res2["contacts"][0]["name"], "John Doe")
+
+    def test_search_buildings_basic_and_filters(self):
+        """검색 쿼리 & 여러 필터 및 sort_by 분기 커버."""
+        row = {
+            "bbl": "1013510030",
+            "house_number": "123",
+            "street_name": "BROADWAY",
+            "zip": "10001",
+            "borough": "MANHATTAN",
+            "evictions_count": 1,
+            "open_violations_count": 2,
+            "open_complaints_count": 3,
+            "rent_stabilized": True,
+            "affordable_housing": True,
+            "units": 10,
+            "address": "123 BROADWAY",
+        }
+
+        class SearchDB(DummyDB):
+            def query_all(self, sql, params=None):
+                # 매번 동일 row 반환 (offset/limit/filters와 무관)
+                return [row]
+
+        self.repo.client_factory = lambda: SearchDB()
+
+        # 단순 주소 검색
+        res = self.repo.search_buildings("Broadway", limit=5)
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0]["bbl"], "1013510030")
+
+        # zip 코드 검색
+        res_zip = self.repo.search_buildings("10001", limit=5)
+        self.assertTrue(res_zip)
+
+        # borough 필터
+        res_boro = self.repo.search_buildings("10001", borough="Manhattan", limit=5)
+        self.assertTrue(res_boro)
+        self.assertEqual(res_boro[0]["borough"], "MANHATTAN")
+
+        # rent_stabilized / affordable_housing / 기타 숫자 필터 값들
+        res_filters = self.repo.search_buildings(
+            "10001",
+            rent_stabilized="true",
+            affordable_housing="true",
+            violation_class="A",
+            rent_impairing="false",
+            complaint_category="HEAT/HOT WATER",
+            recent_activity_days="30",
+            evictions_min="0",
+            evictions_max="10",
+            violations_min="0",
+            violations_max="20",
+            zip_code="10001",
+            sort_by="Most Violations",
+            limit=5,
+        )
+        self.assertTrue(res_filters)
+
+    def test_search_buildings_borough_name_query_and_risk_sort(self):
+        """쿼리가 BOROUGH 이름일 때 처리 & risk 기반 sort 분기."""
+        row = {
+            "bbl": "1013510030",
+            "house_number": "1",
+            "street_name": "MAIN",
+            "zip": "10001",
+            "borough": "MANHATTAN",
+            "evictions_count": 0,
+            "open_violations_count": 0,
+            "open_complaints_count": 0,
+            "rent_stabilized": False,
+            "affordable_housing": False,
+            "units": None,
+            "address": "1 MAIN",
+        }
+
+        class BoroughDB(DummyDB):
+            def query_all(self, sql, params=None):
+                return [row, row, row]
+
+        self.repo.client_factory = lambda: BoroughDB()
+
+        with patch.object(
+            BuildingRepository,
+            "_assign_risk_level_with_distribution",
+            return_value="High Risk",
+        ):
+            res = self.repo.search_buildings(
+                "Manhattan", risk_level="High", sort_by="Highest Rating", limit=2
             )
-            self.assertIsInstance(results, list)
-            if results:
-                self.assertEqual(results[0]["borough"], "MANHATTAN")
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+            self.assertTrue(res)
+            self.assertEqual(res[0]["riskLevel"], "High Risk")
 
-    def test_search_buildings_with_rent_stabilized_filter(self):
-        """Test search_buildings with rent stabilized filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", rent_stabilized="true", limit=5
+    def test_search_buildings_count_variants(self):
+        """search_buildings_count의 risk_level 유무 분기 커버."""
+        base_row = {
+            "bbl": "1013510030",
+            "evictions_count": 1,
+            "open_violations_count": 2,
+            "open_complaints_count": 3,
+            "rent_stabilized": False,
+            "units": None,
+        }
+
+        # risk_level 없이: SQL count 경로
+        dummy_no_risk = DummyDB(
+            query_all_results=[[base_row]], query_one_results=[{"total_count": 1}]
+        )
+        self.repo.client_factory = lambda: dummy_no_risk
+        count = self.repo.search_buildings_count(
+            "10001",
+            borough="Manhattan",
+            rent_stabilized="false",
+            affordable_housing="false",
+            violation_class="A",
+            rent_impairing="true",
+            complaint_category="HEAT/HOT WATER",
+            recent_activity_days="7",
+            evictions_min="0",
+            evictions_max="10",
+            violations_min="0",
+            violations_max="10",
+            zip_code="10001",
+        )
+        self.assertEqual(count, 1)
+
+        # risk_level 있는 경우: Python 쪽에서 필터링 경로
+        dummy_risk = DummyDB(query_all_results=[[base_row]])
+        self.repo.client_factory = lambda: dummy_risk
+
+        with patch.object(
+            BuildingRepository,
+            "_assign_risk_level_with_distribution",
+            return_value="High Risk",
+        ):
+            count_high = self.repo.search_buildings_count(
+                "10001", risk_level="High"
             )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+            self.assertEqual(count_high, 1)
 
-    def test_search_buildings_with_affordable_housing_filter(self):
-        """Test search_buildings with affordable housing filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", affordable_housing="true", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+    def test_assign_risk_level_with_distribution_various_cases(self):
+        """_assign_risk_level_with_distribution 여러 분기 직접 커버."""
+        repo = self.repo
 
-    def test_search_buildings_with_risk_level_filter(self):
-        """Test search_buildings with risk level filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", risk_level="High", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 1) 이슈 없음 + rent_stabilized True, 작은 hash -> High/Moderate/Low 분기
+        self.assertIn(
+            repo._assign_risk_level_with_distribution(
+                calculated_risk_level="Low Risk",
+                risk_score=0.0,
+                evictions=0,
+                violations=0,
+                rent_stabilized=True,
+                bbl="0000000001",  # hash=1
+            ),
+            {"High Risk", "Moderate Risk", "Low Risk"},
+        )
 
-    def test_search_buildings_with_violation_class_filter(self):
-        """Test search_buildings with violation class filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", violation_class="A", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 2) 이슈 없음 + rent_stabilized False
+        result_no_stab = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="Low Risk",
+            risk_score=0.0,
+            evictions=0,
+            violations=0,
+            rent_stabilized=False,
+            bbl="0000000010",  # hash=10
+        )
+        self.assertIn(result_no_stab, {"High Risk", "Moderate Risk", "Low Risk"})
 
-    def test_search_buildings_with_rent_impairing_filter(self):
-        """Test search_buildings with rent impairing filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", rent_impairing="true", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 3) 아주 심각한 경우 -> 항상 High
+        high_severe = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="High Risk",
+            risk_score=1.0,
+            evictions=10,
+            violations=0,
+            rent_stabilized=False,
+            bbl="55",
+        )
+        self.assertEqual(high_severe, "High Risk")
 
-    def test_search_buildings_with_complaint_category_filter(self):
-        """Test search_buildings with complaint category filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", complaint_category="HEAT/HOT WATER", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 4) severe: evictions>=5 or violations>=20, hash로 High/Moderate
+        mod_severe = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="High Risk",
+            risk_score=0.8,
+            evictions=5,
+            violations=0,
+            rent_stabilized=False,
+            bbl="90",  # hash=90 => else branch => Moderate Risk
+        )
+        self.assertIn(mod_severe, {"High Risk", "Moderate Risk"})
 
-    def test_search_buildings_with_recent_activity_filter(self):
-        """Test search_buildings with recent activity filter"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", recent_activity_days="30", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 5) medium-high severity: evictions>=2 or violations>=10
+        medium_high = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="Moderate Risk",
+            risk_score=0.5,
+            evictions=2,
+            violations=0,
+            rent_stabilized=False,
+            bbl="15",
+        )
+        self.assertIn(medium_high, {"High Risk", "Moderate Risk", "Low Risk"})
 
-    def test_search_buildings_with_evictions_min_max(self):
-        """Test search_buildings with evictions min/max filters"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", evictions_min="1", evictions_max="10", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 6) medium-low severity: evictions>=1 or violations>=5
+        medium_low = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="Moderate Risk",
+            risk_score=0.3,
+            evictions=1,
+            violations=0,
+            rent_stabilized=False,
+            bbl="40",
+        )
+        self.assertIn(medium_low, {"High Risk", "Moderate Risk", "Low Risk"})
 
-    def test_search_buildings_with_violations_min_max(self):
-        """Test search_buildings with violations min/max filters"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", violations_min="1", violations_max="50", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # 7) very low severity path도 한 번 태우기
+        low_severity = repo._assign_risk_level_with_distribution(
+            calculated_risk_level="Low Risk",
+            risk_score=0.1,
+            evictions=0,
+            violations=1,
+            rent_stabilized=False,
+            bbl="50",
+        )
+        self.assertIn(low_severity, {"High Risk", "Moderate Risk", "Low Risk"})
 
-    def test_search_buildings_with_sort_by_most_relevant(self):
-        """Test search_buildings with Most Relevant sort"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", sort_by="Most Relevant", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+    def test_get_pluto_by_bbl(self):
+        """PLUTO 조회 쿼리도 한 번 태워서 커버."""
+        pluto_row = {
+            "bbl": "1013510030",
+            "borough": "MANHATTAN",
+            "block": 1,
+            "lot": 1,
+        }
+        dummy = DummyDB(query_one_results=[pluto_row])
+        self.repo.client_factory = lambda: dummy
 
-    def test_search_buildings_with_sort_by_most_violations(self):
-        """Test search_buildings with Most Violations sort"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", sort_by="Most Violations", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        result = self.repo.get_pluto_by_bbl("1013510030")
+        self.assertEqual(result["bbl"], "1013510030")
 
-    def test_search_buildings_with_sort_by_highest_rating(self):
-        """Test search_buildings with Highest Rating sort"""
-        try:
-            results = self.repository.search_buildings(
-                "10001", sort_by="Highest Rating", limit=5
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
 
-    def test_search_buildings_with_all_filters(self):
-        """Test search_buildings with multiple filters combined"""
-        try:
-            results = self.repository.search_buildings(
-                "10001",
-                borough="Manhattan",
-                rent_stabilized="true",
-                risk_level="High",
-                violation_class="A",
-                limit=5,
-            )
-            self.assertIsInstance(results, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+# ============================================================
+# LandlordRepository 테스트 (이미 100%지만, 유지용)
+# ============================================================
 
-    def test_get_registration_by_bbl(self):
-        """Test get_registration_by_bbl method"""
-        try:
-            reg = self.repository.get_registration_by_bbl("9999999999")
-            # Should return None for non-existent BBL or a dict if exists
-            self.assertTrue(reg is None or isinstance(reg, dict))
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+
+class LandlordRepositoryTests(TestCase):
+    def setUp(self):
+        self.repo = LandlordRepository()
+
+    def test_flag_review_success(self):
+        updated_row = {
+            "id": "review-1",
+            "bbl": "1013510030",
+            "flagged": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        dummy = DummyDB(
+            query_one_results=[updated_row],
+            execute_result=1,
+        )
+        self.repo.client_factory = lambda: dummy
+
+        result = self.repo.flag_review("review-1", flagged_by=1, reason="test")
+        self.assertEqual(result["id"], "review-1")
+        self.assertTrue(result["flagged"])
+
+    def test_flag_review_failure_raises(self):
+        dummy = DummyDB(execute_fail=True)
+        self.repo.client_factory = lambda: dummy
+
+        with self.assertRaises(Exception):
+            self.repo.flag_review("review-1", flagged_by=1, reason="bad")
+
+    def test_create_landlord_application_already_exists(self):
+        existing = {"id": 1}
+        dummy = DummyDB(query_one_results=[existing])
+        self.repo.client_factory = lambda: dummy
+
+        created = self.repo.create_landlord_application("1013510030", owner_user_id=1)
+        self.assertFalse(created)
+
+    def test_create_landlord_application_new_record(self):
+        dummy = DummyDB(
+            query_one_results=[None],  # existing 없음
+            execute_result=1,
+        )
+        self.repo.client_factory = lambda: dummy
+
+        created = self.repo.create_landlord_application("1013510030", owner_user_id=1)
+        self.assertTrue(created)
+
+    def test_create_landlord_application_error_returns_false(self):
+        dummy = DummyDB(execute_fail=True)
+        self.repo.client_factory = lambda: dummy
+
+        result = self.repo.create_landlord_application("1013510030", owner_user_id=1)
+        self.assertFalse(result)
+
+
+# ============================================================
+# NeighborhoodRepository 테스트
+# ============================================================
 
 
 class NeighborhoodRepositoryTests(TestCase):
     def setUp(self):
-        from infrastructures.postgres.neighborhood_repository import (
-            NeighborhoodRepository,
+        self.repo = NeighborhoodRepository()
+
+    def test_get_neighborhood_stats_by_bounds_combines_data(self):
+        """각 테이블 데이터를 합쳐 NeighborhoodStats를 만드는 경로 커버."""
+        buildings = [
+            {
+                "bbl": "1013510030",
+                "address": "123 MAIN ST",
+                "borough": "MANHATTAN",
+                "zip_code": "10001",
+                "latitude": 40.7,
+                "longitude": -74.0,
+            }
+        ]
+        violations = [
+            {
+                "bbl": "1013510030",
+                "total_violations": 5,
+                "open_violations": 3,
+                "class_a_violations": 1,
+                "class_b_violations": 2,
+                "class_c_violations": 2,
+                "rent_impairing_violations": 1,
+            }
+        ]
+        evictions = [
+            {
+                "bbl": "1013510030",
+                "total_evictions": 2,
+                "evictions_3yr": 2,
+                "evictions_1yr": 1,
+            }
+        ]
+        complaints = [
+            {
+                "bbl": "1013510030",
+                "total_complaints": 4,
+                "open_complaints": 2,
+                "emergency_complaints": 1,
+            }
+        ]
+        rent_stabilized = [{"bbl": "1013510030"}]
+
+        class StatsDB(DummyDB):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
+
+            def query_all(self, sql, params=None):
+                self.calls += 1
+                if self.calls == 1:
+                    return buildings
+                elif self.calls == 2:
+                    return violations
+                elif self.calls == 3:
+                    return evictions
+                elif self.calls == 4:
+                    return complaints
+                elif self.calls == 5:
+                    return rent_stabilized
+                return []
+
+        self.repo.client_factory = lambda: StatsDB()
+
+        stats_list = self.repo.get_neighborhood_stats_by_bounds(
+            40.7, 40.8, -74.0, -73.9, data_type="violations"
         )
+        self.assertEqual(len(stats_list), 1)
+        stats = stats_list[0]
+        self.assertEqual(stats.bbl, "1013510030")
+        self.assertEqual(stats.total_violations, 5)
+        self.assertTrue(stats.is_rent_stabilized)
 
-        self.repository = NeighborhoodRepository()
+    def test_get_heatmap_data_for_each_type_and_defaults(self):
+        """violations / evictions / complaints heatmap + 기본값 분기."""
+        rows = [
+            {
+                "bbl": "1013510030",
+                "latitude": 40.7,
+                "longitude": -74.0,
+                "address": "123 MAIN ST",
+                "borough": "MANHATTAN",
+                "count": 3,
+            }
+        ]
 
-    def test_neighborhood_repository_initialization(self):
-        """Test NeighborhoodRepository initialization"""
-        self.assertEqual(self.repository.client_factory, PostgresClient)
+        class HeatmapDB(DummyDB):
+            def query_all(self, sql, params=None):
+                return rows
 
-    def test_get_neighborhood_stats_by_bounds_basic(self):
-        """Test get_neighborhood_stats_by_bounds with basic parameters"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        self.repo.client_factory = lambda: HeatmapDB()
 
-    def test_get_neighborhood_stats_by_bounds_evictions(self):
-        """Test get_neighborhood_stats_by_bounds with evictions data type"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="evictions",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_stats_by_bounds_complaints(self):
-        """Test get_neighborhood_stats_by_bounds with complaints data type"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="complaints",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_heatmap_data_basic(self):
-        """Test get_heatmap_data with basic parameters"""
-        try:
-            data = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
+        # data_type 각각
+        for data_type in ("violations", "evictions", "complaints"):
+            result = self.repo.get_heatmap_data(
+                40.7,
+                40.8,
+                -74.0,
+                -73.9,
+                data_type=data_type,
                 borough="MANHATTAN",
-                limit=1000,
+                limit=10,
+                time_range="1year",
             )
-            self.assertIsInstance(data, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+            self.assertTrue(isinstance(result, list))
 
-    def test_get_heatmap_data_evictions(self):
-        """Test get_heatmap_data with evictions data type"""
-        try:
-            data = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="evictions",
-                borough="All Boroughs",
-                limit=500,
-            )
-            self.assertIsInstance(data, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+        # data_type=None / time_range=None도 한 번 태워 보기
+        result_default = self.repo.get_heatmap_data(
+            40.7, 40.8, -74.0, -73.9, data_type="violations"
+        )
+        self.assertTrue(isinstance(result_default, list))
 
-    def test_get_borough_summary_with_borough(self):
-        """Test get_borough_summary with specific borough"""
-        try:
-            summary = self.repository.get_borough_summary(borough="MANHATTAN")
-            self.assertIsInstance(summary, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_borough_summary_all_boroughs(self):
-        """Test get_borough_summary without specific borough"""
-        try:
-            summary = self.repository.get_borough_summary(borough=None)
-            self.assertIsInstance(summary, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_trends_basic(self):
-        """Test get_neighborhood_trends with basic parameters"""
-        try:
-            trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030", days_back=365
-            )
-            self.assertIsInstance(trends, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_trends_short_period(self):
-        """Test get_neighborhood_trends with short period"""
-        try:
-            trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030", days_back=30
-            )
-            self.assertIsInstance(trends, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_neighborhood_repository_methods_exist(self):
-        """Test that NeighborhoodRepository has expected methods"""
-        expected_methods = [
-            "get_neighborhood_stats_by_bounds",
-            "get_heatmap_data",
-            "get_borough_summary",
-            "get_neighborhood_trends",
+    def test_get_filtered_violations_points_with_filters(self):
+        """고급 필터가 있는 get_filtered_violations_points 로직 커버."""
+        rows = [
+            {
+                "bbl": "1013510030",
+                "latitude": 40.7,
+                "longitude": -74.0,
+                "address": "123 MAIN ST",
+                "borough": "MANHATTAN",
+                "count": 10,
+                "open_violations": 5,
+                "closed_violations": 5,
+                "class_a_count": 2,
+                "class_b_count": 3,
+                "class_c_count": 5,
+                "avg_response_days": 7.0,
+            }
         ]
 
-        for method_name in expected_methods:
-            self.assertTrue(hasattr(self.repository, method_name))
-            self.assertTrue(callable(getattr(self.repository, method_name)))
+        class FilterDB(DummyDB):
+            def query_all(self, sql, params=None):
+                return rows
 
+        self.repo.client_factory = lambda: FilterDB()
 
-class PostgresClientAdvancedTests(TestCase):
-    def setUp(self):
-        self.client = PostgresClient()
+        points = self.repo.get_filtered_violations_points(
+            40.7,
+            40.8,
+            -74.0,
+            -73.9,
+            borough="MANHATTAN",
+            limit=100,
+            min_open_violations=1,
+            max_open_violations=10,
+            min_closed_violations=1,
+            max_closed_violations=10,
+            min_class_a=1,
+            max_class_a=10,
+            min_class_b=1,
+            max_class_b=10,
+            min_class_c=1,
+            max_class_c=10,
+            max_response_days=30,
+        )
+        self.assertTrue(points)
 
-    def test_postgres_client_query_one_with_params(self):
-        """Test query_one with parameters"""
-        try:
-            with self.client as db:
-                result = db.query_one("SELECT %s as test", (42,))
-                self.assertEqual(result["test"], 42)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
+    def test_get_borough_summary_with_and_without_filter(self):
+        """get_borough_summary의 where_clause 분기 커버."""
+        # now = datetime.now()
+        # three_years_ago = now - timedelta(days=3 * 365)
 
-    def test_postgres_client_query_all_with_params(self):
-        """Test query_all with parameters"""
-        try:
-            with self.client as db:
-                results = db.query_all(
-                    "SELECT %s as test UNION SELECT %s as test", (1, 2)
-                )
-                self.assertEqual(len(results), 2)
-                self.assertEqual(results[0]["test"], 1)
-                self.assertEqual(results[1]["test"], 2)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_execute_with_params(self):
-        """Test execute with parameters"""
-        try:
-            with self.client as db:
-                result = db.execute("SELECT %s as test_id", (99,), returning="test_id")
-                self.assertEqual(result, 99)
-        except Exception as e:
-            self.skipTest(f"Database execute failed: {e}")
-
-    def test_postgres_client_connection_error_handling(self):
-        """Test connection error handling"""
-        # Test with invalid connection parameters
-        with patch("infrastructures.postgres.postgres_client.get_env") as mock_env:
-            mock_env.return_value = lambda key, default=None: {
-                "DB_NAME": "invalid_db",
-                "DB_USER": "invalid_user",
-                "DB_PASSWORD": "invalid_password",
-                "DB_HOST": "invalid_host",
-                "DB_PORT": 5432,
-            }.get(key, default)
-
-            with self.assertRaises(Exception):
-                with PostgresClient():
-                    pass
-
-    def test_postgres_client_context_manager_exit(self):
-        """Test context manager exit behavior"""
-        try:
-            with self.client:
-                self.assertIsNotNone(self.client.conn)
-            # Connection should be closed after context exit
-            self.assertIsNone(self.client.conn)
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-    def test_postgres_client_autocommit_disabled(self):
-        """Test that autocommit is disabled"""
-        try:
-            with self.client:
-                self.assertFalse(self.client.conn.autocommit)
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-    def test_postgres_client_cursor_context_manager(self):
-        """Test cursor context manager"""
-        try:
-            with self.client as db:
-                with db._cursor() as cursor:
-                    self.assertIsNotNone(cursor)
-                    cursor.execute("SELECT 1")
-                    result = cursor.fetchone()
-                    self.assertEqual(result[0], 1)
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-    def test_postgres_client_cursor_without_connection(self):
-        """Test cursor creation without connection raises error"""
-        client = PostgresClient()
-        with self.assertRaises(Exception):
-            with client._cursor():
-                pass
-
-    def test_postgres_client_exists_method(self):
-        """Test exists method"""
-        try:
-            with self.client as db:
-                # Test exists with result
-                exists = db.exists("SELECT 1 WHERE 1=1")
-                self.assertTrue(exists)
-
-                # Test exists with no result
-                exists = db.exists("SELECT 1 WHERE 1=0")
-                self.assertFalse(exists)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_scalar_method(self):
-        """Test scalar method"""
-        try:
-            with self.client as db:
-                # Test scalar with result
-                result = db.scalar("SELECT 42 as test_value")
-                self.assertEqual(result, 42)
-
-                # Test scalar with no result
-                result = db.scalar("SELECT 42 WHERE 1=0")
-                self.assertIsNone(result)
-
-                # Test scalar with column parameter
-                result = db.scalar("SELECT 42 as test_value", column="test_value")
-                self.assertEqual(result, 42)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_execute_with_returning(self):
-        """Test execute method with RETURNING clause"""
-        try:
-            with self.client as db:
-                # Test with RETURNING clause
-                result = db.execute("SELECT 99 as test_id", returning="test_id")
-                self.assertEqual(result, 99)
-        except Exception as e:
-            self.skipTest(f"Database execute failed: {e}")
-
-    def test_postgres_client_execute_without_returning(self):
-        """Test execute method without RETURNING clause"""
-        try:
-            with self.client as db:
-                # Test without RETURNING clause
-                result = db.execute("SELECT 1")
-                self.assertIsNone(result)
-        except Exception as e:
-            self.skipTest(f"Database execute failed: {e}")
-
-    def test_postgres_client_query_one_with_dict_params(self):
-        """Test query_one with dictionary parameters"""
-        try:
-            with self.client as db:
-                result = db.query_one("SELECT %(value)s as test", {"value": 123})
-                self.assertEqual(result["test"], 123)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_query_all_with_dict_params(self):
-        """Test query_all with dictionary parameters"""
-        try:
-            with self.client as db:
-                results = db.query_all(
-                    "SELECT %(value1)s as test UNION SELECT %(value2)s as test",
-                    {"value1": 1, "value2": 2},
-                )
-                self.assertEqual(len(results), 2)
-                self.assertEqual(results[0]["test"], 1)
-                self.assertEqual(results[1]["test"], 2)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_execute_with_dict_params(self):
-        """Test execute with dictionary parameters"""
-        try:
-            with self.client as db:
-                result = db.execute(
-                    "SELECT %(value)s as test_id", {"value": 456}, returning="test_id"
-                )
-                self.assertEqual(result, 456)
-        except Exception as e:
-            self.skipTest(f"Database execute failed: {e}")
-
-    def test_postgres_client_scalar_with_column(self):
-        """Test scalar method with specific column"""
-        try:
-            with self.client as db:
-                result = db.scalar(
-                    "SELECT 789 as test_value, 999 as other_value", column="test_value"
-                )
-                self.assertEqual(result, 789)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_scalar_with_empty_result(self):
-        """Test scalar method with empty result"""
-        try:
-            with self.client as db:
-                result = db.scalar("SELECT 1 WHERE 1=0")
-                self.assertIsNone(result)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_postgres_client_query_one_error_handling(self):
-        """Test query_one error handling"""
-        try:
-            with self.client as db:
-                with self.assertRaises(Exception):
-                    db.query_one("INVALID SQL")
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-    def test_postgres_client_query_all_error_handling(self):
-        """Test query_all error handling"""
-        try:
-            with self.client as db:
-                with self.assertRaises(Exception):
-                    db.query_all("INVALID SQL")
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-    def test_postgres_client_execute_error_handling(self):
-        """Test execute error handling"""
-        try:
-            with self.client as db:
-                with self.assertRaises(Exception):
-                    db.execute("INVALID SQL")
-        except Exception as e:
-            self.skipTest(f"Database connection failed: {e}")
-
-
-class NeighborhoodRepositoryAdvancedTests(TestCase):
-    def setUp(self):
-        self.repository = NeighborhoodRepository()
-
-    def test_get_neighborhood_stats_by_bounds_violations(self):
-        """Test get_neighborhood_stats_by_bounds with violations data type"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_stats_by_bounds_evictions(self):
-        """Test get_neighborhood_stats_by_bounds with evictions data type"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="evictions",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_stats_by_bounds_complaints(self):
-        """Test get_neighborhood_stats_by_bounds with complaints data type"""
-        try:
-            stats = self.repository.get_neighborhood_stats_by_bounds(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="complaints",
-            )
-            self.assertIsInstance(stats, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_heatmap_data_violations(self):
-        """Test get_heatmap_data with violations data type"""
-        try:
-            heatmap = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
-            )
-            self.assertIsInstance(heatmap, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_heatmap_data_evictions(self):
-        """Test get_heatmap_data with evictions data type"""
-        try:
-            heatmap = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="evictions",
-            )
-            self.assertIsInstance(heatmap, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_borough_summary_with_borough(self):
-        """Test get_borough_summary with specific borough"""
-        try:
-            summary = self.repository.get_borough_summary(borough="Manhattan")
-            self.assertIsInstance(summary, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_borough_summary_without_borough(self):
-        """Test get_borough_summary without specific borough"""
-        try:
-            summary = self.repository.get_borough_summary()
-            self.assertIsInstance(summary, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_trends_short_period(self):
-        """Test get_neighborhood_trends with short period"""
-        try:
-            trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030", days_back=7
-            )
-            self.assertIsInstance(trends, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_neighborhood_trends_long_period(self):
-        """Test get_neighborhood_trends with long period"""
-        try:
-            trends = self.repository.get_neighborhood_trends(
-                bbl="1013510030", days_back=365
-            )
-            self.assertIsInstance(trends, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_neighborhood_repository_initialization(self):
-        """Test NeighborhoodRepository initialization"""
-        self.assertIsNotNone(self.repository.client_factory)
-        self.assertEqual(self.repository.client_factory, PostgresClient)
-
-    def test_neighborhood_repository_methods_exist(self):
-        """Test that NeighborhoodRepository has all expected methods"""
-        expected_methods = [
-            "get_neighborhood_stats_by_bounds",
-            "get_heatmap_data",
-            "get_borough_summary",
-            "get_neighborhood_trends",
+        rows = [
+            {
+                "borough": "MANHATTAN",
+                "total_buildings": 10,
+                "avg_violations_per_building": 2.0,
+                "avg_evictions_per_building": 0.5,
+                "total_rent_stabilized": 5,
+                "high_risk_buildings": 2,
+                "medium_risk_buildings": 3,
+                "low_risk_buildings": 5,
+            }
         ]
 
-        for method_name in expected_methods:
-            self.assertTrue(hasattr(self.repository, method_name))
-            self.assertTrue(callable(getattr(self.repository, method_name)))
+        outer = self
 
-    def test_get_heatmap_data_complaints(self):
-        """Test get_heatmap_data with complaints data type"""
-        try:
-            heatmap = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="complaints",
-            )
-            self.assertIsInstance(heatmap, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_heatmap_data_with_borough(self):
-        """Test get_heatmap_data with borough filter"""
-        try:
-            heatmap = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
-                borough="Manhattan",
-            )
-            self.assertIsInstance(heatmap, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_heatmap_data_with_limit(self):
-        """Test get_heatmap_data with custom limit"""
-        try:
-            heatmap = self.repository.get_heatmap_data(
-                min_lat=40.7,
-                max_lat=40.8,
-                min_lng=-74.0,
-                max_lng=-73.9,
-                data_type="violations",
-                limit=100,
-            )
-            self.assertIsInstance(heatmap, list)
-        except Exception as e:
-            self.skipTest(f"Database query failed: {e}")
-
-    def test_get_borough_summary_with_different_boroughs(self):
-        """Test get_borough_summary with different borough names"""
-        boroughs = ["Brooklyn", "Queens", "Bronx", "Staten Island"]
-        for borough in boroughs:
-            try:
-                summary = self.repository.get_borough_summary(borough=borough)
-                self.assertIsInstance(summary, list)
-            except Exception as e:
-                self.skipTest(f"Database query failed for {borough}: {e}")
-
-    def test_get_neighborhood_trends_different_periods(self):
-        """Test get_neighborhood_trends with different time periods"""
-        periods = [1, 7, 30, 90, 180, 365]
-        for days in periods:
-            try:
-                trends = self.repository.get_neighborhood_trends(
-                    bbl="1013510030", days_back=days
+        class BoroughDB(DummyDB):
+            def query_all(self, sql, params=None):
+                # 첫 파라미터가 3년 전 날짜인지만 대략 체크
+                outer.assertGreaterEqual(len(params), 1)
+                outer.assertIsNotNone(params[0])
+                outer.assertTrue(
+                    isinstance(params[0], datetime)
                 )
-                self.assertIsInstance(trends, list)
-            except Exception as e:
-                self.skipTest(f"Database query failed for {days} days: {e}")
+                return rows
 
-    def test_get_neighborhood_stats_by_bounds_different_data_types(self):
-        """Test get_neighborhood_stats_by_bounds with all data types"""
-        data_types = ["violations", "evictions", "complaints"]
-        for data_type in data_types:
-            try:
-                stats = self.repository.get_neighborhood_stats_by_bounds(
-                    min_lat=40.7,
-                    max_lat=40.8,
-                    min_lng=-74.0,
-                    max_lng=-73.9,
-                    data_type=data_type,
-                )
-                self.assertIsInstance(stats, list)
-            except Exception as e:
-                self.skipTest(f"Database query failed for {data_type}: {e}")
+        self.repo.client_factory = lambda: BoroughDB()
 
-    def test_get_heatmap_data_different_data_types(self):
-        """Test get_heatmap_data with all data types"""
-        data_types = ["violations", "evictions", "complaints"]
-        for data_type in data_types:
-            try:
-                heatmap = self.repository.get_heatmap_data(
-                    min_lat=40.7,
-                    max_lat=40.8,
-                    min_lng=-74.0,
-                    max_lng=-73.9,
-                    data_type=data_type,
-                )
-                self.assertIsInstance(heatmap, list)
-            except Exception as e:
-                self.skipTest(f"Database query failed for {data_type}: {e}")
+        summary_with = self.repo.get_borough_summary(borough="MANHATTAN")
+        self.assertEqual(len(summary_with), 1)
+        self.assertEqual(summary_with[0].borough, "MANHATTAN")
 
-    def test_neighborhood_repository_final_coverage_push(self):
-        """Test neighborhood repository final coverage push"""
-        try:
-            from infrastructures.postgres.neighborhood_repository import (
-                NeighborhoodRepository,
-            )
+        summary_all = self.repo.get_borough_summary()
+        self.assertEqual(len(summary_all), 1)
 
-            repo = NeighborhoodRepository()
+    def test_get_neighborhood_trends(self):
+        """위반/퇴거/민원 추세 쿼리 조합 커버."""
+        vio_rows = [{"month": datetime(2024, 1, 1), "count": 3}]
+        ev_rows = [{"month": datetime(2024, 1, 1), "count": 1}]
+        comp_rows = [{"month": datetime(2024, 1, 1), "count": 2}]
 
-            # Test all repository methods exist
-            self.assertTrue(hasattr(repo, "get_neighborhood_stats_by_bounds"))
-            self.assertTrue(hasattr(repo, "get_heatmap_data"))
-            self.assertTrue(hasattr(repo, "get_borough_summary"))
-            self.assertTrue(hasattr(repo, "get_neighborhood_trends"))
+        class TrendsDB(DummyDB):
+            def __init__(self):
+                super().__init__()
+                self.calls = 0
 
-            # Test method callability
-            self.assertTrue(callable(repo.get_neighborhood_stats_by_bounds))
-            self.assertTrue(callable(repo.get_heatmap_data))
-            self.assertTrue(callable(repo.get_borough_summary))
-            self.assertTrue(callable(repo.get_neighborhood_trends))
+            def query_all(self, sql, params=None):
+                self.calls += 1
+                if self.calls == 1:
+                    return vio_rows
+                elif self.calls == 2:
+                    return ev_rows
+                elif self.calls == 3:
+                    return comp_rows
+                return []
 
-            # Test with various parameter combinations
-            test_cases = [
-                # get_neighborhood_stats_by_bounds
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "data_type": "violations",
-                    },
-                },
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "data_type": "evictions",
-                    },
-                },
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "data_type": "complaints",
-                    },
-                },
-                # get_heatmap_data
-                {
-                    "method": "get_heatmap_data",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "data_type": "violations",
-                        "limit": 100,
-                    },
-                },
-                {
-                    "method": "get_heatmap_data",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "data_type": "evictions",
-                        "limit": 50,
-                    },
-                },
-                # get_borough_summary
-                {"method": "get_borough_summary", "params": {"borough": "Manhattan"}},
-                {"method": "get_borough_summary", "params": {"borough": "Brooklyn"}},
-                {"method": "get_borough_summary", "params": {"borough": "Queens"}},
-                # get_neighborhood_trends
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "1013510030", "days_back": 30},
-                },
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "1013510030", "days_back": 90},
-                },
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "1013510030", "days_back": 365},
-                },
-            ]
+        self.repo.client_factory = lambda: TrendsDB()
 
-            for test_case in test_cases:
-                method_name = test_case["method"]
-                params = test_case["params"]
-                method = getattr(repo, method_name)
+        trends = self.repo.get_neighborhood_trends("1013510030", days_back=365)
+        self.assertIn("violations", trends)
+        self.assertIn("evictions", trends)
+        self.assertIn("complaints", trends)
+        self.assertEqual(trends["violations"][0]["count"], 3)
 
-                try:
-                    result = method(**params)
-                    # Should return a list or dict, not crash
-                    self.assertIsInstance(result, (list, dict))
-                except Exception:
-                    # Some methods might fail due to database constraints, that's ok
-                    pass
-
-        except Exception as e:
-            self.skipTest(
-                f"Neighborhood repository final coverage push test failed: {e}"
-            )
-
-    def test_neighborhood_repository_edge_cases(self):
-        """Test neighborhood repository edge cases"""
-        try:
-            from infrastructures.postgres.neighborhood_repository import (
-                NeighborhoodRepository,
-            )
-
-            repo = NeighborhoodRepository()
-
-            # Test edge cases
-            edge_cases = [
-                # Extreme coordinates
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {
-                        "min_lat": -90,
-                        "max_lat": 90,
-                        "min_lng": -180,
-                        "max_lng": 180,
-                    },
-                },
-                {
-                    "method": "get_heatmap_data",
-                    "params": {
-                        "min_lat": -90,
-                        "max_lat": 90,
-                        "min_lng": -180,
-                        "max_lng": 180,
-                        "limit": 1,
-                    },
-                },
-                # Zero coordinates
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {"min_lat": 0, "max_lat": 0, "min_lng": 0, "max_lng": 0},
-                },
-                # Invalid BBL
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "0000000000", "days_back": 30},
-                },
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "invalid", "days_back": 30},
-                },
-                # Large limits
-                {
-                    "method": "get_heatmap_data",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                        "limit": 10000,
-                    },
-                },
-                # Negative days_back
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": "1013510030", "days_back": -1},
-                },
-            ]
-
-            for test_case in edge_cases:
-                method_name = test_case["method"]
-                params = test_case["params"]
-                method = getattr(repo, method_name)
-
-                try:
-                    result = method(**params)
-                    # Should handle gracefully
-                    self.assertIsInstance(result, (list, dict))
-                except Exception:
-                    # Edge cases might fail, that's expected
-                    pass
-
-        except Exception as e:
-            self.skipTest(f"Neighborhood repository edge cases test failed: {e}")
-
-    def test_neighborhood_repository_error_handling(self):
-        """Test neighborhood repository error handling"""
-        try:
-            from infrastructures.postgres.neighborhood_repository import (
-                NeighborhoodRepository,
-            )
-
-            repo = NeighborhoodRepository()
-
-            # Test error scenarios
-            error_scenarios = [
-                # Missing required parameters
-                {"method": "get_neighborhood_stats_by_bounds", "params": {}},
-                {"method": "get_heatmap_data", "params": {}},
-                {"method": "get_neighborhood_trends", "params": {}},
-                # Invalid parameter types
-                {
-                    "method": "get_neighborhood_stats_by_bounds",
-                    "params": {
-                        "min_lat": "invalid",
-                        "max_lat": 40.8,
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                    },
-                },
-                {
-                    "method": "get_heatmap_data",
-                    "params": {
-                        "min_lat": 40.7,
-                        "max_lat": "invalid",
-                        "min_lng": -74.0,
-                        "max_lng": -73.9,
-                    },
-                },
-                {
-                    "method": "get_neighborhood_trends",
-                    "params": {"bbl": 123, "days_back": "invalid"},
-                },
-            ]
-
-            for test_case in error_scenarios:
-                method_name = test_case["method"]
-                params = test_case["params"]
-                method = getattr(repo, method_name)
-
-                try:
-                    result = method(**params)
-                    # Should handle gracefully
-                    self.assertIsInstance(result, (list, dict))
-                except Exception:
-                    # Error scenarios should be handled gracefully
-                    pass
-
-        except Exception as e:
-            self.skipTest(f"Neighborhood repository error handling test failed: {e}")
+    def test_get_heatmap_data_unknown_type_returns_empty(self):
+        """알 수 없는 data_type이면 빈 리스트."""
+        self.repo.client_factory = lambda: DummyDB()
+        result = self.repo.get_heatmap_data(
+            40.7, 40.8, -74.0, -73.9, data_type="unknown"
+        )
+        self.assertEqual(result, [])

@@ -1,9 +1,256 @@
 # python
 import importlib
 import inspect
+from datetime import datetime
+from unittest.mock import patch, MagicMock
 
+from django.urls import reverse
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
+from rest_framework import status
+from rest_framework.test import APITestCase
+
+
+def _make_row(item_id=1, title="Test", detail="Detail"):
+    return {
+        "id": item_id,
+        "title": title,
+        "detail": detail,
+        "created_at": datetime.now(),
+        "updated_at": datetime.now(),
+    }
+
+
+class DummyItemListCreateViewTests(APITestCase):
+    def setUp(self):
+        self.list_url = reverse("dummy-item-list-create")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_get_list_success(self, mock_client):
+        db = MagicMock()
+        db.query_all.return_value = [
+            _make_row(1, "Item1", "D1"),
+            _make_row(2, "Item2", "D2"),
+        ]
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.get(self.list_url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 2)
+        self.assertEqual(res.data[0]["title"], "Item1")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_get_list_database_error(self, mock_client):
+        db = MagicMock()
+        db.query_all.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.get(self.list_url)
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_post_create_success(self, mock_client):
+        db = MagicMock()
+        # INSERT RETURNING id
+        db.execute.return_value = 10
+        # 새로 생성된 row 조회
+        db.query_one.return_value = _make_row(10, "NewTitle", "NewDetail")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {
+            "title": "NewTitle",
+            "detail": "NewDetail",
+        }
+        res = self.client.post(self.list_url, data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["id"], 10)
+        self.assertEqual(res.data["title"], "NewTitle")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_post_create_database_error(self, mock_client):
+        db = MagicMock()
+        db.execute.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {
+            "title": "NewTitle",
+            "detail": "NewDetail",
+        }
+        res = self.client.post(self.list_url, data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
+
+
+class DummyItemDetailViewTests(APITestCase):
+    def setUp(self):
+        self.detail_url = lambda item_id: reverse(
+            "dummy-item-detail", kwargs={"item_id": item_id}
+        )
+
+    # ------------------------------------------------------------------
+    # GET
+    # ------------------------------------------------------------------
+    @patch("apps.dummy.views.PostgresClient")
+    def test_get_detail_found(self, mock_client):
+        db = MagicMock()
+        db.query_one.return_value = _make_row(1, "Item1", "D1")
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.get(self.detail_url(1))
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["id"], 1)
+        self.assertEqual(res.data["title"], "Item1")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_get_detail_not_found(self, mock_client):
+        db = MagicMock()
+        db.query_one.return_value = None
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.get(self.detail_url(999))
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.data["detail"], "Not found")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_get_detail_database_error(self, mock_client):
+        db = MagicMock()
+        db.query_one.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.get(self.detail_url(1))
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
+
+    # ------------------------------------------------------------------
+    # PUT (전체 업데이트)
+    # ------------------------------------------------------------------
+    @patch("apps.dummy.views.PostgresClient")
+    def test_put_update_success(self, mock_client):
+        db = MagicMock()
+        # exists 체크
+        db.exists.return_value = True
+        # UPDATE 이후 SELECT
+        db.query_one.return_value = _make_row(1, "Updated", "NewDetail")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Updated", "detail": "NewDetail"}
+        res = self.client.put(self.detail_url(1), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["title"], "Updated")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_put_update_not_found(self, mock_client):
+        db = MagicMock()
+        db.exists.return_value = False
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Updated", "detail": "NewDetail"}
+        res = self.client.put(self.detail_url(999), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.data["detail"], "Not found")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_put_update_database_error(self, mock_client):
+        db = MagicMock()
+        db.exists.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Updated", "detail": "NewDetail"}
+        res = self.client.put(self.detail_url(1), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
+
+    # ------------------------------------------------------------------
+    # PATCH (부분 업데이트)
+    # ------------------------------------------------------------------
+    def test_patch_no_fields(self):
+        """payload가 비어있으면 400을 반환해야 한다 (DB 호출 없이)."""
+        res = self.client.patch(self.detail_url(1), data={}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(res.data["detail"], "No fields to update")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_patch_update_title_only_success(self, mock_client):
+        db = MagicMock()
+        db.exists.return_value = True
+        db.query_one.return_value = _make_row(1, "Patched", "Detail")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Patched"}
+        res = self.client.patch(self.detail_url(1), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["title"], "Patched")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_patch_update_not_found(self, mock_client):
+        db = MagicMock()
+        db.exists.return_value = False
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Anything"}
+        res = self.client.patch(self.detail_url(999), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.data["detail"], "Not found")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_patch_update_database_error(self, mock_client):
+        db = MagicMock()
+        db.exists.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        payload = {"title": "Patched"}
+        res = self.client.patch(self.detail_url(1), data=payload, format="json")
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
+
+    # ------------------------------------------------------------------
+    # DELETE
+    # ------------------------------------------------------------------
+    @patch("apps.dummy.views.PostgresClient")
+    def test_delete_success(self, mock_client):
+        db = MagicMock()
+        db.execute.return_value = 1  # 삭제된 row 1개
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.delete(self.detail_url(1))
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_delete_not_found(self, mock_client):
+        db = MagicMock()
+        db.execute.return_value = 0  # 삭제 대상 없음
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.delete(self.detail_url(999))
+
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(res.data["detail"], "Not found")
+
+    @patch("apps.dummy.views.PostgresClient")
+    def test_delete_database_error(self, mock_client):
+        db = MagicMock()
+        db.execute.side_effect = DatabaseError("DB error")
+        mock_client.return_value.__enter__.return_value = db
+
+        res = self.client.delete(self.detail_url(1))
+
+        self.assertEqual(res.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertIn("detail", res.data)
 
 
 class DummyModelsSmokeTests(TestCase):
