@@ -11,6 +11,16 @@ from .models import (
 User = get_user_model()
 
 
+def _get_user_field(user_id, field_name):
+    """
+    user_id가 가리키는 User의 field_name 값을 돌려준다.
+    없으면 None.
+    """
+    if not user_id:
+        return None
+    return User.objects.filter(id=user_id).values_list(field_name, flat=True).first()
+
+
 class CommunityFavoritesSerializer(serializers.ModelSerializer):
     class Meta:
         model = CommunityFavorites
@@ -39,18 +49,10 @@ class CommunityReviewsSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_username(self, obj):
-        try:
-            user = User.objects.get(id=obj.user_id)
-            return user.username
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.user_id, "username")
 
     def get_email(self, obj):
-        try:
-            user = User.objects.get(id=obj.user_id)
-            return user.email
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.user_id, "email")
 
 
 class CommunityReviewCommentsSerializer(serializers.ModelSerializer):
@@ -72,18 +74,10 @@ class CommunityReviewCommentsSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_username(self, obj):
-        try:
-            user = User.objects.get(id=obj.user_id)
-            return user.username
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.user_id, "username")
 
     def get_email(self, obj):
-        try:
-            user = User.objects.get(id=obj.user_id)
-            return user.email
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.user_id, "email")
 
 
 class CommunityMessagesSerializer(serializers.ModelSerializer):
@@ -111,29 +105,13 @@ class CommunityMessagesSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_sender_username(self, obj):
-        try:
-            user = User.objects.get(id=obj.sender_id)
-            return user.username
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.sender_id, "username")
 
     def get_sender_email(self, obj):
-        try:
-            user = User.objects.get(id=obj.sender_id)
-            return user.email
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.sender_id, "email")
 
     def get_receiver_username(self, obj):
-        try:
-            user = User.objects.get(id=obj.receiver_id)
-            return user.username
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.receiver_id, "username")
 
     def get_receiver_email(self, obj):
-        try:
-            user = User.objects.get(id=obj.receiver_id)
-            return user.email
-        except User.DoesNotExist:
-            return None
+        return _get_user_field(obj.receiver_id, "email")
