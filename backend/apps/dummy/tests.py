@@ -10,6 +10,8 @@ from django.test import RequestFactory, TestCase
 from rest_framework import status
 from rest_framework.test import APITestCase
 
+from exceptions.db_error import DatabaseError
+
 
 def _make_row(item_id=1, title="Test", detail="Detail"):
     return {
