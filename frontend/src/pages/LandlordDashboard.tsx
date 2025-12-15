@@ -1,4 +1,13 @@
-import { Box, Typography, Grid, Paper, Divider, CircularProgress, Alert } from "@mui/material";
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
+  Paper,
+  Divider,
+  CircularProgress,
+  // Alert,
+} from "@mui/material";
 import { PropertyCard } from "../components/landlord/PropertyCard";
 import { ComplianceAlert } from "../components/landlord/ComplianceAlert";
 import { ReviewList } from "../components/landlord/ReviewList";
@@ -14,24 +23,38 @@ const mockProperties = [
     address: "123 Main St, Brooklyn, NY",
     occupancyStatus: "Occupied",
     financialPerformance: "Good",
-    tenantTurnover: "Low"
+    tenantTurnover: "Low",
   },
   {
     address: "456 Park Ave, Manhattan, NY",
     occupancyStatus: "Vacant",
     financialPerformance: "Average",
-    tenantTurnover: "High"
-  }
+    tenantTurnover: "High",
+  },
 ];
 
 const mockViolations = [
   { message: "Open violation: Broken fire escape", resolved: false },
-  { message: "Open violation: Missing smoke detectors", resolved: false }
+  { message: "Open violation: Missing smoke detectors", resolved: false },
 ];
 
 const mockReviews: Review[] = [
-  { id: "1", author: "Jane D.", content: "Great landlord, quick to fix issues!", date: "2025-09-01", flagged: false, comments: []},
-  { id: "2", author: "John S.", content: "Had some problems with heating last winter.", date: "2025-08-15", flagged: false, comments: []},
+  {
+    id: "1",
+    author: "Jane D.",
+    content: "Great landlord, quick to fix issues!",
+    date: "2025-09-01",
+    flagged: false,
+    comments: [],
+  },
+  {
+    id: "2",
+    author: "John S.",
+    content: "Had some problems with heating last winter.",
+    date: "2025-08-15",
+    flagged: false,
+    comments: [],
+  },
 ];
 
 export default function LandlordDashboard() {
@@ -39,7 +62,7 @@ export default function LandlordDashboard() {
   const [violations, setViolations] = useState<any[] | null>(null);
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // const [error, setError] = useState<string | null>(null);
   const [respondingTo, setRespondingTo] = useState<string | null>(null);
   const [responseLoading, setResponseLoading] = useState(false); // Add loading state for responses
 
@@ -47,7 +70,7 @@ export default function LandlordDashboard() {
     let mounted = true;
     async function load() {
       setLoading(true);
-      setError(null);
+      // setError(null);
       try {
         // Replace with actual landlordId - for now use demo id
         // const landlordId = "101";
@@ -105,12 +128,13 @@ export default function LandlordDashboard() {
           }))
         );
       } catch (e) {
+        console.log(e);
         console.warn("Landlord API unavailable, falling back to mock data", e);
         if (!mounted) return;
         setProperties(mockProperties as any);
         setViolations(mockViolations as any);
         setReviews(mockReviews as any);
-        setError("Unable to load live landlord data; using mock data.");
+        // setError("Unable to load live landlord data; using mock data.");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -125,7 +149,9 @@ export default function LandlordDashboard() {
   const handleFlag = async (id: string) => {
     // optimistic update
     const prev = reviews;
-    setReviews((r) => (r ? r.map((rv) => (rv.id === id ? { ...rv, flagged: true } : rv)) : r));
+    setReviews((r) =>
+      r ? r.map((rv) => (rv.id === id ? { ...rv, flagged: true } : rv)) : r
+    );
     try {
       await landlordApi.flagReview(id, "flagged by landlord");
     } catch (error) {
@@ -173,52 +199,81 @@ export default function LandlordDashboard() {
       </Box>
     );
   return (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
-      {error && (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)",
+        py: 4,
+        px: { xs: 2, sm: 3 },
+        pt: { xs: 8, sm: 10 },
+      }}
+    >
+      {/* {error && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           {error}
         </Alert>
-      )}
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        My Properties
-      </Typography>
-      <Grid container spacing={2}>
-        {(properties || []).map((prop, idx) => (
-          // cast props to any to avoid stringent Grid typing in this project setup
-          <Grid {...({ item: true, xs: 12, md: 6, key: idx } as any)}>
-            <PropertyCard {...prop} />
-          </Grid>
-        ))}
-      </Grid>
+      )} */}
+      <Container maxWidth="xl">
+        <Typography
+          variant="h3"
+          component="h1"
+          gutterBottom
+          sx={{
+            fontWeight: 700,
+            color: "#2D3748",
+            fontFamily: '"Montserrat", "Roboto", sans-serif',
+            fontSize: { xs: "2rem", md: "3rem" },
+          }}
+        >
+          My Portfolio
+        </Typography>
 
-      <Divider sx={{ my: 4 }} />
+        <Typography variant="h5" fontWeight={700} mb={3}>
+          My Properties
+        </Typography>
+        <Grid container spacing={2}>
+          {(properties || []).map((prop, idx) => (
+            // cast props to any to avoid stringent Grid typing in this project setup
+            <Grid {...({ item: true, xs: 12, md: 6, key: idx } as any)}>
+              <PropertyCard {...prop} />
+            </Grid>
+          ))}
+        </Grid>
 
-      <Typography variant="h5" fontWeight={600} mb={2}>
-        Compliance & Violations
-      </Typography>
-      {(violations || []).map((v, idx) => (
-        <ComplianceAlert key={idx} message={v.message} resolved={v.resolved} />
-      ))}
+        <Divider sx={{ my: 4 }} />
 
-      <Divider sx={{ my: 4 }} />
-
-      <Typography variant="h5" fontWeight={600} mb={2}>
-        Tenant Reviews
-      </Typography>
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <ReviewList
-          reviews={reviews || []}
-          onRespond={handleRespond}
-          onFlag={handleFlag}
-        />
-        {respondingTo && (
-          <ReviewResponseForm
-            onSubmit={handleSubmitResponse}
-            reviewId={respondingTo} // Add this prop
-            loading={responseLoading} // Pass loading state
+        <Typography variant="h5" fontWeight={600} mb={2}>
+          Compliance & Violations
+        </Typography>
+        {(violations || []).map((v, idx) => (
+          <ComplianceAlert
+            key={idx}
+            message={v.message}
+            resolved={v.resolved}
           />
-        )}
-      </Paper>
+        ))}
+
+        <Divider sx={{ my: 4 }} />
+
+        <Typography variant="h5" fontWeight={600} mb={2}>
+          Tenant Reviews
+        </Typography>
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <ReviewList
+            reviews={reviews || []}
+            onRespond={handleRespond}
+            onFlag={handleFlag}
+          />
+          {respondingTo && (
+            <ReviewResponseForm
+              onSubmit={handleSubmitResponse}
+              reviewId={respondingTo} // Add this prop
+              loading={responseLoading} // Pass loading state
+            />
+          )}
+        </Paper>
+      </Container>
     </Box>
   );
 }

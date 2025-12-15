@@ -1,4 +1,5 @@
 // src/api/landlord.ts
+import type { BuildingData } from ".";
 import axios from "./axiosInstance";
 
 export interface PropertyDTO {
@@ -35,6 +36,12 @@ export interface ReviewDTO {
   bbl: string;
   flagged?: boolean;
   comments?: CommentDTO[];
+}
+
+export interface LandlordDTO {
+  email: string;
+  user_id: number;
+  username: string;
 }
 
 // Extended interfaces for building detail page
@@ -400,10 +407,14 @@ export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
 }
 
 // Toggle resolved state for a violation by id
-export async function toggleViolationResolved(violationId: number | string, resolved: boolean) {
+export async function toggleViolationResolved(
+  violationId: number | string,
+  resolved: boolean
+) {
   try {
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("No authentication token found. Please log in.");
+    if (!token)
+      throw new Error("No authentication token found. Please log in.");
 
     // backend expects a patch to /landlord/violation/<id>/ with { resolved: true|false }
     const resp = await axios.patch(
@@ -421,10 +432,14 @@ export async function toggleViolationResolved(violationId: number | string, reso
 }
 
 // Toggle resolved state for a complaint by id
-export async function toggleComplaintResolved(complaintId: number | string, resolved: boolean) {
+export async function toggleComplaintResolved(
+  complaintId: number | string,
+  resolved: boolean
+) {
   try {
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("No authentication token found. Please log in.");
+    if (!token)
+      throw new Error("No authentication token found. Please log in.");
 
     const resp = await axios.patch(
       `/landlord/complaint/${complaintId}/`,
@@ -565,7 +580,11 @@ export async function submitApplication(applicationData: {
 // this helper attempts POST to `/landlord/building/{bbl}/update/` and returns the server payload.
 export async function updateBuildingInfo(
   bbl: string,
-  payload: { average_rent?: number | null; occupancy_rate?: number | null; turnover_rate?: number | null }
+  payload: {
+    average_rent?: number | null;
+    occupancy_rate?: number | null;
+    turnover_rate?: number | null;
+  }
 ) {
   try {
     const token = localStorage.getItem("access_token");
@@ -574,12 +593,16 @@ export async function updateBuildingInfo(
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.post(`/landlord/building/${bbl}/update/`, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const resp = await axios.post(
+      `/landlord/building/${bbl}/update/`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     const data = resp.data as any;
     if (resp.status >= 200 && resp.status < 300) {
@@ -597,3 +620,35 @@ export async function updateBuildingInfo(
   }
 }
 
+export async function fetchLandlords(bbl: BuildingData["bbl"]) {
+  try {
+    // const token = localStorage.getItem("access_token");
+
+    // if (!token) {
+    //   throw new Error("No authentication token found. Please log in.");
+    // }
+
+    const resp = await axios.get<LandlordDTO[]>(`/landlord/landlords/${bbl}/`, {
+      // headers: {
+      //   Authorization: `Bearer ${token}`,
+      // },
+    });
+
+    let data = resp.data as any;
+
+    if (data && typeof data === "object" && Array.isArray(data.data)) {
+      return data.data as LandlordDTO[];
+    }
+    if (!Array.isArray(data)) {
+      console.warn(
+        "fetchProperties: unexpected response, expected array",
+        data
+      );
+      return [];
+    }
+    return data as LandlordDTO[];
+  } catch (error) {
+    console.error("fetchProperties: error", error);
+    throw error;
+  }
+}

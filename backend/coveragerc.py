@@ -16,7 +16,7 @@ cov = Coverage(
         "manage.py",
         "*/wsgi.py",
         "*/asgi.py",
-        "crawlers/*",
+        "*/tests.py",
     ],
 )
 

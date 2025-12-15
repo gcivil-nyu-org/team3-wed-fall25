@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 # import os
+import random
+import string
 from datetime import timedelta
 from pathlib import Path
 
@@ -174,7 +176,7 @@ DATABASES = {
         "HOST": env("DB_HOST"),
         "PORT": env("DB_PORT"),
         "TEST": {
-            "NAME": f"test_{env('DB_NAME')}",
+            "NAME": f"test_{''.join(random.choices(string.ascii_lowercase + string.digits, k=6))}",
         },
     }
 }

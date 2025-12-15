@@ -1,4 +1,11 @@
-import { Container, Typography, Paper, Stack, TextField, MenuItem } from "@mui/material";
+import {
+  Container,
+  Typography,
+  Paper,
+  Stack,
+  TextField,
+  MenuItem,
+} from "@mui/material";
 import { useState } from "react";
 import { useAuth } from "../hooks";
 
@@ -11,9 +18,12 @@ export default function LandlordsPage() {
 
   return (
     <Container maxWidth="lg" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>Landlords</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
+        Landlords
+      </Typography>
       <Typography variant="body1" sx={{ color: "#4A5568", mb: 3 }}>
-        Browse registered landlords and tenant experiences. Use filters to refine by area and property type.
+        Browse registered landlords and tenant experiences. Use filters to
+        refine by area and property type.
       </Typography>
 
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -49,13 +59,12 @@ export default function LandlordsPage() {
         </Typography>
         {isLoggedIn && (
           <Typography variant="body2" color="text.secondary">
-            When a landlord registers, key information will appear here for tenants to verify, such as
-            organization name, HPD registration number, contact phone, and property type.
+            When a landlord registers, key information will appear here for
+            tenants to verify, such as organization name, HPD registration
+            number, contact phone, and property type.
           </Typography>
         )}
       </Paper>
     </Container>
   );
 }
-
-

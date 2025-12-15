@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   Box,
+  Container,
   Typography,
   Card,
   CardContent,
@@ -107,7 +108,6 @@ const mockBuildingStats = {
   eviction_filings: 1,
 };
 
-
 export default function BuildingDetail() {
   const { bbl } = useParams<{ bbl: string }>();
   const navigate = useNavigate();
@@ -120,15 +120,20 @@ export default function BuildingDetail() {
   const [buildingInfo, setBuildingInfo] = useState<any>(null);
   const [pluto, setPlutoData] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
-  const [editValues, setEditValues] = useState<{ averageRent: string; occupancyRate: string; turnoverRate: string }>({
+  const [editValues, setEditValues] = useState<{
+    averageRent: string;
+    occupancyRate: string;
+    turnoverRate: string;
+  }>({
     averageRent: "",
     occupancyRate: "",
     turnoverRate: "",
   });
-  const [saveMessage, setSaveMessage] = useState<{ open: boolean; text?: string; severity?: "success" | "error" }>(
-    { open: false }
-  );
-
+  const [saveMessage, setSaveMessage] = useState<{
+    open: boolean;
+    text?: string;
+    severity?: "success" | "error";
+  }>({ open: false });
 
   useEffect(() => {
     let mounted = true;
@@ -141,17 +146,13 @@ export default function BuildingDetail() {
 
       try {
         // Use real API calls
-        const [
-          violationsData,
-          complaintsData,
-          statsData,
-          plutoData,
-        ] = await Promise.all([
-          fetchViolationsByBBL(bbl),
-          fetchComplaintsByBBL(bbl),
-          fetchBuildingStats(bbl),
-          fetchPlutoByBBL(bbl),
-        ]);
+        const [violationsData, complaintsData, statsData, plutoData] =
+          await Promise.all([
+            fetchViolationsByBBL(bbl),
+            fetchComplaintsByBBL(bbl),
+            fetchBuildingStats(bbl),
+            fetchPlutoByBBL(bbl),
+          ]);
 
         if (!mounted) return;
 
@@ -159,12 +160,13 @@ export default function BuildingDetail() {
         setComplaints(complaintsData);
         console.log(statsData);
         console.log(plutoData);
-        
-        
+
         setStats(statsData);
-    
+
         // Normalize the PLUTO response (handle `{ data: ... }` wrappers) and store unwrapped row
-        const plutoObj = plutoData ? ((plutoData as any).data ?? plutoData) : null;
+        const plutoObj = plutoData
+          ? ((plutoData as any).data ?? plutoData)
+          : null;
         setPlutoData(plutoObj);
         console.log("pluto fetched:", plutoObj);
 
@@ -227,34 +229,81 @@ export default function BuildingDetail() {
   };
 
   // Toggle handlers: optimistic update + backend call
-  const handleToggleViolation = async (violation_id: number | string, resolved: boolean) => {
+  const handleToggleViolation = async (
+    violation_id: number | string,
+    resolved: boolean
+  ) => {
     // optimistic
-    setViolations((prev) => prev.map((v) => (v.violation_id === violation_id ? { ...v, violation_status: resolved ? 'Closed' : 'Open' } : v)));
+    setViolations((prev) =>
+      prev.map((v) =>
+        v.violation_id === violation_id
+          ? { ...v, violation_status: resolved ? "Closed" : "Open" }
+          : v
+      )
+    );
     try {
       await toggleViolationResolved(violation_id, resolved);
     } catch (err) {
       // revert on error
-      setViolations((prev) => prev.map((v) => (v.violation_id === violation_id ? { ...v, violation_status: resolved ? 'Open' : 'Closed' } : v)));
-      console.error('Failed to toggle violation status', err);
+      setViolations((prev) =>
+        prev.map((v) =>
+          v.violation_id === violation_id
+            ? { ...v, violation_status: resolved ? "Open" : "Closed" }
+            : v
+        )
+      );
+      console.error("Failed to toggle violation status", err);
     }
   };
 
-  const handleToggleComplaint = async (complaint_id: number | string, resolved: boolean) => {
-    setComplaints((prev) => prev.map((c) => (c.complaint_id === complaint_id ? { ...c, complaint_status: resolved ? 'Closed' : 'Open' } : c)));
+  const handleToggleComplaint = async (
+    complaint_id: number | string,
+    resolved: boolean
+  ) => {
+    setComplaints((prev) =>
+      prev.map((c) =>
+        c.complaint_id === complaint_id
+          ? { ...c, complaint_status: resolved ? "Closed" : "Open" }
+          : c
+      )
+    );
     try {
       await toggleComplaintResolved(complaint_id, resolved);
     } catch (err) {
-      setComplaints((prev) => prev.map((c) => (c.complaint_id === complaint_id ? { ...c, complaint_status: resolved ? 'Open' : 'Closed' } : c)));
-      console.error('Failed to toggle complaint status', err);
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c.complaint_id === complaint_id
+            ? { ...c, complaint_status: resolved ? "Open" : "Closed" }
+            : c
+        )
+      );
+      console.error("Failed to toggle complaint status", err);
     }
   };
- 
 
   // Calculate trends from real data returned by the API (violations, complaints, stats)
   const trendData = (() => {
-    const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    const counts: Record<string, { violations: number; evictions: number; complaints: number }> = {};
-    monthNames.forEach((m) => (counts[m] = { violations: 0, evictions: 0, complaints: 0 }));
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+    const counts: Record<
+      string,
+      { violations: number; evictions: number; complaints: number }
+    > = {};
+    monthNames.forEach(
+      (m) => (counts[m] = { violations: 0, evictions: 0, complaints: 0 })
+    );
 
     const parseMonth = (dateStr?: string | null) => {
       if (!dateStr) return null;
@@ -265,14 +314,21 @@ export default function BuildingDetail() {
 
     // Aggregate violations by available date fields
     (violations || []).forEach((v) => {
-      const dateStr = v?.nov_issued_date || v?.inspection_date || v?.violation_date || v?.created_at || null;
+      const dateStr =
+        v?.nov_issued_date ||
+        v?.inspection_date ||
+        v?.violation_date ||
+        v?.created_at ||
+        null;
       const m = parseMonth(dateStr);
       if (m) counts[m].violations += 1;
     });
 
     // Aggregate complaints by complaint_status_date
     (complaints || []).forEach((c) => {
-      const m = parseMonth(c?.complaint_status_date || c?.date || c?.created_at || null);
+      const m = parseMonth(
+        c?.complaint_status_date || c?.date || c?.created_at || null
+      );
       if (m) counts[m].complaints += 1;
     });
 
@@ -288,7 +344,12 @@ export default function BuildingDetail() {
       // ignore
     }
 
-    return monthNames.map((m) => ({ month: m, violations: counts[m].violations, evictions: counts[m].evictions, complaints: counts[m].complaints }));
+    return monthNames.map((m) => ({
+      month: m,
+      violations: counts[m].violations,
+      evictions: counts[m].evictions,
+      complaints: counts[m].complaints,
+    }));
   })();
 
   if (loading) {
@@ -299,290 +360,354 @@ export default function BuildingDetail() {
       </Box>
     );
   }
-  const topbarHeight = 64; // Adjust if your topbar height is different
+  // const topbarHeight = 64; // Adjust if your topbar height is different
   return (
-    <Box sx={{ p: { xs: 2, md: 4 } }}>
-      {/* Header */}
-      <Box sx={{ mb: 3 , pt: `${topbarHeight + 16}px` }}>
-        {/* Improved Breadcrumbs */}
-        <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
-          <Link
-            color="inherit"
-            onClick={() => navigate("/landlord/dashboard")} // Consistent with your button
-            sx={{
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              "&:hover": { textDecoration: "underline" }, // Better UX
-            }}
-          >
-            <Home sx={{ mr: 0.5 }} fontSize="small" />
-            Portfolio
-          </Link>
-          <Typography color="text.primary">
-            {buildingInfo?.address || "Building Details"}
-          </Typography>
-        </Breadcrumbs>
-
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Box>
-            <Typography variant="h4" component="h1" gutterBottom>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)",
+        py: 4,
+        px: { xs: 2, sm: 3 },
+        pt: { xs: 8, sm: 10 },
+      }}
+      // sx={{ p: { xs: 2, md: 4 } }}
+    >
+      <Container maxWidth="xl">
+        {/* Header */}
+        <Box sx={{ mb: 3 }}>
+          {/* Improved Breadcrumbs */}
+          <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 2 }}>
+            <Link
+              color="inherit"
+              onClick={() => navigate("/landlord/dashboard")} // Consistent with your button
+              sx={{
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                "&:hover": { textDecoration: "underline" }, // Better UX
+              }}
+            >
+              <Home sx={{ mr: 0.5 }} fontSize="small" />
+              Portfolio
+            </Link>
+            <Typography color="text.primary">
               {buildingInfo?.address || "Building Details"}
             </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              BBL: {bbl}
-            </Typography>
-          </Box>
-          <Button
-            startIcon={<ArrowBack />}
-            onClick={() => navigate("/landlord/dashboard")}
-            variant="outlined"
+          </Breadcrumbs>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
           >
-            Back to Portfolio
-          </Button>
+            <Box>
+              <Typography variant="h4" component="h1" gutterBottom>
+                {buildingInfo?.address || "Building Details"}
+              </Typography>
+              <Typography variant="subtitle1" color="text.secondary">
+                BBL: {bbl}
+              </Typography>
+            </Box>
+            <Button
+              startIcon={<ArrowBack />}
+              onClick={() => navigate("/landlord/dashboard")}
+              variant="outlined"
+            >
+              Back to Portfolio
+            </Button>
+          </Box>
         </Box>
-      </Box>
-      {error && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        )}
 
-      {/* Quick Stats */}
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 3 }}>
-        <Box
-          sx={{
-            width: {
-              xs: "100%",
-              sm: "calc(50% - 12px)",
-              md: "calc(20% - 12px)",
-            },
-          }}
-        >
-          <Card>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Typography color="textSecondary" gutterBottom>
-                Total Violations
-              </Typography>
-              <Typography variant="h4" component="div" color="warning.main">
-                {stats?.total_violations || 0}
-              </Typography>
-            </CardContent>
-          </Card>
+        {/* Quick Stats */}
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 3 }}>
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "calc(50% - 12px)",
+                md: "calc(20% - 12px)",
+              },
+            }}
+          >
+            <Card>
+              <CardContent sx={{ textAlign: "center" }}>
+                <Typography color="textSecondary" gutterBottom>
+                  Total Violations
+                </Typography>
+                <Typography variant="h4" component="div" color="warning.main">
+                  {stats?.total_violations || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "calc(50% - 12px)",
+                md: "calc(20% - 12px)",
+              },
+            }}
+          >
+            <Card>
+              <CardContent sx={{ textAlign: "center" }}>
+                <Typography color="textSecondary" gutterBottom>
+                  Open Violations
+                </Typography>
+                <Typography variant="h4" component="div" color="error.main">
+                  {stats?.open_violations || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "calc(50% - 12px)",
+                md: "calc(20% - 12px)",
+              },
+            }}
+          >
+            <Card>
+              <CardContent sx={{ textAlign: "center" }}>
+                <Typography color="textSecondary" gutterBottom>
+                  Total Complaints
+                </Typography>
+                <Typography variant="h4" component="div" color="info.main">
+                  {stats?.total_complaints || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "calc(50% - 12px)",
+                md: "calc(20% - 12px)",
+              },
+            }}
+          >
+            <Card>
+              <CardContent sx={{ textAlign: "center" }}>
+                <Typography color="textSecondary" gutterBottom>
+                  Open Complaints
+                </Typography>
+                <Typography variant="h4" component="div" color="error.main">
+                  {stats?.open_complaints || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+          <Box
+            sx={{
+              width: {
+                xs: "100%",
+                sm: "calc(50% - 12px)",
+                md: "calc(20% - 12px)",
+              },
+            }}
+          >
+            <Card>
+              <CardContent sx={{ textAlign: "center" }}>
+                <Typography color="textSecondary" gutterBottom>
+                  Eviction Filings
+                </Typography>
+                <Typography variant="h4" component="div" color="error.main">
+                  {stats?.eviction_filings || 0}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
         </Box>
-        <Box
-          sx={{
-            width: {
-              xs: "100%",
-              sm: "calc(50% - 12px)",
-              md: "calc(20% - 12px)",
-            },
-          }}
-        >
-          <Card>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Typography color="textSecondary" gutterBottom>
-                Open Violations
-              </Typography>
-              <Typography variant="h4" component="div" color="error.main">
-                {stats?.open_violations || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-        <Box
-          sx={{
-            width: {
-              xs: "100%",
-              sm: "calc(50% - 12px)",
-              md: "calc(20% - 12px)",
-            },
-          }}
-        >
-          <Card>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Typography color="textSecondary" gutterBottom>
-                Total Complaints
-              </Typography>
-              <Typography variant="h4" component="div" color="info.main">
-                {stats?.total_complaints || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-        <Box
-          sx={{
-            width: {
-              xs: "100%",
-              sm: "calc(50% - 12px)",
-              md: "calc(20% - 12px)",
-            },
-          }}
-        >
-          <Card>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Typography color="textSecondary" gutterBottom>
-                Open Complaints
-              </Typography>
-              <Typography variant="h4" component="div" color="error.main">
-                {stats?.open_complaints || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-        <Box
-          sx={{
-            width: {
-              xs: "100%",
-              sm: "calc(50% - 12px)",
-              md: "calc(20% - 12px)",
-            },
-          }}
-        >
-          <Card>
-            <CardContent sx={{ textAlign: "center" }}>
-              <Typography color="textSecondary" gutterBottom>
-                Eviction Filings
-              </Typography>
-              <Typography variant="h4" component="div" color="error.main">
-                {stats?.eviction_filings || 0}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
-      {/*Property Information */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Property Information
-        </Typography>
-        {/* Editable financial/occupancy fields */}
-        <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
-          <TextField
-            label="Average Rent"
-            value={editValues.averageRent}
-            onChange={(e) =>
-              setEditValues((v) => ({ ...v, averageRent: e.target.value }))
-            }
-            size="small"
-            InputProps={{ startAdornment: <AttachMoney sx={{ mr: 1 }} /> }}
-            sx={{ minWidth: 180 }}
-            disabled={!editMode}
-          />
-          <TextField
-            label="Occupancy Rate (%)"
-            value={editValues.occupancyRate}
-            onChange={(e) =>
-              setEditValues((v) => ({ ...v, occupancyRate: e.target.value }))
-            }
-            size="small"
-            sx={{ minWidth: 180 }}
-            disabled={!editMode}
-          />
-          <TextField
-            label="Turnover Rate (%)"
-            value={editValues.turnoverRate}
-            onChange={(e) =>
-              setEditValues((v) => ({ ...v, turnoverRate: e.target.value }))
-            }
-            size="small"
-            sx={{ minWidth: 180 }}
-            disabled={!editMode}
-          />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {!editMode ? (
-              <Button variant="outlined" onClick={() => setEditMode(true)}>
-                Edit
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={async () => {
-                    // Save handler
-                    try {
-                      // optimistic local update
-                      const avg = editValues.averageRent
-                        ? parseFloat(editValues.averageRent)
-                        : null;
-                      const occ = editValues.occupancyRate
-                        ? parseFloat(editValues.occupancyRate)
-                        : null;
-                          // input validation
-                          if (editValues.averageRent && isNaN(Number(editValues.averageRent))) {
-                            setSaveMessage({ open: true, text: "Average rent must be a number", severity: "error" });
-                            return;
-                          }
-                          if (editValues.occupancyRate && isNaN(Number(editValues.occupancyRate))) {
-                            setSaveMessage({ open: true, text: "Occupancy rate must be a number", severity: "error" });
-                            return;
-                          }
-                          if (editValues.turnoverRate && isNaN(Number(editValues.turnoverRate))) {
-                            setSaveMessage({ open: true, text: "Turnover rate must be a number", severity: "error" });
-                            return;
-                          }
-                          const avgNum = editValues.averageRent ? parseFloat(editValues.averageRent) : null;
-                          const occNum = editValues.occupancyRate ? parseFloat(editValues.occupancyRate) : null;
-                          const turnoverNum = editValues.turnoverRate ? parseFloat(editValues.turnoverRate) : null;
-                          if (avgNum !== null && avgNum < 0) {
-                            setSaveMessage({ open: true, text: "Average rent cannot be negative", severity: "error" });
-                            return;
-                          }
-                          if (occNum !== null && (occNum < 0 || occNum > 100)) {
-                            setSaveMessage({ open: true, text: "Occupancy rate must be between 0 and 100", severity: "error" });
-                            return;
-                          }
-                          if (turnoverNum !== null && (turnoverNum < 0 || turnoverNum > 100)) {
-                            setSaveMessage({ open: true, text: "Turnover rate must be between 0 and 100", severity: "error" });
-                            return;
-                          }
-
-                          // call API helper
-                          await (await import("../api/landlord")).updateBuildingInfo(bbl || "", {
-                            average_rent: avgNum !== null && Number.isFinite(avgNum) ? avgNum : null,
-                            occupancy_rate: occNum !== null && Number.isFinite(occNum) ? occNum : null,
-                            turnover_rate: turnoverNum !== null && Number.isFinite(turnoverNum) ? turnoverNum : null,
-                          });
-                      // reflect locally
-                      setStats((s: any) => ({
-                        ...(s || {}),
-                        average_rent: avg,
-                        occupancy_rate: occ,
-                        turnover_rate: turnoverNum,
-                      }));
-                      setBuildingInfo((b: any) => ({
-                        ...(b || {}),
-                        average_rent: avg,
-                        occupancy_rate: occ,
-                        turnover_rate: turnoverNum,
-                      }));
-                      setSaveMessage({
-                        open: true,
-                        text: "Saved building details",
-                        severity: "success",
-                      });
-                      setEditMode(false);
-                    } catch (err: any) {
-                      console.error("Failed to save building info", err);
-                      setSaveMessage({
-                        open: true,
-                        text: "Failed to save building details",
-                        severity: "error",
-                      });
-                    }
-                  }}
-                >
-                  Save
+        {/*Property Information */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Property Information
+          </Typography>
+          {/* Editable financial/occupancy fields */}
+          <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap" }}>
+            <TextField
+              label="Average Rent"
+              value={editValues.averageRent}
+              onChange={(e) =>
+                setEditValues((v) => ({ ...v, averageRent: e.target.value }))
+              }
+              size="small"
+              InputProps={{ startAdornment: <AttachMoney sx={{ mr: 1 }} /> }}
+              sx={{ minWidth: 180 }}
+              disabled={!editMode}
+            />
+            <TextField
+              label="Occupancy Rate (%)"
+              value={editValues.occupancyRate}
+              onChange={(e) =>
+                setEditValues((v) => ({ ...v, occupancyRate: e.target.value }))
+              }
+              size="small"
+              sx={{ minWidth: 180 }}
+              disabled={!editMode}
+            />
+            <TextField
+              label="Turnover Rate (%)"
+              value={editValues.turnoverRate}
+              onChange={(e) =>
+                setEditValues((v) => ({ ...v, turnoverRate: e.target.value }))
+              }
+              size="small"
+              sx={{ minWidth: 180 }}
+              disabled={!editMode}
+            />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              {!editMode ? (
+                <Button variant="outlined" onClick={() => setEditMode(true)}>
+                  Edit
                 </Button>
-                <Button
-                  variant="text"
+              ) : (
+                <>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={async () => {
+                      // Save handler
+                      try {
+                        // optimistic local update
+                        const avg = editValues.averageRent
+                          ? parseFloat(editValues.averageRent)
+                          : null;
+                        const occ = editValues.occupancyRate
+                          ? parseFloat(editValues.occupancyRate)
+                          : null;
+                        // input validation
+                        if (
+                          editValues.averageRent &&
+                          isNaN(Number(editValues.averageRent))
+                        ) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Average rent must be a number",
+                            severity: "error",
+                          });
+                          return;
+                        }
+                        if (
+                          editValues.occupancyRate &&
+                          isNaN(Number(editValues.occupancyRate))
+                        ) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Occupancy rate must be a number",
+                            severity: "error",
+                          });
+                          return;
+                        }
+                        if (
+                          editValues.turnoverRate &&
+                          isNaN(Number(editValues.turnoverRate))
+                        ) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Turnover rate must be a number",
+                            severity: "error",
+                          });
+                          return;
+                        }
+                        const avgNum = editValues.averageRent
+                          ? parseFloat(editValues.averageRent)
+                          : null;
+                        const occNum = editValues.occupancyRate
+                          ? parseFloat(editValues.occupancyRate)
+                          : null;
+                        const turnoverNum = editValues.turnoverRate
+                          ? parseFloat(editValues.turnoverRate)
+                          : null;
+                        if (avgNum !== null && avgNum < 0) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Average rent cannot be negative",
+                            severity: "error",
+                          });
+                          return;
+                        }
+                        if (occNum !== null && (occNum < 0 || occNum > 100)) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Occupancy rate must be between 0 and 100",
+                            severity: "error",
+                          });
+                          return;
+                        }
+                        if (
+                          turnoverNum !== null &&
+                          (turnoverNum < 0 || turnoverNum > 100)
+                        ) {
+                          setSaveMessage({
+                            open: true,
+                            text: "Turnover rate must be between 0 and 100",
+                            severity: "error",
+                          });
+                          return;
+                        }
+
+                        // call API helper
+                        await (
+                          await import("../api/landlord")
+                        ).updateBuildingInfo(bbl || "", {
+                          average_rent:
+                            avgNum !== null && Number.isFinite(avgNum)
+                              ? avgNum
+                              : null,
+                          occupancy_rate:
+                            occNum !== null && Number.isFinite(occNum)
+                              ? occNum
+                              : null,
+                          turnover_rate:
+                            turnoverNum !== null && Number.isFinite(turnoverNum)
+                              ? turnoverNum
+                              : null,
+                        });
+                        // reflect locally
+                        setStats((s: any) => ({
+                          ...(s || {}),
+                          average_rent: avg,
+                          occupancy_rate: occ,
+                          turnover_rate: turnoverNum,
+                        }));
+                        setBuildingInfo((b: any) => ({
+                          ...(b || {}),
+                          average_rent: avg,
+                          occupancy_rate: occ,
+                          turnover_rate: turnoverNum,
+                        }));
+                        setSaveMessage({
+                          open: true,
+                          text: "Saved building details",
+                          severity: "success",
+                        });
+                        setEditMode(false);
+                      } catch (err: any) {
+                        console.error("Failed to save building info", err);
+                        setSaveMessage({
+                          open: true,
+                          text: "Failed to save building details",
+                          severity: "error",
+                        });
+                      }
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    variant="text"
                     onClick={() => {
                       // revert edits
                       setEditMode(false);
@@ -601,140 +726,162 @@ export default function BuildingDetail() {
                           "",
                       });
                     }}
-                >
-                  Cancel
-                </Button>
-              </>
-            )}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              )}
+            </Box>
           </Box>
-        </Box>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 3,
-          }}
-        >
-          <Box sx={{ flex: 1 }}>
-            <List dense>
-              <ListItem>
-                <ListItemText
-                  primary="Building Class"
-                  secondary={buildingInfo?.building_class || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Year Built"
-                  secondary={buildingInfo?.year_built || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Total Units"
-                  secondary={buildingInfo?.total_units || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Stories"
-                  secondary={buildingInfo?.stories || buildingInfo?.pluto?.numfloors || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Residential Units (PLUTO)"
-                  secondary={buildingInfo?.pluto?.unitsres ?? buildingInfo?.total_units ?? "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Building Area (sq ft)"
-                  secondary={buildingInfo?.pluto?.bldgarea ?? buildingInfo?.lot_area ?? "N/A"}
-                />
-              </ListItem>
-            </List>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <List dense>
-              <ListItem>
-                <ListItemText
-                  primary="Lot Area"
-                  secondary={
-                    buildingInfo?.lot_area
-                      ? `${buildingInfo.lot_area} sq ft`
-                      : "N/A"
-                  }
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Zoning"
-                  secondary={buildingInfo?.zoning || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Owner"
-                  secondary={(buildingInfo?.pluto?.ownername ?? buildingInfo?.owner) || "N/A"}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemText
-                  primary="Community Reviews"
-                  secondary={
-                    <Button variant="text" onClick={() => navigate(`/reviews?bbl=${bbl}`)}>
-                      View Community Reviews
-                    </Button>
-                  }
-                />
-              </ListItem>
-            </List>
-          </Box>
-        </Box>
-      </Paper>
-      {/* Quick Actions */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Quick Actions
-        </Typography>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-          <Button
-            variant="outlined"
-            sx={{ minWidth: 180 }}
-            startIcon={<RateReview />}
-            onClick={() => navigate(`/reviews?bbl=${bbl}`)}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              gap: 3,
+            }}
           >
-            Community Reviews
-          </Button>
-        </Box>
-      </Paper>
-      {/* Tabs */}
-      <BuildingTabsSection
-        tabValue={tabValue}
-        handleTabChange={handleTabChange}
-        trendData={trendData}
-        violations={violations}
-        complaints={complaints}
-        stats={stats}
-        onToggleViolation={handleToggleViolation}
-        onToggleComplaint={handleToggleComplaint}
-      />
-      {/* Snackbar for save messages */}
-      <Snackbar
-        open={saveMessage.open}
-        autoHideDuration={6000}
-        onClose={() => setSaveMessage({ ...(saveMessage || {}), open: false })}
-      >
-        <Alert
-          onClose={() => setSaveMessage({ ...(saveMessage || {}), open: false })}
-          severity={saveMessage.severity || "success"}
-          sx={{ width: "100%" }}
+            <Box sx={{ flex: 1 }}>
+              <List dense>
+                <ListItem>
+                  <ListItemText
+                    primary="Building Class"
+                    secondary={buildingInfo?.building_class || "N/A"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Year Built"
+                    secondary={buildingInfo?.year_built || "N/A"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Total Units"
+                    secondary={buildingInfo?.total_units || "N/A"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Stories"
+                    secondary={
+                      buildingInfo?.stories ||
+                      buildingInfo?.pluto?.numfloors ||
+                      "N/A"
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Residential Units (PLUTO)"
+                    secondary={
+                      buildingInfo?.pluto?.unitsres ??
+                      buildingInfo?.total_units ??
+                      "N/A"
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Building Area (sq ft)"
+                    secondary={
+                      buildingInfo?.pluto?.bldgarea ??
+                      buildingInfo?.lot_area ??
+                      "N/A"
+                    }
+                  />
+                </ListItem>
+              </List>
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <List dense>
+                <ListItem>
+                  <ListItemText
+                    primary="Lot Area"
+                    secondary={
+                      buildingInfo?.lot_area
+                        ? `${buildingInfo.lot_area} sq ft`
+                        : "N/A"
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Zoning"
+                    secondary={buildingInfo?.zoning || "N/A"}
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Owner"
+                    secondary={
+                      (buildingInfo?.pluto?.ownername ?? buildingInfo?.owner) ||
+                      "N/A"
+                    }
+                  />
+                </ListItem>
+                <ListItem>
+                  <ListItemText
+                    primary="Community Reviews"
+                    secondary={
+                      <Button
+                        variant="text"
+                        onClick={() => navigate(`/reviews?bbl=${bbl}`)}
+                      >
+                        View Community Reviews
+                      </Button>
+                    }
+                  />
+                </ListItem>
+              </List>
+            </Box>
+          </Box>
+        </Paper>
+        {/* Quick Actions */}
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Quick Actions
+          </Typography>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+            <Button
+              variant="outlined"
+              sx={{ minWidth: 180 }}
+              startIcon={<RateReview />}
+              onClick={() => navigate(`/reviews?bbl=${bbl}`)}
+            >
+              Community Reviews
+            </Button>
+          </Box>
+        </Paper>
+        {/* Tabs */}
+        <BuildingTabsSection
+          tabValue={tabValue}
+          handleTabChange={handleTabChange}
+          trendData={trendData}
+          violations={violations}
+          complaints={complaints}
+          stats={stats}
+          onToggleViolation={handleToggleViolation}
+          onToggleComplaint={handleToggleComplaint}
+        />
+        {/* Snackbar for save messages */}
+        <Snackbar
+          open={saveMessage.open}
+          autoHideDuration={6000}
+          onClose={() =>
+            setSaveMessage({ ...(saveMessage || {}), open: false })
+          }
         >
-          {saveMessage.text}
-        </Alert>
-      </Snackbar>
+          <Alert
+            onClose={() =>
+              setSaveMessage({ ...(saveMessage || {}), open: false })
+            }
+            severity={saveMessage.severity || "success"}
+            sx={{ width: "100%" }}
+          >
+            {saveMessage.text}
+          </Alert>
+        </Snackbar>
+      </Container>
     </Box>
   );
 }
-

@@ -14,9 +14,8 @@ env:
 branches:
   only:
     - develop
-    - "devops/travis"
     - main
-    - "feat/neighborhood-explorer-deploy"
+    - final-demo
 
 install:
   - pip install -r requirements.txt
@@ -33,7 +32,7 @@ script:
 after_success:
   - pushd backend
   - coverage report -m
-  - coveralls
+  - coveralls --service=travis-pro
   - popd
 #  - echo "BRANCH=$TRAVIS_BRANCH EVENT=$TRAVIS_EVENT_TYPE PR=$TRAVIS_PULL_REQUEST TAG=$TRAVIS_TAG FORK=$TRAVIS_PULL_REQUEST_SLUG"
 
