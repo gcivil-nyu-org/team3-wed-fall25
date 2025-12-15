@@ -1,4 +1,4 @@
-import { Box, Chip, Typography, Badge } from "@mui/material";
+import { Box, Chip, Typography } from "@mui/material";
 import { type CommunityMessage } from "../../api/community";
 
 const MessageItem = ({
@@ -10,7 +10,7 @@ const MessageItem = ({
 }) => {
   const isIn = direction === "in";
   const createdAt = new Date(message.created_at);
-  const isUnread = isIn && !message.read_at;
+  // const isUnread = isIn && !message.read_at;
 
   return (
     <Box
@@ -32,34 +32,46 @@ const MessageItem = ({
         }}
       >
         {isIn && message.sender_username && (
-          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 500 }}
+          >
             {message.sender_username}
           </Typography>
         )}
-        <Badge
+        {/* <Badge
           color="error"
           variant="dot"
           invisible={!isUnread}
           sx={{ "& .MuiBadge-badge": { right: -8, top: -8 } }}
-        >
-          <Chip
-            label={message.body}
-            color={isIn ? "primary" : "default"}
-            sx={{ width: "fit-content", maxWidth: "100%" }}
-          />
-        </Badge>
+        > */}
+        <Chip
+          label={message.body}
+          color={isIn ? "primary" : "default"}
+          sx={{ width: "fit-content", maxWidth: "100%" }}
+        />
+        {/* </Badge> */}
         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
           <Typography variant="caption" color="text.secondary">
             {createdAt.toLocaleDateString()} {createdAt.toLocaleTimeString()}
           </Typography>
           {!isIn && message.read_at && (
-            <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: "0.7rem" }}
+            >
               ✓ Read
             </Typography>
           )}
         </Box>
         {message.bbl && (
-          <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontSize: "0.7rem" }}
+          >
             Related to BBL: {message.bbl}
           </Typography>
         )}

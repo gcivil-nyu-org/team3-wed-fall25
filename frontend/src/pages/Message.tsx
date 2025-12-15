@@ -17,54 +17,85 @@ const Message: React.FC = () => {
       if (el) {
         el.scrollTo({
           top: el.scrollHeight + 500,
-          behavior: "smooth",
+          // behavior: "smooth",
         });
       }
-    }, 1000);
+    }, 500);
   }, [timestamp]);
 
   return (
-    <Container maxWidth="lg" sx={{ pt: { xs: 10, md: 12 }, pb: 6 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-        Message
-      </Typography>
-      {/* <Typography variant="body1" sx={{ color: "#4A5568", mb: 3 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background:
+          "linear-gradient(135deg, #FFF8F3 0%, #FEF7ED 50%, #FDF2E9 100%)",
+        py: 4,
+        px: { xs: 2, sm: 3 },
+        pt: { xs: 8, sm: 10 },
+      }}
+    >
+      <Container maxWidth="xl">
+        <Typography
+          variant="h3"
+          component="h1"
+          gutterBottom
+          sx={{
+            fontWeight: 700,
+            color: "#2D3748",
+            fontFamily: '"Montserrat", "Roboto", sans-serif',
+            fontSize: { xs: "2rem", md: "3rem" },
+          }}
+        >
+          Message
+        </Typography>
+        {/* <Typography variant="body1" sx={{ color: "#4A5568", mb: 3 }}>
         Save buildings, write reviews, and connect with others.
       </Typography> */}
 
-      <Paper>
-        <Grid container spacing={2} gap={4}>
-          <Grid size={4}>
-            <Box>
-              <ReceiverList
-                selectedPeerId={selectedPeerId}
-                timestamp={timestamp}
-                onSelect={(peerId) => setSelectedPeerId(peerId)}
-              />
-            </Box>
-          </Grid>
+        <Paper>
+          <Grid container spacing={2} gap={4}>
+            <Grid size={4}>
+              <Box>
+                <ReceiverList
+                  selectedPeerId={selectedPeerId}
+                  timestamp={timestamp}
+                  onSelect={(peerId) => {
+                    setSelectedPeerId(peerId);
 
-          <Grid sx={{ flexGrow: 1 }}>
-            {selectedPeerId !== 0 && (
-              <>
-                <Box ref={bottomRef} sx={{ maxHeight: 500, overflow: "auto" }}>
-                  <MessageList peerId={selectedPeerId} timestamp={timestamp} />
-                </Box>
+                    setTimestamp(Date.now());
+                  }}
+                />
+              </Box>
+            </Grid>
 
-                <Box>
-                  <MessageForm
-                    peerId={selectedPeerId}
-                    onSuccess={() => {
-                      setTimestamp(Date.now());
-                    }}
-                  />
-                </Box>
-              </>
-            )}
+            <Grid sx={{ flexGrow: 1 }}>
+              {selectedPeerId !== 0 && (
+                <>
+                  <Box
+                    ref={bottomRef}
+                    sx={{ maxHeight: 500, overflow: "auto" }}
+                  >
+                    <MessageList
+                      peerId={selectedPeerId}
+                      timestamp={timestamp}
+                    />
+                  </Box>
+
+                  <Box>
+                    <MessageForm
+                      peerId={selectedPeerId}
+                      onSuccess={() => {
+                        setTimestamp(Date.now());
+                      }}
+                    />
+                  </Box>
+                </>
+              )}
+            </Grid>
           </Grid>
-        </Grid>
-      </Paper>
-    </Container>
+        </Paper>
+      </Container>
+    </Box>
   );
 };
 

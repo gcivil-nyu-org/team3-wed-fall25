@@ -1,4 +1,5 @@
 // src/api/landlord.ts
+import type { BuildingData } from ".";
 import axios from "./axiosInstance";
 
 export interface PropertyDTO {
@@ -35,6 +36,12 @@ export interface ReviewDTO {
   bbl: string;
   flagged?: boolean;
   comments?: CommentDTO[];
+}
+
+export interface LandlordDTO {
+  email: string;
+  user_id: number;
+  username: string;
 }
 
 // Extended interfaces for building detail page
@@ -76,6 +83,49 @@ export interface BuildingStatsDTO {
   total_complaints: number;
   open_complaints: number;
   eviction_filings: number;
+  // Landlord-entered metadata
+  average_rent?: number | null;
+  occupancy_rate?: number | null;
+  // PLUTO / canonical fields
+  year_built?: number | null;
+  building_class?: string | null;
+  total_units?: number | null;
+  stories?: number | null;
+  lot_area?: number | null;
+  owner?: string | null;
+  zipcode?: string | null;
+  // Raw PLUTO row if needed
+  pluto?: any | null;
+}
+
+// PLUTO DTO: represents a row from the `building_pluto` table
+export interface PlutoDTO {
+  bbl: string;
+  borough?: string | null;
+  block?: string | null;
+  lot?: string | null;
+  borocode?: string | null;
+  plutomapid?: string | null;
+  address?: string | null;
+  zipcode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  xcoord?: number | null;
+  ycoord?: number | null;
+  cd?: string | null;
+  council?: string | null;
+  lotarea?: number | null;
+  bldgarea?: number | null;
+  resarea?: number | null;
+  numfloors?: number | null;
+  unitsres?: number | null;
+  unitstotal?: number | null;
+  yearbuilt?: number | null;
+  yearalter1?: number | null;
+  ownername?: string | null;
+  bldgclass?: string | null;
+  assessland?: number | null;
+  assesstot?: number | null;
 }
 
 export interface LandlordStatsDTO {
@@ -299,6 +349,30 @@ export async function fetchBuildingStats(
   }
 }
 
+export async function fetchPlutoByBBL(bbl: string): Promise<PlutoDTO | null> {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) {
+      throw new Error("No authentication token found. Please log in.");
+    }
+
+    const resp = await axios.get(`/landlord/building/${bbl}/pluto/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = resp.data as any;
+    if (data && typeof data === "object" && data.data) {
+      return data.data as PlutoDTO;
+    }
+    return data as PlutoDTO | null;
+  } catch (error) {
+    console.error("fetchPlutoByBBL: error", error);
+    return null;
+  }
+}
+
 export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
   try {
     const token = localStorage.getItem("access_token");
@@ -329,6 +403,55 @@ export async function fetchLandlordStats(): Promise<LandlordStatsDTO> {
       total_properties: 2,
       occupied_properties: 1,
     };
+  }
+}
+
+// Toggle resolved state for a violation by id
+export async function toggleViolationResolved(
+  violationId: number | string,
+  resolved: boolean
+) {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token)
+      throw new Error("No authentication token found. Please log in.");
+
+    // backend expects a patch to /landlord/violation/<id>/ with { resolved: true|false }
+    const resp = await axios.patch(
+      `/landlord/violation/${violationId}/`,
+      { resolved },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return resp.data;
+  } catch (err) {
+    console.error("toggleViolationResolved error", err);
+    throw err;
+  }
+}
+
+// Toggle resolved state for a complaint by id
+export async function toggleComplaintResolved(
+  complaintId: number | string,
+  resolved: boolean
+) {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token)
+      throw new Error("No authentication token found. Please log in.");
+
+    const resp = await axios.patch(
+      `/landlord/complaint/${complaintId}/`,
+      { resolved },
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return resp.data;
+  } catch (err) {
+    console.error("toggleComplaintResolved error", err);
+    throw err;
   }
 }
 
@@ -457,7 +580,11 @@ export async function submitApplication(applicationData: {
 // this helper attempts POST to `/landlord/building/{bbl}/update/` and returns the server payload.
 export async function updateBuildingInfo(
   bbl: string,
-  payload: { average_rent?: number | null; occupancy_rate?: number | null }
+  payload: {
+    average_rent?: number | null;
+    occupancy_rate?: number | null;
+    turnover_rate?: number | null;
+  }
 ) {
   try {
     const token = localStorage.getItem("access_token");
@@ -466,12 +593,16 @@ export async function updateBuildingInfo(
       throw new Error("No authentication token found. Please log in.");
     }
 
-    const resp = await axios.post(`/landlord/building/${bbl}/update/`, payload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const resp = await axios.post(
+      `/landlord/building/${bbl}/update/`,
+      payload,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     const data = resp.data as any;
     if (resp.status >= 200 && resp.status < 300) {
@@ -489,3 +620,35 @@ export async function updateBuildingInfo(
   }
 }
 
+export async function fetchLandlords(bbl: BuildingData["bbl"]) {
+  try {
+    // const token = localStorage.getItem("access_token");
+
+    // if (!token) {
+    //   throw new Error("No authentication token found. Please log in.");
+    // }
+
+    const resp = await axios.get<LandlordDTO[]>(`/landlord/landlords/${bbl}/`, {
+      // headers: {
+      //   Authorization: `Bearer ${token}`,
+      // },
+    });
+
+    let data = resp.data as any;
+
+    if (data && typeof data === "object" && Array.isArray(data.data)) {
+      return data.data as LandlordDTO[];
+    }
+    if (!Array.isArray(data)) {
+      console.warn(
+        "fetchProperties: unexpected response, expected array",
+        data
+      );
+      return [];
+    }
+    return data as LandlordDTO[];
+  } catch (error) {
+    console.error("fetchProperties: error", error);
+    throw error;
+  }
+}

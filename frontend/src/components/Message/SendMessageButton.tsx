@@ -8,8 +8,10 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import MessageForm from "./MessageForm";
+import { useNavigate } from "react-router";
 
 const SendMessageButton = ({ peerId }: { peerId: number }) => {
+  const navigate = useNavigate();
   const [showDialog, setShowDialog] = useState<boolean>(false);
 
   const handleCloseDialog = () => setShowDialog(false);
@@ -33,6 +35,10 @@ const SendMessageButton = ({ peerId }: { peerId: number }) => {
             peerId={peerId}
             onSuccess={() => {
               handleCloseDialog();
+
+              if (confirm("Message sent.\n Go to the Messages menu?")) {
+                navigate("/message");
+              }
             }}
           />
         </DialogContent>

@@ -5,7 +5,7 @@ import {
   ListItemText,
   Typography,
   Box,
-  Badge,
+  // Badge,
   Divider,
   Chip,
 } from "@mui/material";
@@ -72,7 +72,7 @@ const ReceiverList = ({
   }, [timestamp]);
 
   const validMessages = messages.filter((inbox) => inbox?.peer?.id);
-  
+
   // Get peer IDs from existing conversations
   const conversationPeerIds = new Set(
     validMessages.map((inbox) => inbox.peer.id)
@@ -109,83 +109,104 @@ const ReceiverList = ({
       {validMessages.length > 0 && (
         <>
           <Box sx={{ p: 2, pb: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="subtitle2"
+              color="text.secondary"
+              sx={{ fontWeight: 600 }}
+            >
               Conversations
             </Typography>
           </Box>
           <List>
-            {validMessages.map(({ peer, last_message, is_unread }) => {
-              const lastMessageDate = last_message?.created_at
-                ? new Date(last_message.created_at)
-                : null;
-              const user = allUsers.find((u) => u.id === peer.id);
+            {validMessages.map(
+              ({ peer, last_message, is_unread: _is_unread }) => {
+                const lastMessageDate = last_message?.created_at
+                  ? new Date(last_message.created_at)
+                  : null;
+                const user = allUsers.find((u) => u.id === peer.id);
 
-              return (
-                <ListItem
-                  key={peer.id}
-                  disablePadding
-                  onClick={() => onSelect(peer.id)}
-                >
-                  <ListItemButton
-                    selected={selectedPeerId === peer.id}
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      position: "relative",
-                    }}
+                return (
+                  <ListItem
+                    key={peer.id}
+                    disablePadding
+                    onClick={() => onSelect(peer.id)}
                   >
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%" }}>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <Typography variant="subtitle2">
-                              {user
-                                ? getUserDisplayName(user)
-                                : peer.username || peer.email || `User ${peer.id}`}
-                            </Typography>
-                            {user && (
-                              <Chip
-                                label={getUserRoleLabel(user)}
-                                size="small"
-                                sx={{ height: 20, fontSize: "0.7rem" }}
-                              />
-                            )}
-                            {is_unread && <Badge color="error" variant="dot" />}
-                          </Box>
-                        }
-                      />
-                    </Box>
-                    {last_message && (
-                      <>
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            maxWidth: "100%",
-                          }}
-                        >
-                          {last_message.body}
-                        </Typography>
-                        {lastMessageDate && (
+                    <ListItemButton
+                      selected={selectedPeerId === peer.id}
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        position: "relative",
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          width: "100%",
+                        }}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography variant="subtitle2">
+                                {user
+                                  ? getUserDisplayName(user)
+                                  : peer.username ||
+                                    peer.email ||
+                                    `User ${peer.id}`}
+                              </Typography>
+                              {user && (
+                                <Chip
+                                  label={getUserRoleLabel(user)}
+                                  size="small"
+                                  sx={{ height: 20, fontSize: "0.7rem" }}
+                                />
+                              )}
+                              {/* {is_unread && <Badge color="error" variant="dot" />} */}
+                            </Box>
+                          }
+                        />
+                      </Box>
+                      {last_message && (
+                        <>
                           <Typography
                             variant="caption"
                             color="text.secondary"
-                            sx={{ fontSize: "0.7rem" }}
+                            sx={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              maxWidth: "100%",
+                            }}
                           >
-                            {lastMessageDate.toLocaleDateString()}{" "}
-                            {lastMessageDate.toLocaleTimeString()}
+                            {last_message.body}
                           </Typography>
-                        )}
-                      </>
-                    )}
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
+                          {lastMessageDate && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontSize: "0.7rem" }}
+                            >
+                              {lastMessageDate.toLocaleDateString()}{" "}
+                              {lastMessageDate.toLocaleTimeString()}
+                            </Typography>
+                          )}
+                        </>
+                      )}
+                    </ListItemButton>
+                  </ListItem>
+                );
+              }
+            )}
           </List>
           <Divider sx={{ my: 1 }} />
         </>
@@ -193,7 +214,11 @@ const ReceiverList = ({
 
       {/* All Users */}
       <Box sx={{ p: 2, pb: 1 }}>
-        <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600 }}>
+        <Typography
+          variant="subtitle2"
+          color="text.secondary"
+          sx={{ fontWeight: 600 }}
+        >
           {validMessages.length > 0 ? "All Users" : "Start a Conversation"}
         </Typography>
       </Box>
@@ -203,7 +228,8 @@ const ReceiverList = ({
             Loading users...
           </Typography>
         </Box>
-      ) : usersWithoutConversations.length === 0 && usersWithConversations.length === 0 ? (
+      ) : usersWithoutConversations.length === 0 &&
+        usersWithConversations.length === 0 ? (
         <Box sx={{ p: 2, textAlign: "center" }}>
           <Typography variant="body2" color="text.secondary">
             No users available
@@ -213,7 +239,9 @@ const ReceiverList = ({
         <List>
           {/* Show users with conversations first (if not already shown above) */}
           {sortedUsersWithConversations
-            .filter((user) => !validMessages.some((msg) => msg.peer.id === user.id))
+            .filter(
+              (user) => !validMessages.some((msg) => msg.peer.id === user.id)
+            )
             .map((user) => (
               <ListItem
                 key={user.id}
@@ -230,7 +258,9 @@ const ReceiverList = ({
                 >
                   <ListItemText
                     primary={
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                      >
                         <Typography variant="subtitle2">
                           {getUserDisplayName(user)}
                         </Typography>
