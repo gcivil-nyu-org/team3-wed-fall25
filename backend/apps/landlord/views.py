@@ -550,7 +550,10 @@ class LandlordApplicationView(APIView):
             if not all([bbl, country, agree_terms]):
                 print("[LandlordApplyView] Missing required fields.")
                 return Response(
-                    {"result": False, "error": "BBL, country, and terms agreement are required."},
+                    {
+                        "result": False,
+                        "error": "BBL, country, and terms agreement are required.",
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -558,7 +561,10 @@ class LandlordApplicationView(APIView):
             if not bbl.isdigit() or len(bbl) != 10:
                 print("[LandlordApplyView] Invalid BBL format.")
                 return Response(
-                    {"result": False, "error": "Invalid BBL format. Must be 10 digits."},
+                    {
+                        "result": False,
+                        "error": "Invalid BBL format. Must be 10 digits.",
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -579,7 +585,10 @@ class LandlordApplicationView(APIView):
                         "[LandlordApplyView] Application already exists for this user and BBL."
                     )
                     return Response(
-                        {"result": False, "error": "You already have an application for this BBL."},
+                        {
+                            "result": False,
+                            "error": "You already have an application for this BBL.",
+                        },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
@@ -637,7 +646,9 @@ def landlord_apply_get(request):
         agree_terms = data.get("agreeTerms") or data.get("agree_terms")
         # Optional fields from form
         landlord_type = data.get("landlordType") or data.get("landlord_type")
-        organization_name = data.get("organizationName") or data.get("organization_name")
+        organization_name = data.get("organizationName") or data.get(
+            "organization_name"
+        )
         hpd_registration = data.get("hpdRegistration") or data.get("hpd_registration")
         business_phone = data.get("businessPhone") or data.get("business_phone")
 
@@ -646,7 +657,10 @@ def landlord_apply_get(request):
         if not all([bbl, country, agree_terms]):
             print("[LandlordApplyView] Missing required fields.")
             return Response(
-                {"result": False, "error": "BBL, country, and terms agreement are required."},
+                {
+                    "result": False,
+                    "error": "BBL, country, and terms agreement are required.",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -675,7 +689,10 @@ def landlord_apply_get(request):
                     "[LandlordApplyView] Application already exists for this user and BBL."
                 )
                 return Response(
-                    {"result": False, "error": "You already have an application for this BBL."},
+                    {
+                        "result": False,
+                        "error": "You already have an application for this BBL.",
+                    },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -1457,7 +1474,10 @@ class ViolationUpdateView(APIView):
         # payload does not contain a boolean.
         raw_resolved = request.data.get("resolved", None)
         if not isinstance(raw_resolved, bool):
-            return Response({"error": "'resolved' must be a boolean."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "'resolved' must be a boolean."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         resolved = raw_resolved
 
         try:
@@ -1524,7 +1544,10 @@ class ComplaintUpdateView(APIView):
         # truthy/falsy strings. Return 400 if payload is not a boolean.
         raw_resolved = request.data.get("resolved", None)
         if not isinstance(raw_resolved, bool):
-            return Response({"error": "'resolved' must be a boolean."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "'resolved' must be a boolean."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         resolved = raw_resolved
 
         try:

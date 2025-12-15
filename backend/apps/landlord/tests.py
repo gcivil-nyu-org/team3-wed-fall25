@@ -759,7 +759,9 @@ class MoreViewsTests(TestCase):
 
     def test_landlord_apply_missing_fields(self):
         # Covers: LandlordApplicationView.post (apply endpoint) - unauthenticated -> 401
-        resp = self.client.post("/api/landlord/apply/", {}, content_type="application/json")
+        resp = self.client.post(
+            "/api/landlord/apply/", {}, content_type="application/json"
+        )
         self.assertEqual(resp.status_code, 401)
 
     @patch("apps.landlord.views.PostgresClient")
@@ -855,7 +857,11 @@ class MoreViewsTests(TestCase):
         comment_row = {"id": 1, "user_id": 6, "body": "Thanks", "created_at": None}
 
         # Sequence: property_rows, review_rows, comment_rows
-        enter.query_all.side_effect = [[{"bbl": "1000000001"}], [review_row], [comment_row]]
+        enter.query_all.side_effect = [
+            [{"bbl": "1000000001"}],
+            [review_row],
+            [comment_row],
+        ]
 
         resp2 = auth_client.get("/api/landlord/reviews/")
         self.assertEqual(resp2.status_code, 200)
@@ -867,7 +873,9 @@ class MoreViewsTests(TestCase):
 
     def test_review_response_missing_and_unauth(self):
         # Covers: Review response endpoint (reviews/response/) - unauthenticated -> 401
-        resp = self.client.post("/api/landlord/reviews/response/", {}, content_type="application/json")
+        resp = self.client.post(
+            "/api/landlord/reviews/response/", {}, content_type="application/json"
+        )
         self.assertEqual(resp.status_code, 401)
 
     @patch("apps.landlord.views.PostgresClient")
@@ -900,13 +908,17 @@ class MoreViewsTests(TestCase):
 
     def test_flag_review_missing_and_unauth(self):
         # Covers: Flag-review endpoint (reviews/flag/) - unauthenticated and missing payload
-        resp = self.client.post("/api/landlord/reviews/flag/", {}, content_type="application/json")
+        resp = self.client.post(
+            "/api/landlord/reviews/flag/", {}, content_type="application/json"
+        )
         self.assertEqual(resp.status_code, 401)
 
         # authenticate but missing review_id -> 400
         auth_client = APIClient()
         auth_client.force_authenticate(user=self.user)
-        resp2 = auth_client.post("/api/landlord/reviews/flag/", {}, content_type="application/json")
+        resp2 = auth_client.post(
+            "/api/landlord/reviews/flag/", {}, content_type="application/json"
+        )
         self.assertEqual(resp2.status_code, 400)
 
     @patch("apps.landlord.views.LandlordRepository")
@@ -958,7 +970,9 @@ class HighImpactViewTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="hipview", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="hipview", password="pw", role="landlord"
+        )
         # Default client unauthenticated; use auth_client where needed
         self.client = APIClient()
         self.auth_client = APIClient()
@@ -1055,11 +1069,17 @@ class HighImpactViewTests(TestCase):
         enter.query_one.side_effect = query_one
         # Use simple namespace objects with plain attributes to keep the
         # response JSON-serializable and avoid heavy MagicMock introspection
-        v = SimpleNamespace(violation_id=7, nov_description="Broken", violation_status="Open")
-        c = SimpleNamespace(complaint_id=9, major_category="Heat", complaint_status="Open")
+        v = SimpleNamespace(
+            violation_id=7, nov_description="Broken", violation_status="Open"
+        )
+        c = SimpleNamespace(
+            complaint_id=9, major_category="Heat", complaint_status="Open"
+        )
 
         mock_repo = MagicMock()
-        mock_repo.get_by_bbl.return_value = SimpleNamespace(violations=[v], complaints=[c])
+        mock_repo.get_by_bbl.return_value = SimpleNamespace(
+            violations=[v], complaints=[c]
+        )
         mock_repo_cls.return_value = mock_repo
 
         resp2 = self.auth_client.get(f"/api/landlord/violations/bbl/{bbl}/")
@@ -1089,11 +1109,18 @@ class HighImpactViewTests(TestCase):
         self.assertEqual(payload.get("total_violations"), 0)
 
         # Case: repo returns building with violations/complaints and statuses
-        v1 = MagicMock(); v1.violation_status = "Open"
-        v2 = MagicMock(); v2.violation_status = "Closed"
-        c1 = MagicMock(); c1.complaint_status = "Open"
-        c2 = MagicMock(); c2.complaint_status = "Closed"
-        bld = MagicMock(); bld.violations = [v1, v2]; bld.complaints = [c1, c2]; bld.evictions = []
+        v1 = MagicMock()
+        v1.violation_status = "Open"
+        v2 = MagicMock()
+        v2.violation_status = "Closed"
+        c1 = MagicMock()
+        c1.complaint_status = "Open"
+        c2 = MagicMock()
+        c2.complaint_status = "Closed"
+        bld = MagicMock()
+        bld.violations = [v1, v2]
+        bld.complaints = [c1, c2]
+        bld.evictions = []
         mock_repo.get_by_bbl.return_value = bld
         resp2 = self.auth_client.get(f"/api/landlord/building-stats/bbl/{bbl}/")
         self.assertEqual(resp2.status_code, 200)
@@ -1281,7 +1308,9 @@ class HighImpactViewTests(TestCase):
         setattr(v, "apartment", "3A")
 
         mock_repo = MagicMock()
-        mock_repo.get_by_bbl.return_value = SimpleNamespace(violations=[v], complaints=[])
+        mock_repo.get_by_bbl.return_value = SimpleNamespace(
+            violations=[v], complaints=[]
+        )
         mock_repo_cls.return_value = mock_repo
 
         resp = self.auth_client.get(f"/api/landlord/violations/bbl/{bbl}/")
@@ -1335,7 +1364,9 @@ class AdditionalCoverageTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="addcov", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="addcov", password="pw", role="landlord"
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -1347,7 +1378,11 @@ class AdditionalCoverageTests(TestCase):
         mock_ctx = mock_pg.return_value
         enter = mock_ctx.__enter__.return_value
         enter.query_one.return_value = None
-        resp = self.client.post(f"/api/landlord/building/{bbl}/update/", {"average_rent": 1200}, format="json")
+        resp = self.client.post(
+            f"/api/landlord/building/{bbl}/update/",
+            {"average_rent": 1200},
+            format="json",
+        )
         self.assertEqual(resp.status_code, 403)
 
         # Case: flagged parsing for various inputs when ownership present
@@ -1355,15 +1390,25 @@ class AdditionalCoverageTests(TestCase):
             ctx = mock_pg.return_value
             enter = ctx.__enter__.return_value
             # First query_one returns ownership, second returns the row after upsert
-            enter.query_one.side_effect = [ {"bbl": bbl}, return_row ]
+            enter.query_one.side_effect = [{"bbl": bbl}, return_row]
             enter.execute = MagicMock()
             return ctx, enter
 
-        return_row = {"bbl": bbl, "average_rent": 1200, "occupancy_rate": 90.0, "turnover_rate": 2.0, "flagged": True}
+        return_row = {
+            "bbl": bbl,
+            "average_rent": 1200,
+            "occupancy_rate": 90.0,
+            "turnover_rate": 2.0,
+            "flagged": True,
+        }
         ctx, enter = make_ctx(return_row)
 
         # flagged as string 'yes'
-        resp2 = self.client.post(f"/api/landlord/building/{bbl}/update/", json.dumps({"average_rent": 1200, "flagged": "yes"}), content_type="application/json")
+        resp2 = self.client.post(
+            f"/api/landlord/building/{bbl}/update/",
+            json.dumps({"average_rent": 1200, "flagged": "yes"}),
+            content_type="application/json",
+        )
         self.assertIn(resp2.status_code, (200, 201))
         data = resp2.json()
         payload = extract_payload(data)
@@ -1373,7 +1418,11 @@ class AdditionalCoverageTests(TestCase):
 
         # flagged as 'no' should parse to False (and succeed)
         ctx, enter = make_ctx(return_row)
-        resp3 = self.client.post(f"/api/landlord/building/{bbl}/update/", json.dumps({"average_rent": 1200, "flagged": "no"}), content_type="application/json")
+        resp3 = self.client.post(
+            f"/api/landlord/building/{bbl}/update/",
+            json.dumps({"average_rent": 1200, "flagged": "no"}),
+            content_type="application/json",
+        )
         self.assertIn(resp3.status_code, (200, 201))
 
     @patch("apps.landlord.views.PostgresClient")
@@ -1400,7 +1449,9 @@ class AdditionalCoverageTests(TestCase):
         c3 = SimpleNamespace(complaint_status="Closed")
         b2.complaints = [c2, c3]
 
-        mock_repo.get_by_bbl.side_effect = lambda bbl: (b1 if bbl == "1000000001" else b2)
+        mock_repo.get_by_bbl.side_effect = lambda bbl: (
+            b1 if bbl == "1000000001" else b2
+        )
         mock_repo_cls.return_value = mock_repo
 
         resp = self.client.get("/api/landlord/stats/")
@@ -1418,7 +1469,9 @@ class MoreCoverageTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="morecov", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="morecov", password="pw", role="landlord"
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
