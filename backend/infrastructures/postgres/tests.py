@@ -405,6 +405,7 @@ class BuildingRepositoryTests(TestCase):
 
     def test_get_many_by_bbl_handles_exceptions(self):
         """get_many_by_bbl이 개별 BBL 예외를 삼킨다."""
+
         def fake_get(bbl: str):
             if bbl == "bad":
                 raise ValueError("boom")
@@ -605,9 +606,7 @@ class BuildingRepositoryTests(TestCase):
             "_assign_risk_level_with_distribution",
             return_value="High Risk",
         ):
-            count_high = self.repo.search_buildings_count(
-                "10001", risk_level="High"
-            )
+            count_high = self.repo.search_buildings_count("10001", risk_level="High")
             self.assertEqual(count_high, 1)
 
     def test_assign_risk_level_with_distribution_various_cases(self):
@@ -958,9 +957,7 @@ class NeighborhoodRepositoryTests(TestCase):
                 # 첫 파라미터가 3년 전 날짜인지만 대략 체크
                 outer.assertGreaterEqual(len(params), 1)
                 outer.assertIsNotNone(params[0])
-                outer.assertTrue(
-                    isinstance(params[0], datetime)
-                )
+                outer.assertTrue(isinstance(params[0], datetime))
                 return rows
 
         self.repo.client_factory = lambda: BoroughDB()
