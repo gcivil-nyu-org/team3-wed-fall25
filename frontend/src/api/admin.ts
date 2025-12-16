@@ -62,14 +62,32 @@ export interface PlatformHealth {
   timestamp: string;
 }
 
+/**
+ * Get admin authentication headers.
+ * Uses the admin key for authenticated requests.
+ */
+function getAdminHeaders(): Record<string, string> {
+  // Check if admin is authenticated via sessionStorage
+  const isAuthenticated =
+    sessionStorage.getItem("admin_authenticated") === "true";
+  if (isAuthenticated) {
+    return { "X-Admin-Key": "admin_secret_key_2025" };
+  }
+  return {};
+}
+
 // API functions
 export async function fetchAdminStats(): Promise<AdminStats> {
-  const response = await axiosInstance.get("/api/user/admin/stats/");
+  const response = await axiosInstance.get("/api/user/admin/stats/", {
+    headers: getAdminHeaders(),
+  });
   return response.data;
 }
 
 export async function fetchFlaggedReviews(): Promise<FlaggedReview[]> {
-  const response = await axiosInstance.get("/api/user/admin/flagged-reviews/");
+  const response = await axiosInstance.get("/api/user/admin/flagged-reviews/", {
+    headers: getAdminHeaders(),
+  });
   return response.data;
 }
 
@@ -79,16 +97,23 @@ export async function fetchAdminReviews(
 ): Promise<AdminReview[]> {
   const response = await axiosInstance.get("/api/user/admin/reviews/", {
     params: { limit, offset },
+    headers: getAdminHeaders(),
   });
   return response.data;
 }
 
 export async function approveReview(reviewId: number): Promise<void> {
-  await axiosInstance.post(`/api/user/admin/reviews/${reviewId}/approve/`);
+  await axiosInstance.post(
+    `/api/user/admin/reviews/${reviewId}/approve/`,
+    {},
+    { headers: getAdminHeaders() }
+  );
 }
 
 export async function deleteReview(reviewId: number): Promise<void> {
-  await axiosInstance.delete(`/api/user/admin/reviews/${reviewId}/`);
+  await axiosInstance.delete(`/api/user/admin/reviews/${reviewId}/`, {
+    headers: getAdminHeaders(),
+  });
 }
 
 export async function fetchAdminUsers(
@@ -100,12 +125,15 @@ export async function fetchAdminUsers(
   if (role) params.role = role;
   const response = await axiosInstance.get("/api/user/admin/users/", {
     params,
+    headers: getAdminHeaders(),
   });
   return response.data;
 }
 
 export async function fetchPlatformHealth(): Promise<PlatformHealth> {
-  const response = await axiosInstance.get("/api/user/admin/health/");
+  const response = await axiosInstance.get("/api/user/admin/health/", {
+    headers: getAdminHeaders(),
+  });
   return response.data;
 }
 
