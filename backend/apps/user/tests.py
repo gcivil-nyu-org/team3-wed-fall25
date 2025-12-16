@@ -1877,13 +1877,13 @@ class AdminViewsTests(TestCase):
 
     def test_admin_stats_unauthenticated(self):
         """Test that unauthenticated users cannot access admin stats"""
-        response = self.client.get("/api/user/admin/stats/")
+        response = self.client.get("/api/auth/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_stats_non_staff(self):
         """Test that non-staff users cannot access admin stats"""
         self.client.force_authenticate(user=self.regular_user)
-        response = self.client.get("/api/user/admin/stats/")
+        response = self.client.get("/api/auth/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -1894,13 +1894,13 @@ class AdminViewsTests(TestCase):
         mock_db.query_one.return_value = {"count": 100}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/stats/")
+        response = self.client.get("/api/auth/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("totalUsers", response.data)
 
     def test_admin_flagged_reviews_unauthenticated(self):
         """Test that unauthenticated users cannot access flagged reviews"""
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -1911,7 +1911,7 @@ class AdminViewsTests(TestCase):
         mock_db.query_one.return_value = {"count": 0}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
 
@@ -1936,7 +1936,7 @@ class AdminViewsTests(TestCase):
         mock_db.query_one.return_value = {"count": 2}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], 1)
@@ -1962,13 +1962,13 @@ class AdminViewsTests(TestCase):
         mock_db.query_one.return_value = {"count": 0}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["content"], "")
 
     def test_admin_all_reviews_unauthenticated(self):
         """Test that unauthenticated users cannot access all reviews"""
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -1978,7 +1978,7 @@ class AdminViewsTests(TestCase):
         mock_db.query_all.return_value = []
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -1988,12 +1988,12 @@ class AdminViewsTests(TestCase):
         mock_db.query_all.return_value = []
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/?limit=10&offset=5")
+        response = self.client.get("/api/auth/admin/reviews/?limit=10&offset=5")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_approve_review_unauthenticated(self):
         """Test that unauthenticated users cannot approve reviews"""
-        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        response = self.client.post("/api/auth/admin/reviews/1/approve/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2003,13 +2003,13 @@ class AdminViewsTests(TestCase):
         mock_db.execute.return_value = None
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        response = self.client.post("/api/auth/admin/reviews/1/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("message", response.data)
 
     def test_admin_delete_review_unauthenticated(self):
         """Test that unauthenticated users cannot delete reviews"""
-        response = self.client.delete("/api/user/admin/reviews/1/")
+        response = self.client.delete("/api/auth/admin/reviews/1/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2019,37 +2019,37 @@ class AdminViewsTests(TestCase):
         mock_db.execute.return_value = None
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.delete("/api/user/admin/reviews/1/")
+        response = self.client.delete("/api/auth/admin/reviews/1/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("message", response.data)
 
     def test_admin_users_unauthenticated(self):
         """Test that unauthenticated users cannot access user list"""
-        response = self.client.get("/api/user/admin/users/")
+        response = self.client.get("/api/auth/admin/users/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_users_as_staff(self):
         """Test that staff users can access user list"""
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/users/")
+        response = self.client.get("/api/auth/admin/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
 
     def test_admin_users_with_role_filter(self):
         """Test user list with role filter"""
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/users/?role=tenant")
+        response = self.client.get("/api/auth/admin/users/?role=tenant")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_users_with_pagination(self):
         """Test user list with pagination"""
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/users/?limit=10&offset=0")
+        response = self.client.get("/api/auth/admin/users/?limit=10&offset=0")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_admin_health_unauthenticated(self):
         """Test that unauthenticated users cannot access health endpoint"""
-        response = self.client.get("/api/user/admin/health/")
+        response = self.client.get("/api/auth/admin/health/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2059,7 +2059,7 @@ class AdminViewsTests(TestCase):
         mock_db.query_one.return_value = {"1": 1}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/health/")
+        response = self.client.get("/api/auth/admin/health/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("apiStatus", response.data)
         self.assertIn("dbStatus", response.data)
@@ -2070,7 +2070,7 @@ class AdminViewsTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/health/")
+        response = self.client.get("/api/auth/admin/health/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["dbStatus"], "error")
 
@@ -2080,14 +2080,14 @@ class AdminViewsTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/stats/")
+        response = self.client.get("/api/auth/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @patch.dict("os.environ", {"ADMIN_API_KEY": "test_secret_key"})
     def test_admin_api_key_auth(self):
         """Test admin authentication via API key"""
         response = self.client.get(
-            "/api/user/admin/users/",
+            "/api/auth/admin/users/",
             HTTP_X_ADMIN_KEY="test_secret_key",
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -2095,7 +2095,7 @@ class AdminViewsTests(TestCase):
     def test_admin_cookie_auth(self):
         """Test admin authentication via cookie"""
         self.client.cookies["admin_authenticated"] = "true"
-        response = self.client.get("/api/user/admin/users/")
+        response = self.client.get("/api/auth/admin/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
 
@@ -2112,7 +2112,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         """Test permission denies anonymous users"""
         from django.contrib.auth.models import AnonymousUser
 
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = AnonymousUser()
         request.COOKIES = {}
         self.assertFalse(self.permission.has_permission(request, None))
@@ -2125,7 +2125,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
             password="pass123",
             is_staff=True,
         )
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = user
         request.COOKIES = {}
         self.assertTrue(self.permission.has_permission(request, None))
@@ -2138,7 +2138,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
             password="pass123",
             is_superuser=True,
         )
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = user
         request.COOKIES = {}
         self.assertTrue(self.permission.has_permission(request, None))
@@ -2150,7 +2150,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
             email="regular2@test.com",
             password="pass123",
         )
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = user
         request.COOKIES = {}
         self.assertFalse(self.permission.has_permission(request, None))
@@ -2161,7 +2161,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         from django.contrib.auth.models import AnonymousUser
 
         request = self.factory.get(
-            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="valid_secret_key"
+            "/api/auth/admin/stats/", HTTP_X_ADMIN_KEY="valid_secret_key"
         )
         request.user = AnonymousUser()
         request.COOKIES = {}
@@ -2173,7 +2173,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         from django.contrib.auth.models import AnonymousUser
 
         request = self.factory.get(
-            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="wrong_key"
+            "/api/auth/admin/stats/", HTTP_X_ADMIN_KEY="wrong_key"
         )
         request.user = AnonymousUser()
         request.COOKIES = {}
@@ -2185,7 +2185,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         from django.contrib.auth.models import AnonymousUser
 
         request = self.factory.get(
-            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="some_key"
+            "/api/auth/admin/stats/", HTTP_X_ADMIN_KEY="some_key"
         )
         request.user = AnonymousUser()
         request.COOKIES = {}
@@ -2195,7 +2195,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         """Test permission allows admin cookie"""
         from django.contrib.auth.models import AnonymousUser
 
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = AnonymousUser()
         request.COOKIES = {"admin_authenticated": "true"}
         self.assertTrue(self.permission.has_permission(request, None))
@@ -2204,7 +2204,7 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         """Test permission denies wrong cookie value"""
         from django.contrib.auth.models import AnonymousUser
 
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get("/api/auth/admin/stats/")
         request.user = AnonymousUser()
         request.COOKIES = {"admin_authenticated": "false"}
         self.assertFalse(self.permission.has_permission(request, None))
@@ -2247,7 +2247,7 @@ class AdminViewsAdditionalTests(TestCase):
         ]
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["address"], "123 Main St, Manhattan")
 
@@ -2274,7 +2274,7 @@ class AdminViewsAdditionalTests(TestCase):
         ]
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["address"], "456 Oak Ave")
 
@@ -2301,7 +2301,7 @@ class AdminViewsAdditionalTests(TestCase):
         ]
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]["address"], "BBL: 9999999999")
 
@@ -2311,7 +2311,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2320,7 +2320,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        response = self.client.post("/api/auth/admin/reviews/1/approve/")
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2329,14 +2329,14 @@ class AdminViewsAdditionalTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.delete("/api/user/admin/reviews/1/")
+        response = self.client.delete("/api/auth/admin/reviews/1/")
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def test_admin_users_db_error(self):
         """Test users endpoint with invalid query params"""
         self.client.force_authenticate(user=self.admin_user)
         # Should still work with valid params
-        response = self.client.get("/api/user/admin/users/?limit=5&offset=0")
+        response = self.client.get("/api/auth/admin/users/?limit=5&offset=0")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     @patch("apps.user.admin_views.PostgresClient")
@@ -2345,7 +2345,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
 
@@ -2371,7 +2371,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.query_one.return_value = {"count": 5}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Content should be truncated to 200 chars + "..."
         self.assertEqual(len(response.data[0]["content"]), 203)
@@ -2398,7 +2398,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.query_one.return_value = {"count": 0}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Zero flag count should remain 0, not become 1
         self.assertEqual(response.data[0]["reportedBy"], 0)
@@ -2410,7 +2410,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.query_one.return_value = None
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/stats/")
+        response = self.client.get("/api/auth/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["totalReviews"], 0)
 
@@ -2421,7 +2421,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.execute.return_value = None
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post("/api/user/admin/reviews/999/approve/")
+        response = self.client.post("/api/auth/admin/reviews/999/approve/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["reviewId"], 999)
 
@@ -2433,7 +2433,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.execute.side_effect = [None, Exception("Table not found")]
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        response = self.client.post("/api/auth/admin/reviews/1/approve/")
         # Should still succeed - the except block handles missing table
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -2462,7 +2462,7 @@ class AdminViewsAdditionalTests(TestCase):
         ]
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/reviews/")
+        response = self.client.get("/api/auth/admin/reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("2024-01-15", response.data[0]["createdAt"])
 
@@ -2489,7 +2489,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.query_one.return_value = {"count": 3}
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("2024-06-20", response.data[0]["createdAt"])
         self.assertEqual(response.data[0]["rating"], 2.5)
@@ -2498,7 +2498,7 @@ class AdminViewsAdditionalTests(TestCase):
         """Test users endpoint handles errors gracefully"""
         self.client.force_authenticate(user=self.admin_user)
         # Test with very large offset - should still work
-        response = self.client.get("/api/user/admin/users/?limit=10&offset=10000")
+        response = self.client.get("/api/auth/admin/users/?limit=10&offset=10000")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])
 
@@ -2510,7 +2510,7 @@ class AdminViewsAdditionalTests(TestCase):
         )
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/health/")
+        response = self.client.get("/api/auth/admin/health/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["dbStatus"], "error")
         self.assertIn("dbError", response.data)
@@ -2537,7 +2537,7 @@ class AdminViewsAdditionalTests(TestCase):
         mock_db.query_one.return_value = None  # No flag count result
 
         self.client.force_authenticate(user=self.admin_user)
-        response = self.client.get("/api/user/admin/flagged-reviews/")
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         # Should default to 1 when result is None
         self.assertEqual(response.data[0]["reportedBy"], 1)
