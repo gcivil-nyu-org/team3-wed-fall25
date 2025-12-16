@@ -2083,11 +2083,9 @@ class AdminViewsTests(TestCase):
         response = self.client.get("/api/user/admin/stats/")
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @patch("os.environ.get")
-    def test_admin_api_key_auth(self, mock_env_get):
+    @patch.dict("os.environ", {"ADMIN_API_KEY": "test_secret_key"})
+    def test_admin_api_key_auth(self):
         """Test admin authentication via API key"""
-        mock_env_get.return_value = "test_secret_key"
-
         response = self.client.get(
             "/api/user/admin/users/",
             HTTP_X_ADMIN_KEY="test_secret_key",
@@ -2157,45 +2155,40 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         request.COOKIES = {}
         self.assertFalse(self.permission.has_permission(request, None))
 
-    @patch("apps.user.admin_views.os.environ.get")
-    def test_permission_allows_valid_api_key(self, mock_env_get):
+    @patch.dict("os.environ", {"ADMIN_API_KEY": "valid_secret_key"})
+    def test_permission_allows_valid_api_key(self):
         """Test permission allows valid API key"""
         from django.contrib.auth.models import AnonymousUser
 
-        mock_env_get.return_value = "valid_secret_key"
-
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get(
+            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="valid_secret_key"
+        )
         request.user = AnonymousUser()
         request.COOKIES = {}
-        request.headers = {"X-Admin-Key": "valid_secret_key"}
-        # Need to mock headers property
-        request.META = {"HTTP_X_ADMIN_KEY": "valid_secret_key"}
         self.assertTrue(self.permission.has_permission(request, None))
 
-    @patch("apps.user.admin_views.os.environ.get")
-    def test_permission_denies_invalid_api_key(self, mock_env_get):
+    @patch.dict("os.environ", {"ADMIN_API_KEY": "valid_secret_key"})
+    def test_permission_denies_invalid_api_key(self):
         """Test permission denies invalid API key"""
         from django.contrib.auth.models import AnonymousUser
 
-        mock_env_get.return_value = "valid_secret_key"
-
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get(
+            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="wrong_key"
+        )
         request.user = AnonymousUser()
         request.COOKIES = {}
-        request.META = {"HTTP_X_ADMIN_KEY": "wrong_key"}
         self.assertFalse(self.permission.has_permission(request, None))
 
-    @patch("apps.user.admin_views.os.environ.get")
-    def test_permission_denies_when_no_env_key(self, mock_env_get):
+    @patch.dict("os.environ", {}, clear=True)
+    def test_permission_denies_when_no_env_key(self):
         """Test permission denies when env key not set"""
         from django.contrib.auth.models import AnonymousUser
 
-        mock_env_get.return_value = None
-
-        request = self.factory.get("/api/user/admin/stats/")
+        request = self.factory.get(
+            "/api/user/admin/stats/", HTTP_X_ADMIN_KEY="some_key"
+        )
         request.user = AnonymousUser()
         request.COOKIES = {}
-        request.META = {"HTTP_X_ADMIN_KEY": "some_key"}
         self.assertFalse(self.permission.has_permission(request, None))
 
     def test_permission_allows_admin_cookie(self):
