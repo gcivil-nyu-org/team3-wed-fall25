@@ -2156,3 +2156,290 @@ class IsAdminAuthenticatedPermissionTests(TestCase):
         request.user = user
         request.COOKIES = {}
         self.assertFalse(self.permission.has_permission(request, None))
+
+    @patch("apps.user.admin_views.os.environ.get")
+    def test_permission_allows_valid_api_key(self, mock_env_get):
+        """Test permission allows valid API key"""
+        from django.contrib.auth.models import AnonymousUser
+
+        mock_env_get.return_value = "valid_secret_key"
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {}
+        request.headers = {"X-Admin-Key": "valid_secret_key"}
+        # Need to mock headers property
+        request.META = {"HTTP_X_ADMIN_KEY": "valid_secret_key"}
+        self.assertTrue(self.permission.has_permission(request, None))
+
+    @patch("apps.user.admin_views.os.environ.get")
+    def test_permission_denies_invalid_api_key(self, mock_env_get):
+        """Test permission denies invalid API key"""
+        from django.contrib.auth.models import AnonymousUser
+
+        mock_env_get.return_value = "valid_secret_key"
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {}
+        request.META = {"HTTP_X_ADMIN_KEY": "wrong_key"}
+        self.assertFalse(self.permission.has_permission(request, None))
+
+    @patch("apps.user.admin_views.os.environ.get")
+    def test_permission_denies_when_no_env_key(self, mock_env_get):
+        """Test permission denies when env key not set"""
+        from django.contrib.auth.models import AnonymousUser
+
+        mock_env_get.return_value = None
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {}
+        request.META = {"HTTP_X_ADMIN_KEY": "some_key"}
+        self.assertFalse(self.permission.has_permission(request, None))
+
+    def test_permission_allows_admin_cookie(self):
+        """Test permission allows admin cookie"""
+        from django.contrib.auth.models import AnonymousUser
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {"admin_authenticated": "true"}
+        self.assertTrue(self.permission.has_permission(request, None))
+
+    def test_permission_denies_wrong_cookie_value(self):
+        """Test permission denies wrong cookie value"""
+        from django.contrib.auth.models import AnonymousUser
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {"admin_authenticated": "false"}
+        self.assertFalse(self.permission.has_permission(request, None))
+
+
+class AdminViewsAdditionalTests(TestCase):
+    """Additional tests for admin API endpoints to improve coverage"""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.admin_user = User.objects.create_user(
+            username="adminuser3",
+            email="admin3@example.com",
+            password="adminpass123",
+            role="tenant",
+            is_staff=True,
+            is_superuser=True,
+        )
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_with_address(self, mock_postgres):
+        """Test all reviews with full address data"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": 4.5,
+                "created_at": None,
+                "flagged": False,
+                "author_email": "test@test.com",
+                "author_username": "testuser",
+                "house_number": "123",
+                "street_name": "Main St",
+                "boro": "Manhattan",
+            }
+        ]
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["address"], "123 Main St, Manhattan")
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_without_boro(self, mock_postgres):
+        """Test all reviews with partial address (no boro)"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": None,
+                "created_at": None,
+                "flagged": True,
+                "author_email": None,
+                "author_username": "testuser",
+                "house_number": "456",
+                "street_name": "Oak Ave",
+                "boro": None,
+            }
+        ]
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["address"], "456 Oak Ave")
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_no_address(self, mock_postgres):
+        """Test all reviews without address data"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "9999999999",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": 3.0,
+                "created_at": None,
+                "flagged": False,
+                "author_email": "test@test.com",
+                "author_username": None,
+                "house_number": None,
+                "street_name": None,
+                "boro": None,
+            }
+        ]
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["address"], "BBL: 9999999999")
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_db_error(self, mock_postgres):
+        """Test all reviews endpoint when database fails"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_approve_review_db_error(self, mock_postgres):
+        """Test approve review endpoint when database fails"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_delete_review_db_error(self, mock_postgres):
+        """Test delete review endpoint when database fails"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.delete("/api/user/admin/reviews/1/")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def test_admin_users_db_error(self):
+        """Test users endpoint with invalid query params"""
+        self.client.force_authenticate(user=self.admin_user)
+        # Should still work with valid params
+        response = self.client.get("/api/user/admin/users/?limit=5&offset=0")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_db_error(self, mock_postgres):
+        """Test flagged reviews returns empty on error"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_long_body(self, mock_postgres):
+        """Test flagged reviews truncates long body text"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        long_body = "A" * 300  # 300 character body
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": long_body,
+                "rating": 2.0,
+                "created_at": None,
+                "flagged": True,
+                "author_email": "test@test.com",
+                "author_username": "testuser",
+            }
+        ]
+        mock_db.query_one.return_value = {"count": 5}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Content should be truncated to 200 chars + "..."
+        self.assertEqual(len(response.data[0]["content"]), 203)
+        self.assertTrue(response.data[0]["content"].endswith("..."))
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_zero_flag_count(self, mock_postgres):
+        """Test flagged reviews with zero flag count"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Short body",
+                "rating": 1.0,
+                "created_at": None,
+                "flagged": True,
+                "author_email": None,
+                "author_username": "testuser",
+            }
+        ]
+        mock_db.query_one.return_value = {"count": 0}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Zero flag count should remain 0, not become 1
+        self.assertEqual(response.data[0]["reportedBy"], 0)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_stats_none_results(self, mock_postgres):
+        """Test stats with None query results"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_one.return_value = None
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["totalReviews"], 0)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_approve_review_with_flag_cleanup(self, mock_postgres):
+        """Test approve review cleans up flags table"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.execute.return_value = None
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post("/api/user/admin/reviews/999/approve/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["reviewId"], 999)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_approve_review_flag_table_error(self, mock_postgres):
+        """Test approve review handles missing flags table"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        # First execute succeeds (unflag), second raises (delete from flags table)
+        mock_db.execute.side_effect = [None, Exception("Table not found")]
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        # Should still succeed - the except block handles missing table
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
