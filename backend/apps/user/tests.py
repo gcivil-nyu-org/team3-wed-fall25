@@ -1851,3 +1851,308 @@ class UserViewsIntegrationTests(TestCase):
 
         except Exception as e:
             self.skipTest(f"User views method coverage test failed: {e}")
+
+
+class AdminViewsTests(TestCase):
+    """Tests for admin API endpoints"""
+
+    def setUp(self):
+        self.client = APIClient()
+        # Create a staff user for admin access
+        self.admin_user = User.objects.create_user(
+            username="adminuser",
+            email="admin@example.com",
+            password="adminpass123",
+            role="tenant",
+            is_staff=True,
+            is_superuser=True,
+        )
+        # Create a regular user
+        self.regular_user = User.objects.create_user(
+            username="regularuser",
+            email="regular@example.com",
+            password="regularpass123",
+            role="tenant",
+        )
+
+    def test_admin_stats_unauthenticated(self):
+        """Test that unauthenticated users cannot access admin stats"""
+        response = self.client.get("/api/user/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_stats_non_staff(self):
+        """Test that non-staff users cannot access admin stats"""
+        self.client.force_authenticate(user=self.regular_user)
+        response = self.client.get("/api/user/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_stats_as_staff(self, mock_postgres):
+        """Test that staff users can access admin stats"""
+        # Mock PostgreSQL responses
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_one.return_value = {"count": 100}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("totalUsers", response.data)
+
+    def test_admin_flagged_reviews_unauthenticated(self):
+        """Test that unauthenticated users cannot access flagged reviews"""
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_as_staff(self, mock_postgres):
+        """Test that staff users can access flagged reviews"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+        mock_db.query_one.return_value = {"count": 0}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_with_data(self, mock_postgres):
+        """Test flagged reviews with actual review data"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body content",
+                "rating": 3.5,
+                "created_at": None,
+                "flagged": True,
+                "author_email": "test@test.com",
+                "author_username": "testuser",
+            }
+        ]
+        mock_db.query_one.return_value = {"count": 2}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], 1)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_with_none_body(self, mock_postgres):
+        """Test flagged reviews handles None body correctly"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": None,  # None body
+                "rating": None,
+                "created_at": None,
+                "flagged": True,
+                "author_email": None,
+                "author_username": "testuser",
+            }
+        ]
+        mock_db.query_one.return_value = {"count": 0}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["content"], "")
+
+    def test_admin_all_reviews_unauthenticated(self):
+        """Test that unauthenticated users cannot access all reviews"""
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_as_staff(self, mock_postgres):
+        """Test that staff users can access all reviews"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_with_pagination(self, mock_postgres):
+        """Test all reviews with pagination params"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/?limit=10&offset=5")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_admin_approve_review_unauthenticated(self):
+        """Test that unauthenticated users cannot approve reviews"""
+        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_approve_review_as_staff(self, mock_postgres):
+        """Test that staff users can approve reviews"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.execute.return_value = None
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.post("/api/user/admin/reviews/1/approve/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+
+    def test_admin_delete_review_unauthenticated(self):
+        """Test that unauthenticated users cannot delete reviews"""
+        response = self.client.delete("/api/user/admin/reviews/1/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_delete_review_as_staff(self, mock_postgres):
+        """Test that staff users can delete reviews"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.execute.return_value = None
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.delete("/api/user/admin/reviews/1/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("message", response.data)
+
+    def test_admin_users_unauthenticated(self):
+        """Test that unauthenticated users cannot access user list"""
+        response = self.client.get("/api/user/admin/users/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_users_as_staff(self):
+        """Test that staff users can access user list"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/users/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsInstance(response.data, list)
+
+    def test_admin_users_with_role_filter(self):
+        """Test user list with role filter"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/users/?role=tenant")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_admin_users_with_pagination(self):
+        """Test user list with pagination"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/users/?limit=10&offset=0")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_admin_health_unauthenticated(self):
+        """Test that unauthenticated users cannot access health endpoint"""
+        response = self.client.get("/api/user/admin/health/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_health_as_staff(self, mock_postgres):
+        """Test that staff users can access health endpoint"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_one.return_value = {"1": 1}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/health/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("apiStatus", response.data)
+        self.assertIn("dbStatus", response.data)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_health_db_error(self, mock_postgres):
+        """Test health endpoint when database fails"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/health/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["dbStatus"], "error")
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_stats_db_error(self, mock_postgres):
+        """Test stats endpoint when database fails"""
+        mock_postgres.return_value.__enter__.side_effect = Exception("DB Error")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @patch("os.environ.get")
+    def test_admin_api_key_auth(self, mock_env_get):
+        """Test admin authentication via API key"""
+        mock_env_get.return_value = "test_secret_key"
+
+        response = self.client.get(
+            "/api/user/admin/users/",
+            HTTP_X_ADMIN_KEY="test_secret_key",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_admin_cookie_auth(self):
+        """Test admin authentication via cookie"""
+        self.client.cookies["admin_authenticated"] = "true"
+        response = self.client.get("/api/user/admin/users/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class IsAdminAuthenticatedPermissionTests(TestCase):
+    """Tests for IsAdminAuthenticated permission class"""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+        from apps.user.admin_views import IsAdminAuthenticated
+
+        self.permission = IsAdminAuthenticated()
+
+    def test_permission_denies_anonymous(self):
+        """Test permission denies anonymous users"""
+        from django.contrib.auth.models import AnonymousUser
+
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = AnonymousUser()
+        request.COOKIES = {}
+        self.assertFalse(self.permission.has_permission(request, None))
+
+    def test_permission_allows_staff(self):
+        """Test permission allows staff users"""
+        user = User.objects.create_user(
+            username="staffuser",
+            email="staff@test.com",
+            password="pass123",
+            is_staff=True,
+        )
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = user
+        request.COOKIES = {}
+        self.assertTrue(self.permission.has_permission(request, None))
+
+    def test_permission_allows_superuser(self):
+        """Test permission allows superusers"""
+        user = User.objects.create_user(
+            username="superuser",
+            email="super@test.com",
+            password="pass123",
+            is_superuser=True,
+        )
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = user
+        request.COOKIES = {}
+        self.assertTrue(self.permission.has_permission(request, None))
+
+    def test_permission_denies_regular_user(self):
+        """Test permission denies regular users"""
+        user = User.objects.create_user(
+            username="regularuser2",
+            email="regular2@test.com",
+            password="pass123",
+        )
+        request = self.factory.get("/api/user/admin/stats/")
+        request.user = user
+        request.COOKIES = {}
+        self.assertFalse(self.permission.has_permission(request, None))
