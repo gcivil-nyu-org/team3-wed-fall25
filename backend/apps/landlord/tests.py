@@ -978,7 +978,9 @@ class HighImpactViewTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="hipview", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="hipview", password="pw", role="landlord"
+        )
         # Default client unauthenticated; use auth_client where needed
         self.client = APIClient()
         self.auth_client = APIClient()
@@ -1370,7 +1372,9 @@ class AdditionalCoverageTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="addcov", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="addcov", password="pw", role="landlord"
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -1473,7 +1477,9 @@ class MoreCoverageTests(TestCase):
 
     def setUp(self):
         User = get_user_model()
-        self.user = User.objects.create_user(username="morecov", password="pw", role="landlord")
+        self.user = User.objects.create_user(
+            username="morecov", password="pw", role="landlord"
+        )
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
