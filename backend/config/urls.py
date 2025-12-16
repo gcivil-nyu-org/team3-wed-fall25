@@ -26,7 +26,7 @@ from drf_spectacular.views import (
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("django-admin/", admin.site.urls),  # Changed to avoid conflict with React /admin/ routes
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
@@ -46,7 +46,7 @@ urlpatterns = [
     path("api/neighborhood/", include("apps.neighborhood.urls")),
     path("api/dummy/", include("apps.dummy.urls")),
     re_path(
-        r"^(?!(api(?:/|$)|admin(?:/|$))).*$",
+        r"^(?!(api(?:/|$)|django-admin(?:/|$))).*$",
         TemplateView.as_view(template_name="index.html"),
     ),
 ]
