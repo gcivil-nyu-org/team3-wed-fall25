@@ -1048,9 +1048,11 @@ class BuildingStatsView(APIView):
             return Response(stats, status=status.HTTP_200_OK)
         except Exception as e:
             print(f"[BuildingStatsView] DB error: {e}")
-            # Fallback mock stats
+            # Fallback mock stats. Avoid referencing `address` which may not
+            # be defined if the exception occurred before it was computed.
+            fallback_address = f"Property {bbl}"
             mock_stats = {
-                "address": address or f"Property {bbl}",
+                "address": fallback_address,
                 "total_violations": 2,
                 "open_violations": 2,
                 "total_complaints": 5,
