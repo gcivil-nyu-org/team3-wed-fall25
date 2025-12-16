@@ -171,7 +171,8 @@ def admin_flagged_reviews(request):
                     {
                         "id": review["id"],
                         "type": "review",
-                        "content": body_text[:200] + ("..." if len(body_text) > 200 else ""),
+                        "content": body_text[:200]
+                        + ("..." if len(body_text) > 200 else ""),
                         "title": review["title"],
                         "author": review["author_email"] or review["author_username"],
                         "authorId": review["user_id"],
