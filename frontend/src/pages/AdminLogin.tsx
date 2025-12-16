@@ -31,9 +31,12 @@ export default function AdminLogin() {
 
     // Simple authentication check
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      // Store admin session
+      // Store admin session in sessionStorage (for frontend routing)
       sessionStorage.setItem("admin_authenticated", "true");
       sessionStorage.setItem("admin_username", username);
+      
+      // Also set cookie for backend authentication
+      document.cookie = "admin_authenticated=true; path=/; SameSite=Lax";
       
       // Redirect to admin dashboard
       setTimeout(() => {
