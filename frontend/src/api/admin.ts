@@ -75,14 +75,14 @@ function getAdminHeaders(): Record<string, string> {
 
 // API functions
 export async function fetchAdminStats(): Promise<AdminStats> {
-  const response = await axiosInstance.get("/api/user/admin/stats/", {
+  const response = await axiosInstance.get("/user/admin/stats/", {
     headers: getAdminHeaders(),
   });
   return response.data;
 }
 
 export async function fetchFlaggedReviews(): Promise<FlaggedReview[]> {
-  const response = await axiosInstance.get("/api/user/admin/flagged-reviews/", {
+  const response = await axiosInstance.get("/user/admin/flagged-reviews/", {
     headers: getAdminHeaders(),
   });
   return response.data;
@@ -92,7 +92,7 @@ export async function fetchAdminReviews(
   limit = 50,
   offset = 0
 ): Promise<AdminReview[]> {
-  const response = await axiosInstance.get("/api/user/admin/reviews/", {
+  const response = await axiosInstance.get("/user/admin/reviews/", {
     params: { limit, offset },
     headers: getAdminHeaders(),
   });
@@ -101,14 +101,14 @@ export async function fetchAdminReviews(
 
 export async function approveReview(reviewId: number): Promise<void> {
   await axiosInstance.post(
-    `/api/user/admin/reviews/${reviewId}/approve/`,
+    `/user/admin/reviews/${reviewId}/approve/`,
     {},
     { headers: getAdminHeaders() }
   );
 }
 
 export async function deleteReview(reviewId: number): Promise<void> {
-  await axiosInstance.delete(`/api/user/admin/reviews/${reviewId}/`, {
+  await axiosInstance.delete(`/user/admin/reviews/${reviewId}/`, {
     headers: getAdminHeaders(),
   });
 }
@@ -120,7 +120,7 @@ export async function fetchAdminUsers(
 ): Promise<AdminUser[]> {
   const params: Record<string, string | number> = { limit, offset };
   if (role) params.role = role;
-  const response = await axiosInstance.get("/api/user/admin/users/", {
+  const response = await axiosInstance.get("/user/admin/users/", {
     params,
     headers: getAdminHeaders(),
   });
@@ -128,7 +128,7 @@ export async function fetchAdminUsers(
 }
 
 export async function fetchPlatformHealth(): Promise<PlatformHealth> {
-  const response = await axiosInstance.get("/api/user/admin/health/", {
+  const response = await axiosInstance.get("/user/admin/health/", {
     headers: getAdminHeaders(),
   });
   return response.data;
