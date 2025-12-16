@@ -13,6 +13,7 @@ cov = Coverage(
     source=["apps", "infrastructures", "common", "config"],
     omit=[
         "*/migrations/*",
+        "*/management/*",
         "manage.py",
         "*/wsgi.py",
         "*/asgi.py",

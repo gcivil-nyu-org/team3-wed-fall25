@@ -2,8 +2,283 @@
 import importlib
 import inspect
 
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.db import IntegrityError
+from django.test import TestCase, override_settings, RequestFactory
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient
+
+User = get_user_model()
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class UserViewsCoverageTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    @patch("apps.user.models.send_mail")
+    def test_register_view_success(self, _mock_send_mail):
+        url = reverse(
+            "register"
+        )  # apps.user.urls: name="register" :contentReference[oaicite:4]{index=4}
+        payload = {
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "testpass123",
+            "confirm_password": "testpass123",
+            "role": "tenant",
+            "tenant_type": "student",
+            "first_name": "New",
+            "last_name": "User",
+        }
+        res = self.client.post(url, payload, format="json")
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(email="newuser@example.com").exists())
+
+    def test_login_view_invalid(self):
+        url = reverse(
+            "login"
+        )  # apps.user.urls: name="login" :contentReference[oaicite:5]{index=5}
+        res = self.client.post(
+            url, {"email": "x@y.com", "password": "wrong"}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_view_success(self):
+        User.objects.create_user(
+            username="loginuser",
+            email="login@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Lo",
+            last_name="Gin",
+            is_verified=True,
+        )
+        url = reverse("login")
+        res = self.client.post(
+            url,
+            {"email": "login@example.com", "password": "testpass123"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn("access", res.data)
+        self.assertIn("refresh", res.data)
+        self.assertIn("user", res.data)
+
+    def test_profile_get_unauthenticated(self):
+        url = reverse(
+            "profile"
+        )  # apps.user.urls: name="profile" :contentReference[oaicite:6]{index=6}
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_get_authenticated(self):
+        u = User.objects.create_user(
+            username="me",
+            email="me@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Me",
+            last_name="User",
+            is_verified=True,
+        )
+        self.client.force_authenticate(user=u)
+        url = reverse("profile")
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["email"], "me@example.com")
+
+    def test_profile_patch_success(self):
+        u = User.objects.create_user(
+            username="me2",
+            email="me2@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Me",
+            last_name="Two",
+            is_verified=True,
+        )
+        self.client.force_authenticate(user=u)
+        url = reverse("profile")
+        res = self.client.patch(url, {"first_name": "Changed"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        u.refresh_from_db()
+        self.assertEqual(u.first_name, "Changed")
+
+    def test_profile_patch_validation_error(self):
+        # UserSerializer.validate_tenant_type 분기(테넌트 아닌데 tenant_type 보내면 에러)를 태움 :contentReference[oaicite:7]{index=7}
+        u = User.objects.create_user(
+            username="ll",
+            email="ll@example.com",
+            password="testpass123",
+            role="landlord",
+            landlord_type="individual_owner",
+            first_name="Land",
+            last_name="Lord",
+            is_verified=True,
+        )
+        self.client.force_authenticate(user=u)
+        url = reverse("profile")
+        res = self.client.patch(url, {"tenant_type": "student"}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_profile_patch_duplicate_username_branch(self):
+        # views.py의 "duplicate key / unique constraint" 분기 타게 만들기 :contentReference[oaicite:8]{index=8}
+        u1 = User.objects.create_user(
+            username="dup1",
+            email="dup1@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="A",
+            last_name="B",
+            is_verified=True,
+        )
+        User.objects.create_user(
+            username="dup2",
+            email="dup2@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="C",
+            last_name="D",
+            is_verified=True,
+        )
+
+        self.client.force_authenticate(user=u1)
+        url = reverse("profile")
+
+        # serializer.save()에서 IntegrityError를 강제로 발생시켜 except 분기를 커버
+        with patch(
+            "apps.user.views.UserSerializer.save",
+            side_effect=IntegrityError(
+                "duplicate key value violates unique constraint username"
+            ),
+        ):
+            res = self.client.patch(url, {"username": "dup2"}, format="json")
+            self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+            self.assertIn("username", res.data)
+
+    def test_verify_email_success_and_already_verified_path(self):
+        u = User.objects.create_user(
+            username="v1",
+            email="v1@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="V",
+            last_name="One",
+            is_verified=False,
+        )
+        url = reverse("verify-email")  # :contentReference[oaicite:9]{index=9}
+        res = self.client.post(url, {"token": str(u.verification_token)}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        u.refresh_from_db()
+        self.assertTrue(u.is_verified)
+
+        # 이미 verified면 views.py에서 “already verified면 200으로 처리”하는 분기 커버 :contentReference[oaicite:10]{index=10}
+        res2 = self.client.post(
+            url, {"token": str(u.verification_token)}, format="json"
+        )
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertIn("verified", res2.data)
+
+    def test_verify_email_invalid_token(self):
+        import uuid
+
+        url = reverse("verify-email")
+        res = self.client.post(url, {"token": str(uuid.uuid4())}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch.object(User, "resend_verification_email")
+    def test_resend_verification_success(self, mock_resend):
+        u = User.objects.create_user(
+            username="r1",
+            email="r1@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="R",
+            last_name="One",
+            is_verified=False,
+        )
+        url = reverse("resend-verification")  # :contentReference[oaicite:11]{index=11}
+        res = self.client.post(url, {"email": u.email}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        mock_resend.assert_called_once()
+
+    def test_users_list_success_and_error_branch(self):
+        me = User.objects.create_user(
+            username="me_list",
+            email="me_list@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Me",
+            last_name="List",
+            is_verified=True,
+        )
+        User.objects.create_user(
+            username="other",
+            email="other@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+            first_name="Other",
+            last_name="User",
+            is_verified=True,
+            is_active=True,
+        )
+
+        self.client.force_authenticate(user=me)
+        url = reverse("users_list")  # :contentReference[oaicite:12]{index=12}
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertTrue(isinstance(res.data, list))
+
+        # 예외 분기 커버: exclude()에서 예외 던지게 패치 :contentReference[oaicite:13]{index=13}
+        with patch(
+            "apps.user.views.CustomUser.objects.exclude", side_effect=Exception("boom")
+        ):
+            res2 = self.client.get(url)
+            self.assertEqual(res2.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserModelCleanBranchTests(TestCase):
+    def test_clean_allows_partial_update_when_existing_has_tenant_type(self):
+        # clean()의 "기존 유저고 tenant_type 이미 있으면 통과" 분기 :contentReference[oaicite:14]{index=14}
+        existing = User.objects.create_user(
+            username="t1",
+            email="t1@example.com",
+            password="testpass123",
+            role="tenant",
+            tenant_type="student",
+        )
+
+        # tenant_type 없이 업데이트 상황을 시뮬레이션
+        existing.tenant_type = None
+        existing.clean()  # 기존 DB에는 tenant_type이 있었으므로 통과해야 함
+
+    def test_clean_allows_partial_update_when_existing_has_org_name(self):
+        # organization_name required 분기의 "기존 유저면 통과" :contentReference[oaicite:15]{index=15}
+        existing = User.objects.create_user(
+            username="l1",
+            email="l1@example.com",
+            password="testpass123",
+            role="landlord",
+            landlord_type="property_management",
+            organization_name="Org",
+        )
+
+        existing.organization_name = None
+        existing.clean()  # DB에 organization_name이 있었으므로 통과해야 함
 
 
 class UserModelsSmokeTests(TestCase):
