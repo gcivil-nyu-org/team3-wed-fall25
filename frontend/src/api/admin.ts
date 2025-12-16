@@ -64,15 +64,12 @@ export interface PlatformHealth {
 
 /**
  * Get admin authentication headers.
- * Uses the admin key for authenticated requests.
+ * Authentication is handled via JWT tokens sent automatically by axiosInstance.
+ * The admin_authenticated flag is only used for frontend routing.
  */
 function getAdminHeaders(): Record<string, string> {
-  // Check if admin is authenticated via sessionStorage
-  const isAuthenticated =
-    sessionStorage.getItem("admin_authenticated") === "true";
-  if (isAuthenticated) {
-    return { "X-Admin-Key": "admin_secret_key_2025" };
-  }
+  // JWT auth is automatically included by axiosInstance interceptors
+  // No additional headers needed - backend validates via is_staff/is_superuser
   return {};
 }
 

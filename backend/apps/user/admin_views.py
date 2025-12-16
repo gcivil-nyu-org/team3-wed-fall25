@@ -2,6 +2,8 @@
 Admin API views for platform statistics and moderation.
 """
 
+import os
+
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
@@ -21,21 +23,18 @@ class IsAdminAuthenticated(BasePermission):
     """
 
     def has_permission(self, request, view):
-        # Check session-based admin authentication (from AdminLogin page)
-        # The frontend sets 'admin_authenticated' in sessionStorage,
-        # but we need server-side validation
-
-        # Option 1: Check for admin header (for API clients)
-        admin_key = request.headers.get("X-Admin-Key")
-        if admin_key == "admin_secret_key_2025":
-            return True
-
-        # Option 2: Check if user is authenticated and is staff/superuser
+        # Option 1: Check if user is authenticated and is staff/superuser (preferred)
         if request.user and request.user.is_authenticated:
             if request.user.is_staff or request.user.is_superuser:
                 return True
 
-        # Option 3: Check admin session cookie
+        # Option 2: Check for admin header with env-based key (for API clients)
+        admin_key = request.headers.get("X-Admin-Key")
+        expected_key = os.environ.get("ADMIN_API_KEY")
+        if admin_key and expected_key and admin_key == expected_key:
+            return True
+
+        # Option 3: Check admin session cookie (set by server after login)
         admin_session = request.COOKIES.get("admin_authenticated")
         if admin_session == "true":
             return True
@@ -167,12 +166,12 @@ def admin_flagged_reviews(request):
                     else 1
                 )
 
+                body_text = review["body"] or ""
                 result.append(
                     {
                         "id": review["id"],
                         "type": "review",
-                        "content": review["body"][:200]
-                        + ("..." if len(review["body"] or "") > 200 else ""),
+                        "content": body_text[:200] + ("..." if len(body_text) > 200 else ""),
                         "title": review["title"],
                         "author": review["author_email"] or review["author_username"],
                         "authorId": review["user_id"],
