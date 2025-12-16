@@ -6,7 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
 from infrastructures.postgres.postgres_client import PostgresClient
@@ -14,16 +14,37 @@ from infrastructures.postgres.postgres_client import PostgresClient
 User = get_user_model()
 
 
-def is_admin_authenticated(request):
-    """Check if admin is authenticated via session or special header."""
-    # For simplicity, we check a special admin header or session
-    # In production, you'd want proper admin authentication
-    admin_key = request.headers.get("X-Admin-Key")
-    return admin_key == "admin_secret_key_2025"
+class IsAdminAuthenticated(BasePermission):
+    """
+    Custom permission class for admin authentication.
+    Checks for admin session or special admin header.
+    """
+
+    def has_permission(self, request, view):
+        # Check session-based admin authentication (from AdminLogin page)
+        # The frontend sets 'admin_authenticated' in sessionStorage,
+        # but we need server-side validation
+
+        # Option 1: Check for admin header (for API clients)
+        admin_key = request.headers.get("X-Admin-Key")
+        if admin_key == "admin_secret_key_2025":
+            return True
+
+        # Option 2: Check if user is authenticated and is staff/superuser
+        if request.user and request.user.is_authenticated:
+            if request.user.is_staff or request.user.is_superuser:
+                return True
+
+        # Option 3: Check admin session cookie
+        admin_session = request.COOKIES.get("admin_authenticated")
+        if admin_session == "true":
+            return True
+
+        return False
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_stats(request):
     """
     GET /api/admin/stats
@@ -98,7 +119,7 @@ def admin_stats(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_flagged_reviews(request):
     """
     GET /api/admin/flagged-reviews
@@ -142,7 +163,7 @@ def admin_flagged_reviews(request):
                 )
                 flag_count = (
                     flag_count_result["count"]
-                    if flag_count_result and flag_count_result.get("count")
+                    if flag_count_result and flag_count_result.get("count") is not None
                     else 1
                 )
 
@@ -175,7 +196,7 @@ def admin_flagged_reviews(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_all_reviews(request):
     """
     GET /api/admin/reviews
@@ -249,7 +270,7 @@ def admin_all_reviews(request):
 
 
 @api_view(["POST"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_approve_review(request, review_id):
     """
     POST /api/admin/reviews/{review_id}/approve
@@ -288,7 +309,7 @@ def admin_approve_review(request, review_id):
 
 
 @api_view(["DELETE"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_delete_review(request, review_id):
     """
     DELETE /api/admin/reviews/{review_id}
@@ -319,7 +340,7 @@ def admin_delete_review(request, review_id):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_users(request):
     """
     GET /api/admin/users
@@ -367,7 +388,7 @@ def admin_users(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminAuthenticated])
 def admin_platform_health(request):
     """
     GET /api/admin/health
