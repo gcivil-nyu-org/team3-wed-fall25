@@ -2436,3 +2436,110 @@ class AdminViewsAdditionalTests(TestCase):
         response = self.client.post("/api/user/admin/reviews/1/approve/")
         # Should still succeed - the except block handles missing table
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_all_reviews_with_created_at(self, mock_postgres):
+        """Test all reviews with created_at timestamp"""
+        from datetime import datetime
+
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": 4.5,
+                "created_at": datetime(2024, 1, 15, 10, 30, 0),
+                "flagged": False,
+                "author_email": None,
+                "author_username": "testuser",
+                "house_number": None,
+                "street_name": None,
+                "boro": None,
+            }
+        ]
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("2024-01-15", response.data[0]["createdAt"])
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_with_created_at(self, mock_postgres):
+        """Test flagged reviews with created_at timestamp"""
+        from datetime import datetime
+
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Short body",
+                "rating": 2.5,
+                "created_at": datetime(2024, 6, 20, 14, 0, 0),
+                "flagged": True,
+                "author_email": "test@example.com",
+                "author_username": "testuser",
+            }
+        ]
+        mock_db.query_one.return_value = {"count": 3}
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("2024-06-20", response.data[0]["createdAt"])
+        self.assertEqual(response.data[0]["rating"], 2.5)
+
+    def test_admin_users_error_handling(self):
+        """Test users endpoint handles errors gracefully"""
+        self.client.force_authenticate(user=self.admin_user)
+        # Test with very large offset - should still work
+        response = self.client.get("/api/user/admin/users/?limit=10&offset=10000")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_health_with_db_error_message(self, mock_postgres):
+        """Test health endpoint includes error message on DB failure"""
+        mock_postgres.return_value.__enter__.side_effect = Exception(
+            "Connection refused"
+        )
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/health/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["dbStatus"], "error")
+        self.assertIn("dbError", response.data)
+        self.assertIn("Connection refused", response.data["dbError"])
+
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_flagged_reviews_null_flag_count_result(self, mock_postgres):
+        """Test flagged reviews when flag count result is None"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": None,
+                "created_at": None,
+                "flagged": True,
+                "author_email": None,
+                "author_username": None,
+            }
+        ]
+        mock_db.query_one.return_value = None  # No flag count result
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/user/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should default to 1 when result is None
+        self.assertEqual(response.data[0]["reportedBy"], 1)
+        # Author should be None when both email and username are None
+        self.assertIsNone(response.data[0]["author"])
