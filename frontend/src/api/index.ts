@@ -4,6 +4,7 @@ export * from './auth';
 export * from './building';
 export * from './neighborhood';
 export * from './community';
+export * from './admin';
 
 // Building data interfaces and API functions
 
