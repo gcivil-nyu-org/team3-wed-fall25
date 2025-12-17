@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from infrastructures.postgres.postgres_client import PostgresClient
+from django.db import connection
 
 User = get_user_model()
 
@@ -42,6 +42,29 @@ class IsAdminAuthenticated(BasePermission):
         return False
 
 
+def _dictfetchall(cursor):
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+
+def _dictfetchone(cursor):
+    columns = [col[0] for col in cursor.description]
+    row = cursor.fetchone()
+    return dict(zip(columns, row)) if row else None
+
+
+def _query_one(sql, params=None):
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params or None)
+        return _dictfetchone(cursor)
+
+
+def _query_all(sql, params=None):
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params or None)
+        return _dictfetchall(cursor)
+
+
 @api_view(["GET"])
 @permission_classes([IsAdminAuthenticated])
 def admin_stats(request):
@@ -55,45 +78,38 @@ def admin_stats(request):
         tenant_count = User.objects.filter(is_active=True, role="tenant").count()
         landlord_count = User.objects.filter(is_active=True, role="landlord").count()
 
-        # Get review and building counts from PostgreSQL
-        with PostgresClient() as db:
-            # Total reviews
-            review_result = db.query_one(
-                "SELECT COUNT(*) as count FROM community_reviews WHERE deleted_at IS NULL"
-            )
-            total_reviews = review_result["count"] if review_result else 0
+        # Get review and building counts using Django connection (inherits deployed DB settings)
+        review_result = _query_one(
+            "SELECT COUNT(*) as count FROM community_reviews WHERE deleted_at IS NULL"
+        )
+        total_reviews = review_result["count"] if review_result else 0
 
-            # Flagged/pending reviews
-            flagged_result = db.query_one(
-                """SELECT COUNT(*) as count FROM community_reviews
-                WHERE flagged = TRUE AND deleted_at IS NULL"""
-            )
-            pending_reports = flagged_result["count"] if flagged_result else 0
+        flagged_result = _query_one(
+            """SELECT COUNT(*) as count FROM community_reviews
+            WHERE flagged = TRUE AND deleted_at IS NULL"""
+        )
+        pending_reports = flagged_result["count"] if flagged_result else 0
 
-            # Buildings tracked (from building_locations which has unified data)
-            buildings_result = db.query_one(
-                """SELECT COUNT(DISTINCT bbl) as count FROM building_locations
-                WHERE has_location = TRUE"""
-            )
-            buildings_tracked = buildings_result["count"] if buildings_result else 0
+        buildings_result = _query_one(
+            """SELECT COUNT(DISTINCT bbl) as count FROM building_locations
+            WHERE has_location = TRUE"""
+        )
+        buildings_tracked = buildings_result["count"] if buildings_result else 0
 
-            # Total violations
-            violations_result = db.query_one(
-                "SELECT COUNT(*) as count FROM building_hpd_violations"
-            )
-            total_violations = violations_result["count"] if violations_result else 0
+        violations_result = _query_one(
+            "SELECT COUNT(*) as count FROM building_hpd_violations"
+        )
+        total_violations = violations_result["count"] if violations_result else 0
 
-            # Total evictions
-            evictions_result = db.query_one(
-                "SELECT COUNT(*) as count FROM building_evictions"
-            )
-            total_evictions = evictions_result["count"] if evictions_result else 0
+        evictions_result = _query_one(
+            "SELECT COUNT(*) as count FROM building_evictions"
+        )
+        total_evictions = evictions_result["count"] if evictions_result else 0
 
-            # Total complaints
-            complaints_result = db.query_one(
-                "SELECT COUNT(*) as count FROM building_hpd_complaints"
-            )
-            total_complaints = complaints_result["count"] if complaints_result else 0
+        complaints_result = _query_one(
+            "SELECT COUNT(*) as count FROM building_hpd_complaints"
+        )
+        total_complaints = complaints_result["count"] if complaints_result else 0
 
         return Response(
             {
@@ -125,70 +141,68 @@ def admin_flagged_reviews(request):
     Returns list of flagged reviews for moderation.
     """
     try:
-        with PostgresClient() as db:
-            # Get flagged reviews with user info
-            reviews = db.query_all(
+        # Get flagged reviews with user info
+        reviews = _query_all(
+            """
+            SELECT 
+                cr.id,
+                cr.user_id,
+                cr.bbl,
+                cr.title,
+                cr.body,
+                cr.rating,
+                cr.created_at,
+                cr.flagged,
+                cu.email as author_email,
+                cu.username as author_username
+            FROM community_reviews cr
+            LEFT JOIN custom_user cu ON cr.user_id = cu.id
+            WHERE cr.flagged = TRUE AND cr.deleted_at IS NULL
+            ORDER BY cr.created_at DESC
+            LIMIT 50
+            """
+        )
+
+        # Also get flag counts from review_flags table if it exists
+        result = []
+        for review in reviews:
+            flag_count_result = _query_one(
                 """
-                SELECT 
-                    cr.id,
-                    cr.user_id,
-                    cr.bbl,
-                    cr.title,
-                    cr.body,
-                    cr.rating,
-                    cr.created_at,
-                    cr.flagged,
-                    cu.email as author_email,
-                    cu.username as author_username
-                FROM community_reviews cr
-                LEFT JOIN custom_user cu ON cr.user_id = cu.id
-                WHERE cr.flagged = TRUE AND cr.deleted_at IS NULL
-                ORDER BY cr.created_at DESC
-                LIMIT 50
-                """
+                SELECT COUNT(*) as count 
+                FROM review_flags 
+                WHERE review_id = %s
+                """,
+                (review["id"],),
+            )
+            flag_count = (
+                flag_count_result["count"]
+                if flag_count_result and flag_count_result.get("count") is not None
+                else 1
             )
 
-            # Also get flag counts from review_flags table if it exists
-            result = []
-            for review in reviews:
-                # Get flag count
-                flag_count_result = db.query_one(
-                    """
-                    SELECT COUNT(*) as count 
-                    FROM review_flags 
-                    WHERE review_id = %s
-                    """,
-                    (review["id"],),
-                )
-                flag_count = (
-                    flag_count_result["count"]
-                    if flag_count_result and flag_count_result.get("count") is not None
-                    else 1
-                )
+            body_text = review["body"] or ""
+            result.append(
+                {
+                    "id": review["id"],
+                    "type": "review",
+                    "content": body_text[:200]
+                    + ("..." if len(body_text) > 200 else ""),
+                    "title": review["title"],
+                    "author": review["author_email"] or review["author_username"],
+                    "authorId": review["user_id"],
+                    "bbl": review["bbl"],
+                    "rating": float(review["rating"]) if review["rating"] else None,
+                    "reportedBy": flag_count,
+                    "createdAt": (
+                        review["created_at"].isoformat()
+                        if review["created_at"]
+                        else None
+                    ),
+                    "status": "pending",
+                }
+            )
 
-                body_text = review["body"] or ""
-                result.append(
-                    {
-                        "id": review["id"],
-                        "type": "review",
-                        "content": body_text[:200]
-                        + ("..." if len(body_text) > 200 else ""),
-                        "title": review["title"],
-                        "author": review["author_email"] or review["author_username"],
-                        "authorId": review["user_id"],
-                        "bbl": review["bbl"],
-                        "rating": float(review["rating"]) if review["rating"] else None,
-                        "reportedBy": flag_count,
-                        "createdAt": (
-                            review["created_at"].isoformat()
-                            if review["created_at"]
-                            else None
-                        ),
-                        "status": "pending",
-                    }
-                )
-
-            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         print(f"[AdminFlaggedReviews] Error: {e}")
         # Return empty list on error (table might not exist)
@@ -206,61 +220,60 @@ def admin_all_reviews(request):
         limit = int(request.query_params.get("limit", 50))
         offset = int(request.query_params.get("offset", 0))
 
-        with PostgresClient() as db:
-            reviews = db.query_all(
-                """
-                SELECT 
-                    cr.id,
-                    cr.user_id,
-                    cr.bbl,
-                    cr.title,
-                    cr.body,
-                    cr.rating,
-                    cr.created_at,
-                    cr.flagged,
-                    cu.email as author_email,
-                    cu.username as author_username,
-                    br.house_number,
-                    br.street_name,
-                    br.boro
-                FROM community_reviews cr
-                LEFT JOIN custom_user cu ON cr.user_id = cu.id
-                LEFT JOIN building_registrations br ON cr.bbl = br.bbl
-                WHERE cr.deleted_at IS NULL
-                ORDER BY cr.created_at DESC
-                LIMIT %s OFFSET %s
-                """,
-                (limit, offset),
+        reviews = _query_all(
+            """
+            SELECT 
+                cr.id,
+                cr.user_id,
+                cr.bbl,
+                cr.title,
+                cr.body,
+                cr.rating,
+                cr.created_at,
+                cr.flagged,
+                cu.email as author_email,
+                cu.username as author_username,
+                br.house_number,
+                br.street_name,
+                br.boro
+            FROM community_reviews cr
+            LEFT JOIN custom_user cu ON cr.user_id = cu.id
+            LEFT JOIN building_registrations br ON cr.bbl = br.bbl
+            WHERE cr.deleted_at IS NULL
+            ORDER BY cr.created_at DESC
+            LIMIT %s OFFSET %s
+            """,
+            (limit, offset),
+        )
+
+        result = []
+        for review in reviews:
+            address = ""
+            if review.get("house_number") and review.get("street_name"):
+                address = f"{review['house_number']} {review['street_name']}"
+                if review.get("boro"):
+                    address += f", {review['boro']}"
+
+            result.append(
+                {
+                    "id": review["id"],
+                    "userId": review["user_id"],
+                    "bbl": review["bbl"],
+                    "title": review["title"],
+                    "body": review["body"],
+                    "rating": float(review["rating"]) if review["rating"] else None,
+                    "author": review["author_email"] or review["author_username"],
+                    "address": address or f"BBL: {review['bbl']}",
+                    "createdAt": (
+                        review["created_at"].isoformat()
+                        if review["created_at"]
+                        else None
+                    ),
+                    "flagged": review["flagged"] or False,
+                }
             )
 
-            result = []
-            for review in reviews:
-                address = ""
-                if review.get("house_number") and review.get("street_name"):
-                    address = f"{review['house_number']} {review['street_name']}"
-                    if review.get("boro"):
-                        address += f", {review['boro']}"
-
-                result.append(
-                    {
-                        "id": review["id"],
-                        "userId": review["user_id"],
-                        "bbl": review["bbl"],
-                        "title": review["title"],
-                        "body": review["body"],
-                        "rating": float(review["rating"]) if review["rating"] else None,
-                        "author": review["author_email"] or review["author_username"],
-                        "address": address or f"BBL: {review['bbl']}",
-                        "createdAt": (
-                            review["created_at"].isoformat()
-                            if review["created_at"]
-                            else None
-                        ),
-                        "flagged": review["flagged"] or False,
-                    }
-                )
-
-            return Response(result, status=status.HTTP_200_OK)
+        return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
         print(f"[AdminAllReviews] Error: {e}")
         return Response(
@@ -277,9 +290,8 @@ def admin_approve_review(request, review_id):
     Unflag a review (mark as approved).
     """
     try:
-        with PostgresClient() as db:
-            # Unflag the review
-            db.execute(
+        with connection.cursor() as cursor:
+            cursor.execute(
                 """
                 UPDATE community_reviews 
                 SET flagged = FALSE, updated_at = NOW()
@@ -288,9 +300,8 @@ def admin_approve_review(request, review_id):
                 (review_id,),
             )
 
-            # Remove any flags from review_flags table
             try:
-                db.execute(
+                cursor.execute(
                     "DELETE FROM review_flags WHERE review_id = %s", (review_id,)
                 )
             except Exception:
@@ -316,9 +327,8 @@ def admin_delete_review(request, review_id):
     Soft delete a review.
     """
     try:
-        with PostgresClient() as db:
-            # Soft delete the review
-            db.execute(
+        with connection.cursor() as cursor:
+            cursor.execute(
                 """
                 UPDATE community_reviews 
                 SET deleted_at = NOW(), updated_at = NOW()
@@ -401,10 +411,11 @@ def admin_platform_health(request):
             "timestamp": timezone.now().isoformat(),
         }
 
-        # Check database connectivity
+        # Check database connectivity via Django connection (inherits deployed DB settings)
         try:
-            with PostgresClient() as db:
-                db.query_one("SELECT 1")
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
             health["dbStatus"] = "healthy"
         except Exception as e:
             health["dbStatus"] = "error"
