@@ -70,7 +70,9 @@ def _safe_count(sql, params=None, default=0):
     """
     try:
         row = _query_one(sql, params)
-        return row["count"] if row and "count" in row else default
+        result = row["count"] if row and "count" in row else default
+        print(f"[AdminStats] query OK: {sql[:60]}... => {result}")
+        return result
     except Exception as e:
         # Log to console for visibility on the server
         print(f"[AdminStats] count query failed: {sql} params={params} err={e}")
@@ -93,6 +95,7 @@ def admin_stats(request):
             "SUM(CASE WHEN role = 'landlord' THEN 1 ELSE 0 END) as landlords "
             "FROM custom_user WHERE is_active = TRUE"
         )
+        print(f"[AdminStats] user_counts raw result: {user_counts}")
         total_users = user_counts.get("total", 0) if user_counts else 0
         tenant_count = user_counts.get("tenants", 0) if user_counts else 0
         landlord_count = user_counts.get("landlords", 0) if user_counts else 0
