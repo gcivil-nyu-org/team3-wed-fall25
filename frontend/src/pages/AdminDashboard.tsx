@@ -21,6 +21,15 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Divider,
 } from "@mui/material";
 import {
   People,
@@ -36,6 +45,10 @@ import {
   HealthAndSafety,
   Gavel,
   Report,
+  Storage,
+  Cloud,
+  Schedule,
+  Analytics,
 } from "@mui/icons-material";
 import {
   fetchAdminStats,
@@ -65,6 +78,54 @@ export default function AdminDashboard() {
     null
   );
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+
+  // Export reports as CSV
+  const handleExportReports = () => {
+    if (!stats) {
+      setSnackbar({
+        open: true,
+        message: "No data to export",
+        severity: "error",
+      });
+      return;
+    }
+
+    const csvContent = [
+      ["Platform Statistics Report"],
+      ["Generated", new Date().toISOString()],
+      [],
+      ["Metric", "Value"],
+      ["Total Users", stats.totalUsers],
+      ["Tenants", stats.tenantCount],
+      ["Landlords", stats.landlordCount],
+      ["Total Reviews", stats.totalReviews],
+      ["Flagged Reviews", stats.pendingReports],
+      ["Buildings Tracked", stats.buildingsTracked],
+      ["Total Violations", stats.totalViolations],
+      ["Total Evictions", stats.totalEvictions],
+      ["Total Complaints", stats.totalComplaints],
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `admin-report-${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setSnackbar({
+      open: true,
+      message: "Report exported successfully",
+      severity: "success",
+    });
+  };
 
   // Load data
   const loadData = useCallback(async () => {
@@ -384,6 +445,7 @@ export default function AdminDashboard() {
             variant="contained"
             startIcon={<Download />}
             sx={{ backgroundColor: "#FF6B35" }}
+            onClick={handleExportReports}
           >
             Export Reports
           </Button>
@@ -394,10 +456,18 @@ export default function AdminDashboard() {
           >
             Refresh Data
           </Button>
-          <Button variant="outlined" startIcon={<TrendingUp />}>
+          <Button
+            variant="outlined"
+            startIcon={<TrendingUp />}
+            onClick={() => setAnalyticsOpen(true)}
+          >
             View Analytics
           </Button>
-          <Button variant="outlined" startIcon={<HealthAndSafety />}>
+          <Button
+            variant="outlined"
+            startIcon={<HealthAndSafety />}
+            onClick={() => setStatusOpen(true)}
+          >
             System Status
           </Button>
         </Stack>
@@ -754,6 +824,157 @@ export default function AdminDashboard() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Analytics Dialog */}
+      <Dialog
+        open={analyticsOpen}
+        onClose={() => setAnalyticsOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Analytics color="primary" />
+          Platform Analytics
+        </DialogTitle>
+        <DialogContent>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <People color="primary" />
+              </ListItemIcon>
+              <ListItemText
+                primary="User Distribution"
+                secondary={`${stats?.tenantCount || 0} tenants (${stats?.totalUsers ? Math.round((stats.tenantCount / stats.totalUsers) * 100) : 0}%) · ${stats?.landlordCount || 0} landlords (${stats?.totalUsers ? Math.round((stats.landlordCount / stats.totalUsers) * 100) : 0}%)`}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <RateReview color="success" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Review Activity"
+                secondary={`${stats?.totalReviews || 0} total reviews · ${stats?.pendingReports || 0} flagged (${stats?.totalReviews ? Math.round((stats.pendingReports / stats.totalReviews) * 100) : 0}% flag rate)`}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <Business color="info" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Building Coverage"
+                secondary={`${formatNumber(stats?.buildingsTracked || 0)} buildings with location data`}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <Warning color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Violation Density"
+                secondary={`${stats?.buildingsTracked ? Math.round((stats.totalViolations || 0) / stats.buildingsTracked) : 0} avg violations per building`}
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <Gavel color="error" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Eviction Rate"
+                secondary={`${stats?.buildingsTracked ? ((stats.totalEvictions || 0) / stats.buildingsTracked).toFixed(2) : 0} avg evictions per building`}
+              />
+            </ListItem>
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnalyticsOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* System Status Dialog */}
+      <Dialog
+        open={statusOpen}
+        onClose={() => setStatusOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <HealthAndSafety color="primary" />
+          System Status
+        </DialogTitle>
+        <DialogContent>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <Cloud
+                  color={
+                    platformHealth?.apiStatus === "healthy" ? "success" : "error"
+                  }
+                />
+              </ListItemIcon>
+              <ListItemText
+                primary="API Status"
+                secondary={
+                  <Chip
+                    label={platformHealth?.apiStatus || "Unknown"}
+                    color={
+                      platformHealth?.apiStatus === "healthy"
+                        ? "success"
+                        : "error"
+                    }
+                    size="small"
+                  />
+                }
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <Storage
+                  color={
+                    platformHealth?.dbStatus === "healthy" ? "success" : "error"
+                  }
+                />
+              </ListItemIcon>
+              <ListItemText
+                primary="Database Status"
+                secondary={
+                  <Chip
+                    label={platformHealth?.dbStatus || "Unknown"}
+                    color={
+                      platformHealth?.dbStatus === "healthy" ? "success" : "error"
+                    }
+                    size="small"
+                  />
+                }
+              />
+            </ListItem>
+            <Divider />
+            <ListItem>
+              <ListItemIcon>
+                <Schedule color="info" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Last Updated"
+                secondary={
+                  platformHealth?.timestamp
+                    ? new Date(platformHealth.timestamp).toLocaleString()
+                    : "Unknown"
+                }
+              />
+            </ListItem>
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={loadData} startIcon={<Refresh />}>
+            Refresh Status
+          </Button>
+          <Button onClick={() => setStatusOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
