@@ -31,10 +31,17 @@ class PostgresClient:
         password = env("DB_PASSWORD")
         host = env("DB_HOST", default="localhost")
         port = env("DB_PORT", default=5432)
+        sslmode = env("DB_SSLMODE", default=None)
+        sslrootcert = env("DB_SSLROOTCERT", default=None)
 
-        self._params = dict(
-            dbname=dbname, user=user, password=password, host=host, port=port
-        )
+        # Build connection parameters; include SSL if provided (needed for hosted DBs like RDS)
+        params = dict(dbname=dbname, user=user, password=password, host=host, port=port)
+        if sslmode:
+            params["sslmode"] = sslmode
+        if sslrootcert:
+            params["sslrootcert"] = sslrootcert
+
+        self._params = params
 
         self.conn = None
 
