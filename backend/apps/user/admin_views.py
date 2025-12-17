@@ -109,14 +109,15 @@ def admin_stats(request):
             """SELECT COUNT(DISTINCT bbl) as count FROM building_locations
                WHERE has_location = TRUE"""
         )
+        # Use the same tables the search/map flows use
         total_violations = _safe_count(
-            "SELECT COUNT(*) as count FROM building_hpd_violations"
+            "SELECT COUNT(*) as count FROM building_violations"
         )
         total_evictions = _safe_count(
             "SELECT COUNT(*) as count FROM building_evictions"
         )
         total_complaints = _safe_count(
-            "SELECT COUNT(*) as count FROM building_hpd_complaints"
+            "SELECT COUNT(*) as count FROM building_complaints"
         )
 
         return Response(
@@ -380,8 +381,23 @@ def admin_users(request):
         with PostgresClient() as db:
             users = db.query_all(
                 f"""
-                SELECT id, email, username, role, is_verified, first_name, last_name,
-                       date_joined, last_login
+                SELECT id,
+                       email,
+                       username,
+                       role,
+                       is_verified,
+                       first_name,
+                       last_name,
+                       tenant_type,
+                       landlord_type,
+                       organization_name,
+                       hpd_registration_number,
+                       phone_number,
+                       business_phone,
+                       date_joined,
+                       last_login,
+                       created_at,
+                       updated_at
                 FROM custom_user
                 WHERE {where_sql}
                 ORDER BY date_joined DESC
@@ -399,11 +415,23 @@ def admin_users(request):
                 "isVerified": u.get("is_verified"),
                 "firstName": u.get("first_name"),
                 "lastName": u.get("last_name"),
+                "tenantType": u.get("tenant_type"),
+                "landlordType": u.get("landlord_type"),
+                "organizationName": u.get("organization_name"),
+                "hpdRegistrationNumber": u.get("hpd_registration_number"),
+                "phoneNumber": u.get("phone_number"),
+                "businessPhone": u.get("business_phone"),
                 "dateJoined": (
                     u.get("date_joined").isoformat() if u.get("date_joined") else None
                 ),
                 "lastLogin": (
                     u.get("last_login").isoformat() if u.get("last_login") else None
+                ),
+                "createdAt": (
+                    u.get("created_at").isoformat() if u.get("created_at") else None
+                ),
+                "updatedAt": (
+                    u.get("updated_at").isoformat() if u.get("updated_at") else None
                 ),
             }
             for u in users
