@@ -175,19 +175,22 @@ def admin_flagged_reviews(request):
         # Also get flag counts from review_flags table if it exists
         result = []
         for review in reviews:
-            flag_count_result = _query_one(
-                """
-                SELECT COUNT(*) as count 
-                FROM review_flags 
-                WHERE review_id = %s
-                """,
-                (review["id"],),
-            )
-            flag_count = (
-                flag_count_result["count"]
-                if flag_count_result and flag_count_result.get("count") is not None
-                else 1
-            )
+            # Try to get flag count, but default to 1 if table doesn't exist
+            flag_count = 1
+            try:
+                flag_count_result = _query_one(
+                    """
+                    SELECT COUNT(*) as count 
+                    FROM review_flags 
+                    WHERE review_id = %s
+                    """,
+                    (review["id"],),
+                )
+                if flag_count_result and flag_count_result.get("count") is not None:
+                    flag_count = flag_count_result["count"]  # Preserve 0 as valid
+            except Exception:
+                # review_flags table might not exist, use default count
+                pass
 
             body_text = review["body"] or ""
             result.append(

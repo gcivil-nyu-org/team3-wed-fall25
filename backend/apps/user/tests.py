@@ -2586,3 +2586,35 @@ class AdminViewsAdditionalTests(TestCase):
         self.assertEqual(response.data[0]["reportedBy"], 1)
         # Author should be None when both email and username are None
         self.assertIsNone(response.data[0]["author"])
+
+    @patch("apps.user.admin_views._query_all")
+    @patch("apps.user.admin_views._query_one")
+    def test_admin_flagged_reviews_flag_count_query_error(
+        self, mock_query_one, mock_query_all
+    ):
+        """Test flagged reviews when review_flags table query fails"""
+        # Main query succeeds
+        mock_query_all.return_value = [
+            {
+                "id": 1,
+                "user_id": 1,
+                "bbl": "1234567890",
+                "title": "Test Review",
+                "body": "Test body",
+                "rating": 4.5,
+                "created_at": None,
+                "flagged": True,
+                "author_email": "test@example.com",
+                "author_username": "testuser",
+            }
+        ]
+        # Flag count query fails (e.g., review_flags table doesn't exist)
+        mock_query_one.side_effect = Exception("relation review_flags does not exist")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Should still return the review with default flag count of 1
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["reportedBy"], 1)
+        self.assertEqual(response.data[0]["title"], "Test Review")

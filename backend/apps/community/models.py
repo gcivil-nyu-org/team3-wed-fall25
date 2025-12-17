@@ -53,6 +53,7 @@ class CommunityReviews(models.Model):
     )  # NULL or 0<rating<=5.0
     title = models.TextField()
     body = models.TextField()
+    flagged = models.BooleanField(default=False)  # For admin moderation
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(blank=True, null=True)
