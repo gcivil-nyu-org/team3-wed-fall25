@@ -79,7 +79,7 @@ export default function AdminDashboard() {
       ]);
 
       setStats(statsData);
-      setModerationQueue(flaggedData);
+      setModerationQueue(Array.isArray(flaggedData) ? flaggedData : []);
       setPlatformHealth(healthData);
     } catch (err) {
       console.error("Failed to load admin data:", err);
@@ -96,6 +96,7 @@ export default function AdminDashboard() {
         totalEvictions: 0,
         totalComplaints: 0,
       });
+      setModerationQueue([]);
     } finally {
       setLoading(false);
     }

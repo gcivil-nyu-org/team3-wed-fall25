@@ -2426,6 +2426,25 @@ class AdminViewsAdditionalTests(TestCase):
         self.assertEqual(response.data["pendingReports"], 0)
         self.assertEqual(response.data["buildingsTracked"], 0)
 
+    @patch("apps.user.admin_views._query_all")
+    def test_admin_flagged_reviews_db_error_returns_empty(self, mock_query_all):
+        """Flagged reviews should return [] on DB error"""
+        mock_query_all.side_effect = Exception("missing table review_flags")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/auth/admin/flagged-reviews/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])
+
+    @patch("apps.user.admin_views._query_all")
+    def test_admin_all_reviews_db_error_django(self, mock_query_all):
+        """All reviews should surface a server error if query fails (connection)"""
+        mock_query_all.side_effect = Exception("missing table community_reviews")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/auth/admin/reviews/")
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @patch("apps.user.admin_views.PostgresClient")
     def test_admin_approve_review_with_flag_cleanup(self, mock_postgres):
         """Test approve review cleans up flags table"""
