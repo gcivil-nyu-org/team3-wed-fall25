@@ -65,6 +65,20 @@ def _query_all(sql, params=None):
         return _dictfetchall(cursor)
 
 
+def _safe_count(sql, params=None, default=0):
+    """
+    Run a COUNT query defensively. If the table/view is missing or any DB error
+    occurs, return a default (0) instead of raising, so the endpoint stays up.
+    """
+    try:
+        row = _query_one(sql, params)
+        return row["count"] if row and "count" in row else default
+    except Exception as e:
+        # Log to console for visibility on the server
+        print(f"[AdminStats] count query failed: {sql} params={params} err={e}")
+        return default
+
+
 @api_view(["GET"])
 @permission_classes([IsAdminAuthenticated])
 def admin_stats(request):
@@ -79,37 +93,26 @@ def admin_stats(request):
         landlord_count = User.objects.filter(is_active=True, role="landlord").count()
 
         # Get review and building counts using Django connection (inherits deployed DB settings)
-        review_result = _query_one(
+        total_reviews = _safe_count(
             "SELECT COUNT(*) as count FROM community_reviews WHERE deleted_at IS NULL"
         )
-        total_reviews = review_result["count"] if review_result else 0
-
-        flagged_result = _query_one(
+        pending_reports = _safe_count(
             """SELECT COUNT(*) as count FROM community_reviews
-            WHERE flagged = TRUE AND deleted_at IS NULL"""
+               WHERE flagged = TRUE AND deleted_at IS NULL"""
         )
-        pending_reports = flagged_result["count"] if flagged_result else 0
-
-        buildings_result = _query_one(
+        buildings_tracked = _safe_count(
             """SELECT COUNT(DISTINCT bbl) as count FROM building_locations
-            WHERE has_location = TRUE"""
+               WHERE has_location = TRUE"""
         )
-        buildings_tracked = buildings_result["count"] if buildings_result else 0
-
-        violations_result = _query_one(
+        total_violations = _safe_count(
             "SELECT COUNT(*) as count FROM building_hpd_violations"
         )
-        total_violations = violations_result["count"] if violations_result else 0
-
-        evictions_result = _query_one(
+        total_evictions = _safe_count(
             "SELECT COUNT(*) as count FROM building_evictions"
         )
-        total_evictions = evictions_result["count"] if evictions_result else 0
-
-        complaints_result = _query_one(
+        total_complaints = _safe_count(
             "SELECT COUNT(*) as count FROM building_hpd_complaints"
         )
-        total_complaints = complaints_result["count"] if complaints_result else 0
 
         return Response(
             {
