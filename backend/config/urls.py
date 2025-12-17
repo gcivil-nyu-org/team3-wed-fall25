@@ -26,7 +26,9 @@ from drf_spectacular.views import (
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
-    path("django-admin/", admin.site.urls),  # Changed to avoid conflict with React /admin/ routes
+    path(
+        "django-admin/", admin.site.urls
+    ),  # Changed to avoid conflict with React /admin/ routes
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
         "api/docs/",
