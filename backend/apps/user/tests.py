@@ -2028,21 +2028,33 @@ class AdminViewsTests(TestCase):
         response = self.client.get("/api/auth/admin/users/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_admin_users_as_staff(self):
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_users_as_staff(self, mock_postgres):
         """Test that staff users can access user list"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get("/api/auth/admin/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIsInstance(response.data, list)
 
-    def test_admin_users_with_role_filter(self):
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_users_with_role_filter(self, mock_postgres):
         """Test user list with role filter"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get("/api/auth/admin/users/?role=tenant")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_admin_users_with_pagination(self):
+    @patch("apps.user.admin_views.PostgresClient")
+    def test_admin_users_with_pagination(self, mock_postgres):
         """Test user list with pagination"""
+        mock_db = mock_postgres.return_value.__enter__.return_value
+        mock_db.query_all.return_value = []
+
         self.client.force_authenticate(user=self.admin_user)
         response = self.client.get("/api/auth/admin/users/?limit=10&offset=0")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
