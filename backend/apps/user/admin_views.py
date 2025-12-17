@@ -11,7 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from django.db import connection
+from infrastructures.postgres.postgres_client import PostgresClient
 
 User = get_user_model()
 
@@ -54,15 +54,13 @@ def _dictfetchone(cursor):
 
 
 def _query_one(sql, params=None):
-    with connection.cursor() as cursor:
-        cursor.execute(sql, params or None)
-        return _dictfetchone(cursor)
+    with PostgresClient() as db:
+        return db.query_one(sql, params)
 
 
 def _query_all(sql, params=None):
-    with connection.cursor() as cursor:
-        cursor.execute(sql, params or None)
-        return _dictfetchall(cursor)
+    with PostgresClient() as db:
+        return db.query_all(sql, params)
 
 
 def _safe_count(sql, params=None, default=0):
@@ -87,10 +85,17 @@ def admin_stats(request):
     Returns platform-wide statistics.
     """
     try:
-        # Get user counts from Django
-        total_users = User.objects.filter(is_active=True).count()
-        tenant_count = User.objects.filter(is_active=True, role="tenant").count()
-        landlord_count = User.objects.filter(is_active=True, role="landlord").count()
+        # Get user counts from Postgres (same DB as building/search data)
+        user_counts = _query_one(
+            "SELECT "
+            "COUNT(*) as total, "
+            "SUM(CASE WHEN role = 'tenant' THEN 1 ELSE 0 END) as tenants, "
+            "SUM(CASE WHEN role = 'landlord' THEN 1 ELSE 0 END) as landlords "
+            "FROM custom_user WHERE is_active = TRUE"
+        )
+        total_users = user_counts.get("total", 0) if user_counts else 0
+        tenant_count = user_counts.get("tenants", 0) if user_counts else 0
+        landlord_count = user_counts.get("landlords", 0) if user_counts else 0
 
         # Get review and building counts using Django connection (inherits deployed DB settings)
         total_reviews = _safe_count(
@@ -293,8 +298,8 @@ def admin_approve_review(request, review_id):
     Unflag a review (mark as approved).
     """
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
+        with PostgresClient() as db:
+            db.execute(
                 """
                 UPDATE community_reviews 
                 SET flagged = FALSE, updated_at = NOW()
@@ -304,7 +309,7 @@ def admin_approve_review(request, review_id):
             )
 
             try:
-                cursor.execute(
+                db.execute(
                     "DELETE FROM review_flags WHERE review_id = %s", (review_id,)
                 )
             except Exception:
@@ -330,8 +335,8 @@ def admin_delete_review(request, review_id):
     Soft delete a review.
     """
     try:
-        with connection.cursor() as cursor:
-            cursor.execute(
+        with PostgresClient() as db:
+            db.execute(
                 """
                 UPDATE community_reviews 
                 SET deleted_at = NOW(), updated_at = NOW()
@@ -364,32 +369,45 @@ def admin_users(request):
         offset = int(request.query_params.get("offset", 0))
         role = request.query_params.get("role")
 
-        queryset = User.objects.filter(is_active=True).order_by("-date_joined")
-
+        params = []
+        where = ["is_active = TRUE"]
         if role:
-            queryset = queryset.filter(role=role)
+            where.append("role = %s")
+            params.append(role)
 
-        users = queryset[offset : offset + limit]
+        where_sql = " AND ".join(where)
 
-        result = []
-        for user in users:
-            result.append(
-                {
-                    "id": user.id,
-                    "email": user.email,
-                    "username": user.username,
-                    "role": user.role,
-                    "isVerified": user.is_verified,
-                    "firstName": user.first_name,
-                    "lastName": user.last_name,
-                    "dateJoined": (
-                        user.date_joined.isoformat() if user.date_joined else None
-                    ),
-                    "lastLogin": (
-                        user.last_login.isoformat() if user.last_login else None
-                    ),
-                }
+        with PostgresClient() as db:
+            users = db.query_all(
+                f"""
+                SELECT id, email, username, role, is_verified, first_name, last_name,
+                       date_joined, last_login
+                FROM custom_user
+                WHERE {where_sql}
+                ORDER BY date_joined DESC
+                LIMIT %s OFFSET %s
+                """,
+                (*params, limit, offset),
             )
+
+        result = [
+            {
+                "id": u.get("id"),
+                "email": u.get("email"),
+                "username": u.get("username"),
+                "role": u.get("role"),
+                "isVerified": u.get("is_verified"),
+                "firstName": u.get("first_name"),
+                "lastName": u.get("last_name"),
+                "dateJoined": (
+                    u.get("date_joined").isoformat() if u.get("date_joined") else None
+                ),
+                "lastLogin": (
+                    u.get("last_login").isoformat() if u.get("last_login") else None
+                ),
+            }
+            for u in users
+        ]
 
         return Response(result, status=status.HTTP_200_OK)
     except Exception as e:
@@ -414,11 +432,10 @@ def admin_platform_health(request):
             "timestamp": timezone.now().isoformat(),
         }
 
-        # Check database connectivity via Django connection (inherits deployed DB settings)
+        # Check database connectivity via PostgresClient (same DB as building data)
         try:
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT 1")
-                cursor.fetchone()
+            with PostgresClient() as db:
+                db.query_one("SELECT 1")
             health["dbStatus"] = "healthy"
         except Exception as e:
             health["dbStatus"] = "error"
