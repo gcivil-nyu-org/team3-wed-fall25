@@ -2414,6 +2414,18 @@ class AdminViewsAdditionalTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["totalReviews"], 0)
 
+    @patch("apps.user.admin_views._query_one")
+    def test_admin_stats_handles_db_errors(self, mock_query_one):
+        """Stats should return zeros if DB count queries fail"""
+        mock_query_one.side_effect = Exception("missing table")
+
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get("/api/auth/admin/stats/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["totalReviews"], 0)
+        self.assertEqual(response.data["pendingReports"], 0)
+        self.assertEqual(response.data["buildingsTracked"], 0)
+
     @patch("apps.user.admin_views.PostgresClient")
     def test_admin_approve_review_with_flag_cleanup(self, mock_postgres):
         """Test approve review cleans up flags table"""
