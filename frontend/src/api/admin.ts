@@ -75,18 +75,22 @@ function getAdminHeaders(): Record<string, string> {
 
 // API functions
 // Note: User app URLs are registered at /api/auth/ in Django config/urls.py
+// Backend wraps responses in { result: boolean, data: T } format
 export async function fetchAdminStats(): Promise<AdminStats> {
   const response = await axiosInstance.get("/auth/admin/stats/", {
     headers: getAdminHeaders(),
   });
-  return response.data;
+  // Handle wrapped response format: { result: true, data: {...} }
+  return response.data?.data || response.data;
 }
 
 export async function fetchFlaggedReviews(): Promise<FlaggedReview[]> {
   const response = await axiosInstance.get("/auth/admin/flagged-reviews/", {
     headers: getAdminHeaders(),
   });
-  return response.data;
+  // Handle wrapped response format
+  const data = response.data?.data || response.data;
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchAdminReviews(
@@ -97,7 +101,9 @@ export async function fetchAdminReviews(
     params: { limit, offset },
     headers: getAdminHeaders(),
   });
-  return response.data;
+  // Handle wrapped response format
+  const data = response.data?.data || response.data;
+  return Array.isArray(data) ? data : [];
 }
 
 export async function approveReview(reviewId: number): Promise<void> {
@@ -125,13 +131,16 @@ export async function fetchAdminUsers(
     params,
     headers: getAdminHeaders(),
   });
-  return response.data;
+  // Handle wrapped response format
+  const data = response.data?.data || response.data;
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchPlatformHealth(): Promise<PlatformHealth> {
   const response = await axiosInstance.get("/auth/admin/health/", {
     headers: getAdminHeaders(),
   });
-  return response.data;
+  // Handle wrapped response format
+  return response.data?.data || response.data;
 }
 
